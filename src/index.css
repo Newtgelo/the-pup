@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+@layer utilities {
+  .animate-fade-in {
+    /* เปลี่ยนจาก 0.4s เป็น 0.7s หรือ 0.8s จะนุ่มขึ้น */
+    animation: fadeIn 0.7s ease-out forwards; 
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    /* เปลี่ยนจาก 10px เป็น 20px ให้ระยะลอยตัวมันไกลขึ้น จะดูสมูทขึ้น */
+    transform: translateY(20px); 
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
