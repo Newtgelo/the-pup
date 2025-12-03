@@ -2,20 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 // Import Icons
+// ⚠️ ตัด IconInbox ออก แล้วใช้ IconBriefcase แทน
 import { 
     IconShare, IconCheck, IconX, IconMaximize, 
     IconCalendar, IconMapPin, IconChevronRight, IconTicket,
     IconZoomIn, IconClock, IconPhone, IconUsers, IconLayout, IconBriefcase,
-    IconChevronLeft, IconInbox 
+    IconChevronLeft 
 } from './icons/Icons';
 
-// Import UI Components
 import { SafeImage, NotFound } from './ui/UIComponents';
-
-// Import Data
 import { SAMPLE_NEWS, SAMPLE_EVENTS, SAMPLE_CAFES } from '../data/mockData';
 
-// --- Helper Function ---
 const findItem = (data, id) => data.find(item => item.id === parseInt(id));
 
 // ==========================================
@@ -370,7 +367,7 @@ export const CafeDetail = ({ onTriggerToast }) => {
                             </div>
                             <div className="hidden md:flex gap-3">
                                 <button onClick={handleMap} className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"><IconMapPin size={18} /> ดูแผนที่</button>
-                                <button onClick={handleBooking} className="flex-1 bg-[#1E293B] hover:bg-black text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"><IconInbox size={18} /> สนใจจัดงานที่นี่</button>
+                                <button onClick={handleBooking} className="flex-1 bg-[#1E293B] hover:bg-black text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"><IconBriefcase size={18} /> สนใจจัดงานที่นี่</button>
                             </div>
                         </div>
                     )}
@@ -405,7 +402,7 @@ export const CafeDetail = ({ onTriggerToast }) => {
             ) : (
                 <>
                     <button onClick={handleMap} className="flex-1 border border-gray-200 text-gray-700 bg-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition"><IconMapPin size={20} /> ดูแผนที่</button>
-                    <button onClick={handleBooking} className="flex-[2] bg-[#1E293B] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition"><IconInbox size={20} /> สนใจจัดงาน</button>
+                    <button onClick={handleBooking} className="flex-[2] bg-[#1E293B] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition"><IconBriefcase size={20} /> สนใจจัดงาน</button>
                 </>
             )}
         </div>
