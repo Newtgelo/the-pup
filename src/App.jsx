@@ -18,19 +18,15 @@ export default function App() {
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [toast, setToast] = useState({ show: false, message: "" });
-  
-  // 🔥 State สำหรับเปิด/ปิด Search Overlay บนมือถือ
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   const triggerToast = (message) => setToast({ show: true, message });
   const closeToast = () => setToast({ ...toast, show: false });
 
-  // เมื่อเปลี่ยนหน้า ให้ปิด Search Overlay อัตโนมัติ
   useEffect(() => {
     setIsMobileSearchOpen(false);
   }, [location.pathname]);
 
-  // Search Logic
   const handleSearch = (e) => {
      const val = e.target.value;
      setSearchTerm(val);
@@ -44,8 +40,6 @@ export default function App() {
   const clearSearch = () => {
       setSearchTerm("");
       navigate('/');
-      // ถ้าอยู่บนมือถือ ไม่ต้องปิด Overlay ก็ได้ หรือจะปิดก็ได้ แล้วแต่ชอบ
-      // setIsMobileSearchOpen(false); 
   };
 
   const handleLogoClick = () => {
@@ -55,7 +49,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans pb-20">
+    // 🔥 แก้จุดที่ 1: ลบ pb-20 ออกจากตรงนี้ครับ (เพื่อให้ไม่มีขอบขาวท้ายสุด)
+    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
       
       <RouteLoader />
       <ScrollToTop />
@@ -65,7 +60,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="flex justify-between items-center h-16 md:h-20">
-            {/* 1. Logo Section */}
+            {/* Logo */}
             <div className="flex items-center gap-3 cursor-pointer" onClick={handleLogoClick}>
               <IconLogo />
               <div>
@@ -74,7 +69,7 @@ export default function App() {
               </div>
             </div>
             
-            {/* 2. Desktop Search (แสดงเฉพาะจอใหญ่) */}
+            {/* Desktop Search */}
             <div className="hidden md:flex relative w-1/3">
               <input 
                 type="text" 
@@ -90,7 +85,7 @@ export default function App() {
               )}
             </div>
 
-            {/* 3. 🔥 Mobile Search Toggle Button (แสดงเฉพาะมือถือ ด้านขวาสุด) */}
+            {/* Mobile Search Toggle */}
             <button 
                 onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
                 className="md:hidden p-2 text-gray-500 hover:text-[#FF6B00] transition rounded-full hover:bg-gray-50"
@@ -99,8 +94,7 @@ export default function App() {
             </button>
           </div>
           
-          {/* 4. 🔥 Mobile Search Overlay (Slide Down) */}
-          {/* จะแสดงเมื่อ isMobileSearchOpen เป็น true เท่านั้น */}
+          {/* Mobile Search Overlay */}
           <div 
             className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMobileSearchOpen ? 'max-h-20 opacity-100 border-t border-gray-100' : 'max-h-0 opacity-0'}`}
           >
@@ -111,7 +105,6 @@ export default function App() {
                     className="w-full pl-4 pr-10 py-2 rounded-full border border-gray-200 focus:outline-none focus:border-[#FF6B00] bg-gray-50 text-sm shadow-sm" 
                     value={searchTerm} 
                     onChange={handleSearch}
-                    autoFocus // เปิดมาแล้วพิมพ์ได้เลย
                />
                {searchTerm ? (
                     <button onClick={clearSearch} className="absolute right-3 top-5 text-gray-400 hover:text-gray-600"><IconX size={18} /></button>
@@ -137,10 +130,11 @@ export default function App() {
         <Route path="*" element={<NotFound onBack={() => navigate('/')} />} />
       </Routes>
 
-      {/* Global Components */}
       <Toast message={toast.message} show={toast.show} onClose={closeToast} />
 
-      <footer className="bg-[#0F172A] text-white mt-20 py-12">
+      {/* 🔥 แก้จุดที่ 2: เพิ่ม pb-28 (padding bottom) ที่ Footer แทน */}
+      {/* เพื่อให้ Footer ยืดลงไปสุดขอบ และเว้นที่ให้ปุ่ม Sticky Bar ทับโดยไม่บังตัวหนังสือ */}
+      <footer className="bg-[#0F172A] text-white mt-20 pt-12 pb-28 md:py-12">
          <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-start gap-8">
             <div><div className="flex items-center gap-3 mb-4"><div className="w-8 h-8 rounded-full bg-white/20"></div><span className="font-bold text-lg">The Popup Plan</span></div><p className="text-gray-400 text-sm">Minimalist K-Pop Hub & Event Planner</p></div>
             <div className="flex gap-12 text-sm text-gray-400"><div className="flex flex-col gap-2"><span className="text-white font-bold mb-2">เมนูหลัก</span><button onClick={handleLogoClick} className="text-left hover:text-white">หน้าหลัก</button></div><div className="flex flex-col gap-2"><span className="text-white font-bold mb-2">ติดต่อเรา</span><p>อีเมล: pr@thepopupplan.com</p></div></div>
