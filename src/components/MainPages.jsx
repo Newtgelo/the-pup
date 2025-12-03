@@ -5,9 +5,9 @@ import {
     IconChevronRight, IconSort, IconFilter, IconCalendar, IconMapPin, IconClock, IconChevronLeft
 } from './icons/Icons';
 import { SAMPLE_NEWS, SAMPLE_EVENTS, SAMPLE_CAFES } from '../data/mockData';
-import { ScrollableRow, EmptyState, SkeletonNews, SkeletonEvent, SkeletonCafe } from './ui/UIComponents';
+import { ScrollableRow, EmptyState, SafeImage, SkeletonNews, SkeletonEvent, SkeletonCafe } from './ui/UIComponents';
 
-// 🔥 Import การ์ดที่เราเพิ่งสร้างมาใช้
+// 🔥 Import การ์ดมาใช้ (สำคัญมาก)
 import { NewsCard, EventCard, CafeCard } from './ui/CardComponents';
 
 // ==========================================
@@ -24,12 +24,16 @@ export const HomePage = () => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filteredHomeEvents, setFilteredHomeEvents] = useState(SAMPLE_EVENTS);
 
-  // Logic: Scroll to ID
+  // Logic: Scroll to ID from URL hash
   useEffect(() => {
     if (location.hash) {
       const id = location.hash.replace('#', '');
       const element = document.getElementById(id);
-      if (element) setTimeout(() => element.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100); 
+      }
     }
   }, [location]);
 
@@ -64,6 +68,7 @@ export const HomePage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 pb-16">
+        
         {/* HERO */}
         <div className="bg-gradient-to-r from-[#FF6B00] to-[#E11D48] rounded-3xl p-8 mb-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
@@ -72,21 +77,24 @@ export const HomePage = () => {
             <div className="relative z-10"><button onClick={() => { document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' }) }} className="bg-white text-[#E11D48] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95">สำรวจอีเวนต์</button></div>
         </div>
         
-        {/* NEWS SECTION */}
+        {/* NEWS SECTION (แก้แล้ว: ใช้ NewsCard แทน code เก่า) */}
         <section id="news-section" className="mt-8">
             <div className="flex justify-between items-center mb-4 border-l-4 border-[#0047FF] pl-4"><h2 className="text-2xl font-bold text-gray-900">Latest News</h2><button onClick={() => navigate('/search?tab=news')} className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1">ดูทั้งหมด <IconChevronRight size={16}/></button></div>
             <div className="flex flex-wrap gap-2 mb-6">{["ทั้งหมด", "K-pop", "T-pop"].map(filter => (<button key={filter} onClick={() => setHomeNewsFilter(filter)} className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${homeNewsFilter === filter ? "bg-[#FF6B00] text-white" : "bg-white border text-gray-600 hover:bg-gray-50"}`}>{filter}</button>))}</div>
             <div className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:grid md:grid-cols-3 lg:grid-cols-4 md:gap-6 md:overflow-visible md:pb-0 md:mx-0 md:px-0 scrollbar-hide">
                 {isLoading ? [...Array(4)].map((_, i) => <SkeletonNews key={i} />) : homeNews.slice(0, 8).map((news, index) => (
-                    // 🔥 ใช้ NewsCard แทนโค้ดยาวๆ
+                    // 🔥 ใช้ NewsCard ตัวใหม่ (Text อยู่ล่าง ไม่มีเงา)
                     <div key={news.id} className={`flex-shrink-0 w-[85vw] sm:w-[350px] md:w-auto snap-start ${index >= 6 ? 'md:hidden lg:block' : ''}`}>
-                        <NewsCard item={news} onClick={() => navigate(`/news/${news.id}`)} />
+                        <NewsCard 
+                            item={news} 
+                            onClick={() => navigate(`/news/${news.id}`)} 
+                        />
                     </div>
                 ))}
             </div>
         </section>
 
-        {/* EVENTS SECTION */}
+        {/* EVENTS SECTION (ใช้ EventCard) */}
         <section id="events-section">
             <div className="flex flex-col mb-6">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
@@ -111,7 +119,7 @@ export const HomePage = () => {
             
             <ScrollableRow className="gap-4 pb-4 -mx-4 px-4 scroll-pl-4">
                 {isLoading ? [...Array(5)].map((_, i) => <SkeletonEvent key={i} />) : filteredHomeEvents.length > 0 ? filteredHomeEvents.map((event) => (
-                    // 🔥 ใช้ EventCard แทนโค้ดยาวๆ
+                    // 🔥 ใช้ EventCard
                     <div key={event.id} className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[260px] snap-start h-full">
                         <EventCard 
                             item={event} 
@@ -123,12 +131,12 @@ export const HomePage = () => {
             </ScrollableRow>
         </section>
 
-        {/* CAFES SECTION */}
+        {/* CAFES SECTION (ใช้ CafeCard) */}
         <section id="cafes-section">
             <div className="flex justify-between items-center mb-6 border-l-4 border-[#0047FF] pl-4"><h2 className="text-2xl font-bold text-gray-900">แนะนำที่จัด Fancafe</h2><button onClick={() => navigate('/search?tab=cafes')} className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1">ดูทั้งหมด <IconChevronRight size={16}/></button></div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                 {isLoading ? [...Array(4)].map((_, i) => <SkeletonCafe key={i} />) : SAMPLE_CAFES.map((cafe) => (
-                    // 🔥 ใช้ CafeCard แทนโค้ดยาวๆ
+                    // 🔥 ใช้ CafeCard
                     <CafeCard key={cafe.id} item={cafe} onClick={() => navigate(`/cafe/${cafe.id}`)} />
                 ))}
             </div>
@@ -138,7 +146,7 @@ export const HomePage = () => {
 };
 
 // ==========================================
-// 2. SEARCH PAGE (อันนี้ก็ลดโค้ดลงเยอะมาก)
+// 2. SEARCH PAGE
 // ==========================================
 export const SearchPage = () => {
   const navigate = useNavigate();
@@ -160,7 +168,7 @@ export const SearchPage = () => {
   const totalResults = resultsNews.length + resultsEvents.length + resultsCafes.length;
   const title = term ? `ผลการค้นหา: "${term}"` : 'รายการทั้งหมด';
 
-  // 🔥 ใช้ Component Card ที่เราสร้างแทนการเขียน inline
+  // 🔥 ใช้ Component Card ที่เราสร้าง
   const renderCard = (item, type) => {
     if (type === 'news') return <NewsCard key={item.id} item={item} onClick={() => navigate(`/news/${item.id}`)} />;
     if (type === 'event') return <EventCard key={item.id} item={item} onClick={() => navigate(`/event/${item.id}`)} />;
