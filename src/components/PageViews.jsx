@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 // Import Icons
-// ⚠️ ตัด IconInbox ออก แล้วใช้ IconBriefcase แทน
 import { 
     IconShare, IconCheck, IconX, IconMaximize, 
     IconCalendar, IconMapPin, IconChevronRight, IconTicket,
     IconZoomIn, IconClock, IconPhone, IconUsers, IconLayout, IconBriefcase,
-    IconChevronLeft 
+    IconChevronLeft, IconInbox 
 } from './icons/Icons';
 
+// Import UI Components
 import { SafeImage, NotFound } from './ui/UIComponents';
+
+// Import Data
 import { SAMPLE_NEWS, SAMPLE_EVENTS, SAMPLE_CAFES } from '../data/mockData';
 
+// --- Helper Function ---
 const findItem = (data, id) => data.find(item => item.id === parseInt(id));
 
 // ==========================================
@@ -46,20 +49,43 @@ export const NewsDetail = ({ onTriggerToast }) => {
 
   return (
     <>
+      {/* MOBILE FLOATING CONTROLS */}
       <div className="md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none">
-          <button onClick={() => navigate('/#news-section')} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
-          <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconShare size={20} /></button>
+          <button 
+            onClick={() => navigate('/#news-section')} 
+            className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"
+          >
+            <IconChevronLeft size={24} />
+          </button>
+
+          <button 
+            onClick={handleShare}
+            className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"
+          >
+            <IconShare size={20} />
+          </button>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8 relative animate-fade-in">
+        
+        {/* DESKTOP HEADER */}
         <div className="hidden md:flex justify-between items-center mb-6">
-            <button onClick={() => navigate('/#news-section')} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
-              <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition"><IconChevronLeft size={24} /></div>
+            <button 
+              onClick={() => navigate('/#news-section')} 
+              className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition"
+            >
+              <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition">
+                  <IconChevronLeft size={24} />
+              </div>
               <span className="font-bold text-gray-900 group-hover:text-[#FF6B00]">ย้อนกลับ</span>
             </button>
-            <button onClick={handleShare} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#FF6B00] transition shadow-sm"><IconShare size={20}/></button>
+
+            <button onClick={handleShare} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#FF6B00] transition shadow-sm">
+              <IconShare size={20}/>
+            </button>
         </div>
 
+        {/* HEADLINE */}
         <div className="mb-8 mt-12 md:mt-0">
           <div className="flex flex-wrap items-center gap-3 text-sm mb-4">
               <span className="bg-[#FF6B00] text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">{news.category}</span>
@@ -68,58 +94,87 @@ export const NewsDetail = ({ onTriggerToast }) => {
           <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight mb-4">{news.title}</h1>
         </div>
         
+        {/* MAIN IMAGE */}
         <div className="rounded-2xl overflow-hidden mb-10 shadow-lg aspect-video bg-gray-100 relative group">
           <SafeImage src={news.image} alt={news.title} className="w-full h-full object-cover" />
         </div>
 
+        {/* CONTENT BODY */}
         <div className="space-y-8 mb-16">
             {(news.contentBlocks || []).map((block, index) => (
                 <div key={index}>
-                    {block.type === 'text' && (<div className="max-w-3xl mx-auto"><p className="text-gray-700 text-lg leading-relaxed whitespace-pre-line text-justify font-serif">{block.text}</p></div>)}
-                    {block.type === 'image' && (<figure className="my-8"><div className="rounded-xl overflow-hidden shadow-sm"><SafeImage src={block.src} alt={block.caption} className="w-full h-auto object-cover max-h-[600px]" /></div>{block.caption && <figcaption className="text-center text-sm text-gray-500 mt-3 italic">{block.caption}</figcaption>}</figure>)}
-                    {block.type === 'youtube' && (<div className="my-10 aspect-video rounded-xl overflow-hidden shadow-lg"><iframe className="w-full h-full" src={block.src} title="YouTube video" allowFullScreen></iframe></div>)}
+                    {block.type === 'text' && (
+                      <div className="max-w-3xl mx-auto">
+                          <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-line text-justify font-serif">{block.text}</p>
+                      </div>
+                    )}
+                    {block.type === 'image' && (
+                      <figure className="my-8">
+                          <div className="rounded-xl overflow-hidden shadow-sm">
+                              <SafeImage src={block.src} alt={block.caption} className="w-full h-auto object-cover max-h-[600px]" />
+                          </div>
+                          {block.caption && <figcaption className="text-center text-sm text-gray-500 mt-3 italic">{block.caption}</figcaption>}
+                      </figure>
+                    )}
+                    {block.type === 'youtube' && (
+                      <div className="my-10 aspect-video rounded-xl overflow-hidden shadow-lg">
+                          <iframe className="w-full h-full" src={block.src} title="YouTube video" allowFullScreen></iframe>
+                      </div>
+                    )}
                 </div>
             ))}
         </div>
 
+        {/* TAGS */}
         <div className="flex flex-wrap gap-2 mb-16">
-            {(news.tags || []).map((tag, i) => (<span key={i} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-200 cursor-pointer transition">#{tag}</span>))}
+            {(news.tags || []).map((tag, i) => (
+                <span key={i} className="px-4 py-2 bg-gray-100 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-200 cursor-pointer transition">#{tag}</span>
+            ))}
         </div>
 
         <hr className="border-gray-200 mb-12" />
 
+        {/* RELATED EVENTS */}
         {relatedEvents.length > 0 && (
             <div className="mb-12">
                 <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">🎟️ อีเวนต์ที่เกี่ยวข้อง</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {relatedEvents.map(event => (
                         <div key={event.id} onClick={() => navigate(`/event/${event.id}`)} className="bg-white border border-gray-200 rounded-xl p-4 flex gap-4 cursor-pointer hover:border-[#FF6B00] hover:shadow-md transition group">
-                            <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100"><SafeImage src={event.image} className="w-full h-full object-cover group-hover:scale-110 transition duration-500"/></div>
+                            <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                <SafeImage src={event.image} className="w-full h-full object-cover group-hover:scale-110 transition duration-500"/>
+                            </div>
                             <div className="flex-1 min-w-0">
                                 <span className="text-[10px] font-bold text-[#FF6B00] bg-orange-50 px-2 py-0.5 rounded-full">{event.type}</span>
                                 <h4 className="font-bold text-gray-900 mt-1 line-clamp-1 group-hover:text-[#FF6B00] transition">{event.title}</h4>
                                 <p className="text-sm text-gray-500 mt-1 flex items-center gap-1"><IconCalendar size={12}/> {event.date}</p>
                                 <p className="text-sm text-gray-500 flex items-center gap-1"><IconMapPin size={12}/> {event.location}</p>
                             </div>
-                            <div className="flex items-center justify-center text-gray-300 group-hover:text-[#FF6B00]"><IconChevronRight /></div>
+                            <div className="flex items-center justify-center text-gray-300 group-hover:text-[#FF6B00]">
+                                <IconChevronRight />
+                            </div>
                         </div>
                     ))}
                 </div>
             </div>
         )}
 
+        {/* READ MORE */}
         <div className="bg-gray-50 rounded-2xl p-6 md:p-8">
             <h3 className="text-xl font-bold text-gray-900 mb-6">ข่าวสารอื่นๆ ที่น่าสนใจ</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {otherNews.map(n => (
                     <div key={n.id} onClick={() => { navigate(`/news/${n.id}`); window.scrollTo(0,0); }} className="cursor-pointer group">
-                        <div className="aspect-video rounded-xl overflow-hidden bg-gray-200 mb-3"><SafeImage src={n.image} className="w-full h-full object-cover group-hover:scale-110 transition duration-500"/></div>
+                        <div className="aspect-video rounded-xl overflow-hidden bg-gray-200 mb-3">
+                            <SafeImage src={n.image} className="w-full h-full object-cover group-hover:scale-110 transition duration-500"/>
+                        </div>
                         <h4 className="font-bold text-gray-900 leading-tight group-hover:text-[#FF6B00] transition line-clamp-2">{n.title}</h4>
                         <p className="text-xs text-gray-500 mt-2">{n.date}</p>
                     </div>
                 ))}
             </div>
         </div>
+
       </div>
     </>
   );
@@ -152,8 +207,11 @@ export const EventDetail = ({ onTriggerToast }) => {
   };
 
   const goBack = () => {
-      if (location.state?.from) { navigate(location.state.from); } 
-      else { navigate('/#events-section'); }
+      if (location.state?.from) {
+          navigate(location.state.from);
+      } else {
+          navigate('/#events-section'); 
+      }
   };
   
   const handleShare = async () => {
@@ -173,12 +231,19 @@ export const EventDetail = ({ onTriggerToast }) => {
             </div>
       )}
 
+      {/* MOBILE FLOATING CONTROLS */}
       <div className="md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none">
-          <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
-          <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconShare size={20} /></button>
+          <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90">
+            <IconChevronLeft size={24} />
+          </button>
+          <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90">
+            <IconShare size={20} />
+          </button>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8 pb-32 md:pb-8 relative animate-fade-in">
+        
+        {/* DESKTOP HEADER */}
         <div className="hidden md:flex justify-between items-center mb-6">
             <button onClick={goBack} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
                 <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition"><IconChevronLeft size={24} /></div>
@@ -187,7 +252,10 @@ export const EventDetail = ({ onTriggerToast }) => {
             <button onClick={handleShare} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#FF6B00] transition shadow-sm"><IconShare size={20}/></button>
         </div>
         
+        {/* MAIN LAYOUT */}
         <div className="relative mb-12 mt-8 md:mt-0">
+            
+            {/* DESKTOP */}
             <div className="hidden md:flex bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 min-h-[550px]">
                 <div className="w-[45%] relative bg-gray-900 cursor-pointer group overflow-hidden" onClick={() => setIsLightboxOpen(true)}>
                     <div className="absolute inset-0 bg-center bg-cover blur-xl opacity-50 scale-110" style={{ backgroundImage: `url(${event.image})` }}></div>
@@ -211,9 +279,10 @@ export const EventDetail = ({ onTriggerToast }) => {
                 </div>
             </div>
             
+            {/* MOBILE */}
             <div className="md:hidden flex flex-col bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
                 <div className="relative h-[450px] bg-gray-900 overflow-hidden cursor-pointer group" onClick={() => setIsLightboxOpen(true)}>
-                    <div className="absolute inset-0 bg-center bg-cover scale-110 blur-xl opacity-50 transition-transform group-hover:scale-125" style={{ backgroundImage: `url(${event.image})` }}></div>
+                    <div className="absolute inset-0 bg-center bg-cover blur-xl opacity-50 transition-transform group-hover:scale-125" style={{ backgroundImage: `url(${event.image})` }}></div>
                     <div className="absolute inset-0 flex items-center justify-center p-6"><SafeImage src={event.image} alt={event.title} className="w-full h-full object-contain rounded-lg shadow-lg z-10" /></div>
                     <div className="absolute top-4 left-4 z-20"><span className="inline-block px-2 py-1 rounded-lg bg-white/90 text-[#FF6B00] text-xs font-bold uppercase tracking-wider shadow-sm backdrop-blur-sm">{event.type}</span></div>
                     <div className="absolute top-4 right-4 bg-black/60 text-white p-2.5 rounded-full backdrop-blur-md transition flex items-center justify-center border border-white/10 shadow-lg z-20"><IconMaximize size={20} /></div>
@@ -263,6 +332,11 @@ export const CafeDetail = ({ onTriggerToast }) => {
     const [activeTab, setActiveTab] = useState('general');
     const [selectedImage, setSelectedImage] = useState(cafe?.image || "");
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    
+    // 🔥 Touch States for Swipe
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
+    const minSwipeDistance = 50;
 
     const allImages = cafe?.gallery || (cafe?.image ? [cafe.image] : []);
 
@@ -276,32 +350,70 @@ export const CafeDetail = ({ onTriggerToast }) => {
     if (!cafe) return <NotFound title="ไม่พบคาเฟ่ดังกล่าว" onBack={() => navigate('/')} />;
     
     const otherCafes = SAMPLE_CAFES.filter(c => c.id !== cafe.id).slice(0, 4);
+    
     const handleBooking = () => onTriggerToast("เปิดฟอร์มติดต่อเช่าสถานที่...");
     const handleMap = () => window.open(cafe.map_link || "#", '_blank');
     const handleCall = () => window.location.href = `tel:${cafe.phone || ""}`;
-    const handleShare = async () => { /* ... */ };
+    const handleShare = async () => {
+        const shareData = { title: cafe.name, url: window.location.href };
+        try {
+            if (navigator.share) await navigator.share(shareData);
+            else { await navigator.clipboard.writeText(shareData.url); onTriggerToast("คัดลอกลิงก์แล้ว"); }
+        } catch (err) { console.log("Error:", err); }
+    };
+
+    // 🔥 Navigation Functions
     const handlePrevImage = (e) => {
-        e.stopPropagation();
+        if(e) e.stopPropagation();
         const currentIndex = allImages.indexOf(selectedImage);
         const newIndex = (currentIndex - 1 + allImages.length) % allImages.length;
         setSelectedImage(allImages[newIndex]);
     };
+
     const handleNextImage = (e) => {
-        e.stopPropagation();
+        if(e) e.stopPropagation();
         const currentIndex = allImages.indexOf(selectedImage);
         const newIndex = (currentIndex + 1) % allImages.length;
         setSelectedImage(allImages[newIndex]);
     };
 
+    // 🔥 Swipe Handlers
+    const onTouchStart = (e) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
+    const onTouchMove = (e) => { setTouchEnd(e.targetTouches[0].clientX); };
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        if (distance > minSwipeDistance) handleNextImage();
+        if (distance < -minSwipeDistance) handlePrevImage();
+    };
+
+    // 🔥 Keyboard Navigation
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (!isLightboxOpen) return;
+            if (e.key === 'ArrowLeft') handlePrevImage();
+            if (e.key === 'ArrowRight') handleNextImage();
+            if (e.key === 'Escape') setIsLightboxOpen(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isLightboxOpen, selectedImage]);
+
     return (
       <>
         {isLightboxOpen && (
-            <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setIsLightboxOpen(false)}>
+            <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setIsLightboxOpen(false)}>
                 <button onClick={() => setIsLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-[#FF6B00] transition z-50 p-2"><IconX size={32} /></button>
-                {allImages.length > 1 && (<button onClick={handlePrevImage} className="absolute left-2 md:left-8 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10 transition z-50"><IconChevronLeft size={40} /></button>)}
-                <SafeImage src={selectedImage} alt="Full View" className="max-w-full max-h-[85vh] object-contain rounded-lg animate-fade-in select-none" onClick={(e) => e.stopPropagation()} />
-                {allImages.length > 1 && (<button onClick={handleNextImage} className="absolute right-2 md:right-8 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10 transition z-50"><IconChevronRight size={40} /></button>)}
-                {allImages.length > 1 && (<div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/80 bg-black/50 px-4 py-1 rounded-full text-sm font-medium">{allImages.indexOf(selectedImage) + 1} / {allImages.length}</div>)}
+                {allImages.length > 1 && (<button onClick={handlePrevImage} className="hidden md:flex absolute left-8 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10 transition z-50"><IconChevronLeft size={40} /></button>)}
+                
+                {/* Main Image with Swipe */}
+                <div className="relative w-full max-w-5xl flex items-center justify-center" onClick={(e) => e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+                    <SafeImage src={selectedImage} alt="Full View" className="max-w-full max-h-[85vh] object-contain rounded-lg animate-fade-in select-none" />
+                    {allImages.length > 1 && (<div className="md:hidden absolute bottom-[-40px] text-white/50 text-xs flex items-center gap-2"><IconChevronLeft size={12}/> ปัดเพื่อเปลี่ยนรูป <IconChevronRight size={12}/></div>)}
+                </div>
+
+                {allImages.length > 1 && (<button onClick={handleNextImage} className="hidden md:flex absolute right-8 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10 transition z-50"><IconChevronRight size={40} /></button>)}
+                {allImages.length > 1 && (<div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/90 bg-white/10 border border-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-medium">{allImages.indexOf(selectedImage) + 1} / {allImages.length}</div>)}
             </div>
         )}
         
