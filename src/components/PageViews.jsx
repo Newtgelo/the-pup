@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 
 // Import Icons
+// 🔥 เอา IconInbox ออกแล้วครับ กัน Error
 import { 
     IconShare, IconCheck, IconX, IconMaximize, 
     IconCalendar, IconMapPin, IconChevronRight, IconTicket,
@@ -257,7 +258,7 @@ export const EventDetail = ({ onTriggerToast }) => {
 };
 
 // ==========================================
-// 3. CAFE DETAIL (Final Fix: Bigger Font on Sticky Tabs)
+// 3. CAFE DETAIL
 // ==========================================
 export const CafeDetail = ({ onTriggerToast }) => {
     const { id } = useParams();
@@ -268,10 +269,8 @@ export const CafeDetail = ({ onTriggerToast }) => {
     const [selectedImage, setSelectedImage] = useState(cafe?.image || "");
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
     
-    // State สำหรับโชว์ Sticky Tabs
     const [showStickyTabs, setShowStickyTabs] = useState(false);
 
-    // Swipe States
     const [touchStart, setTouchStart] = useState(null);
     const [touchEnd, setTouchEnd] = useState(null);
     const minSwipeDistance = 50;
@@ -285,7 +284,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
 
     useEffect(() => { if (cafe) setSelectedImage(cafe.image || (cafe.gallery && cafe.gallery[0]) || ""); }, [cafe]);
 
-    // Logic ดักจับการ Scroll
     useEffect(() => {
         const handleScroll = () => {
             if (window.scrollY > 300) {
@@ -302,7 +300,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
     
     const otherCafes = SAMPLE_CAFES.filter(c => c.id !== cafe.id).slice(0, 4);
     
-    // Action Handlers
     const handleBooking = () => onTriggerToast("เปิดฟอร์มติดต่อเช่าสถานที่...");
     const handleMap = () => window.open(cafe.map_link || "#", '_blank');
     const handleCall = () => window.location.href = `tel:${cafe.phone || ""}`;
@@ -315,7 +312,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
         } catch (err) { console.log("Error:", err); }
     };
 
-    // Navigation Logic
     const handlePrevImage = (e) => { if(e) e.stopPropagation(); const idx = allImages.indexOf(selectedImage); setSelectedImage(allImages[(idx - 1 + allImages.length) % allImages.length]); };
     const handleNextImage = (e) => { if(e) e.stopPropagation(); const idx = allImages.indexOf(selectedImage); setSelectedImage(allImages[(idx + 1) % allImages.length]); };
     const onTouchStart = (e) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
@@ -327,7 +323,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
         else navigate('/#cafes-section');
     };
 
-    // Keyboard Nav
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (!isLightboxOpen) return;
@@ -341,55 +336,20 @@ export const CafeDetail = ({ onTriggerToast }) => {
 
     return (
       <>
-        {/* 🔥 STICKY HEADER TAB (One Line Layout) */}
-        <div 
-            className={`fixed top-16 md:top-20 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-gray-100 z-40 shadow-sm transition-transform duration-300 ${showStickyTabs ? 'translate-y-0' : '-translate-y-[200%]'}`}
-        >
+        <div className={`fixed top-16 md:top-20 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-gray-100 z-40 shadow-sm transition-transform duration-300 ${showStickyTabs ? 'translate-y-0' : '-translate-y-[200%]'}`}>
             <div className="max-w-6xl mx-auto px-3 md:px-6 lg:px-8 flex items-center justify-between gap-2 py-2 md:py-3">
-                
-                {/* 1. ปุ่มย้อนกลับ (ซ้ายสุด - Mobile Only) */}
-                <button 
-                    onClick={goBack} 
-                    className="md:hidden flex-shrink-0 text-gray-500 hover:text-[#FF6B00]"
-                >
-                    <IconChevronLeft size={24} />
-                </button>
-
-                {/* 2. ชื่อร้าน (อยู่ถัดมา) */}
-                <h3 className="font-bold text-gray-900 text-sm md:text-lg truncate leading-tight flex-1">
-                    {cafe.name}
-                </h3>
-
-                {/* 3. Tabs Switcher (กลางค่อนขวา) - 🔥 แก้ฟอนต์ตรงนี้ครับ */}
-                <div className="flex bg-gray-100 p-0.5 rounded-lg flex-shrink-0">
-                    <button 
-                        onClick={() => { setActiveTab('general'); window.scrollTo({ top: 400, behavior: 'smooth' }); }}
-                        // 👇 แก้ตรงนี้: text-xs (มือถือ), text-sm (จอใหญ่)
-                        className={`px-3 py-1.5 rounded-md text-xs md:text-sm font-bold transition-all ${activeTab === 'general' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        ลูกค้า
-                    </button>
-                    <button 
-                        onClick={() => { setActiveTab('venue'); window.scrollTo({ top: 400, behavior: 'smooth' }); }} 
-                        // 👇 แก้ตรงนี้: text-xs (มือถือ), text-sm (จอใหญ่)
-                        className={`px-3 py-1.5 rounded-md text-xs md:text-sm font-bold transition-all flex items-center gap-1 ${activeTab === 'venue' ? 'bg-white text-[#FF6B00] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        <span className="hidden md:inline"><IconBriefcase size={14} /></span> ผู้จัด
-                    </button>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <button onClick={goBack} className="md:hidden flex-shrink-0 text-gray-500 hover:text-[#FF6B00]"><IconChevronLeft size={24} /></button>
+                    <h3 className="font-bold text-gray-900 text-sm md:text-lg truncate leading-tight flex-1">{cafe.name}</h3>
                 </div>
-
-                {/* 4. ปุ่มแชร์ (ขวาสุด - Mobile Only) */}
-                <button 
-                    onClick={handleShare}
-                    className="md:hidden flex-shrink-0 text-gray-400 hover:text-[#FF6B00] pl-1"
-                >
-                    <IconShare size={20} />
-                </button>
-
+                <div className="flex bg-gray-100 p-0.5 rounded-lg flex-shrink-0">
+                    <button onClick={() => { setActiveTab('general'); window.scrollTo({ top: 400, behavior: 'smooth' }); }} className={`px-3 py-1.5 rounded-md text-xs md:text-sm font-bold transition-all ${activeTab === 'general' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>ลูกค้า</button>
+                    <button onClick={() => { setActiveTab('venue'); window.scrollTo({ top: 400, behavior: 'smooth' }); }} className={`px-3 py-1.5 rounded-md text-xs md:text-sm font-bold transition-all flex items-center gap-1 ${activeTab === 'venue' ? 'bg-white text-[#FF6B00] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><span className="hidden md:inline"><IconBriefcase size={14} /></span> ผู้จัด</button>
+                </div>
+                <button onClick={handleShare} className="md:hidden flex-shrink-0 text-gray-400 hover:text-[#FF6B00] pl-1"><IconShare size={20} /></button>
             </div>
         </div>
 
-        {/* Lightbox Overlay */}
         {isLightboxOpen && (
             <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setIsLightboxOpen(false)}>
                 <button onClick={() => setIsLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-[#FF6B00] transition z-50 p-2"><IconX size={32} /></button>
@@ -403,18 +363,12 @@ export const CafeDetail = ({ onTriggerToast }) => {
             </div>
         )}
         
-        {/* MOBILE FLOATING CONTROLS (ซ่อนเมื่อ Sticky Bar มา) */}
-        <div 
-            className={`md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none transition-opacity duration-300 ${showStickyTabs ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-        >
+        <div className={`md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none transition-opacity duration-300 ${showStickyTabs ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
             <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
             <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconShare size={20} /></button>
         </div>
 
-        {/* MAIN CONTENT */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 relative animate-fade-in">
-            
-            {/* DESKTOP HEADER */}
             <div className="hidden md:flex justify-between items-center mb-6">
                 <button onClick={() => navigate('/#cafes-section')} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
                     <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition"><IconChevronLeft size={24} /></div>
@@ -423,26 +377,17 @@ export const CafeDetail = ({ onTriggerToast }) => {
                 <button onClick={handleShare} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#FF6B00] transition shadow-sm"><IconShare size={20}/></button>
             </div>
 
-            {/* CONTENT GRID */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 mt-8 md:mt-0">
-                {/* Left Column: Image Gallery */}
                 <div>
                     <div className="rounded-2xl overflow-hidden shadow-md mb-3 h-[300px] md:h-[400px] bg-gray-100 relative group cursor-pointer" onClick={() => setIsLightboxOpen(true)}>
                         <SafeImage src={selectedImage} alt={cafe.name} className="w-full h-full object-cover transition-opacity duration-300" />
-                        <div className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/70 transition flex items-center justify-center">
-                            <IconZoomIn size={16} color="white"/>
-                        </div>
+                        <div className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/70 transition flex items-center justify-center"><IconZoomIn size={16} color="white"/></div>
                     </div>
                     <div className="flex gap-3 overflow-x-auto pb-4 md:grid md:grid-cols-6 md:gap-2 md:pb-0 scrollbar-hide snap-x">
-                        {(cafe.gallery || [cafe.image]).map((img, idx) => (
-                            <div key={idx} onClick={() => setSelectedImage(img)} className={`flex-shrink-0 snap-start w-24 h-24 md:w-auto md:h-16 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${selectedImage === img ? 'border-[#FF6B00] scale-95 ring-2 ring-[#FF6B00]/30' : 'border-transparent hover:border-gray-300'}`}>
-                                <SafeImage src={img} alt={`gallery-${idx}`} className="w-full h-full object-cover" />
-                            </div>
-                        ))}
+                        {(cafe.gallery || [cafe.image]).map((img, idx) => (<div key={idx} onClick={() => setSelectedImage(img)} className={`flex-shrink-0 snap-start w-24 h-24 md:w-auto md:h-16 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${selectedImage === img ? 'border-[#FF6B00] scale-95 ring-2 ring-[#FF6B00]/30' : 'border-transparent hover:border-gray-300'}`}><SafeImage src={img} alt={`gallery-${idx}`} className="w-full h-full object-cover" /></div>))}
                     </div>
                 </div>
                 
-                {/* Right Column: Info & Tabs */}
                 <div className="flex flex-col">
                     <div className="mb-6">
                         <span className="bg-[#FF69B4] text-white text-xs font-bold px-3 py-1.5 rounded-full mb-3 inline-block">K-Pop Cafe</span>
@@ -450,21 +395,17 @@ export const CafeDetail = ({ onTriggerToast }) => {
                         <div className="flex items-center text-gray-500 text-sm"><IconMapPin size={16} className="mr-1"/> {cafe.location}</div>
                     </div>
                     
-                    {/* TABS SWITCHER (Static) */}
                     <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
                         <button onClick={() => setActiveTab('general')} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${activeTab === 'general' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>สำหรับลูกค้า</button>
                         <button onClick={() => setActiveTab('venue')} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'venue' ? 'bg-white text-[#FF6B00] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><IconBriefcase size={16} /> สำหรับผู้จัด</button>
                     </div>
 
-                    {/* TAB CONTENT: GENERAL (ลูกค้า) */}
                     {activeTab === 'general' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4">
                                 <div className="flex gap-4 items-start"><IconClock className="text-gray-400 mt-1" /><div><p className="font-bold text-sm">เวลาทำการ</p><p className="text-sm whitespace-pre-line text-gray-600">{cafe.opening_hours}</p></div></div>
                                 <div className="flex gap-4 items-start"><div className="w-5 h-5 flex items-center justify-center text-gray-400 font-bold">🏷️</div><div><p className="font-bold text-sm">ราคาเฉลี่ย</p><p className="text-sm text-[#FF6B00] font-bold">{cafe.price_range}</p></div></div>
                             </div>
-                            
-                            {/* Desktop Buttons */}
                             <div className="hidden md:flex gap-3">
                                 <button onClick={handleMap} className="flex-1 bg-[#FF6B00] hover:bg-[#E65000] text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"><IconMapPin size={18} /> ดูแผนที่</button>
                                 <button onClick={handleCall} className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"><IconPhone size={18} /> โทร</button>
@@ -472,7 +413,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
                         </div>
                     )}
                     
-                    {/* TAB CONTENT: VENUE (ผู้จัด) */}
                     {activeTab === 'venue' && (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 space-y-5">
@@ -483,46 +423,21 @@ export const CafeDetail = ({ onTriggerToast }) => {
                                 </div>
                                 <div><p className="font-bold text-sm mb-2 text-gray-700">สิ่งอำนวยความสะดวก</p><div className="flex flex-wrap gap-2">{(cafe.facilities || ["สอบถามร้าน"]).map((fac, i) => (<span key={i} className="text-xs bg-white border border-orange-100 px-3 py-1.5 rounded-full text-gray-600">{fac}</span>))}</div></div>
                             </div>
-                            
-                            {/* Desktop Buttons (Venue) */}
                             <div className="hidden md:flex gap-3">
-                                <button onClick={handleMap} className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95">
-                                    <IconMapPin size={18} /> ดูแผนที่
-                                </button>
-                                <button onClick={handleBooking} className="flex-1 bg-[#1E293B] hover:bg-black text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95">
-                                    <IconInbox size={18} /> สนใจจัดงานที่นี่
-                                </button>
+                                <button onClick={handleMap} className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"><IconMapPin size={18} /> ดูแผนที่</button>
+                                <button onClick={handleBooking} className="flex-1 bg-[#1E293B] hover:bg-black text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"><IconBriefcase size={18} /> สนใจจัดงานที่นี่</button>
                             </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Bottom Content Area */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 border-t border-gray-100 pt-10">
                 <div className="lg:col-span-7">
-                    <h2 className={`text-2xl font-bold mb-6 flex items-center gap-2 ${activeTab === 'venue' ? 'text-[#1E293B]' : 'text-gray-900'}`}>
-                        {activeTab === 'general' ? '📝 รายละเอียดและบรรยากาศร้าน' : '🏢 รายละเอียดพื้นที่และกฎระเบียบ'}
-                    </h2>
-
-                    {/* VENUE ONLY: Zone Cards (Mockup) */}
-                    {activeTab === 'venue' && (
-                        <div className="grid grid-cols-2 gap-4 mb-8">
-                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex flex-col gap-2">
-                                <div className="h-24 bg-gray-200 rounded-lg animate-pulse"></div>
-                                <div><p className="font-bold text-sm">Zone A (Indoor)</p><p className="text-xs text-gray-500">รองรับ 20-30 คน</p></div>
-                            </div>
-                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex flex-col gap-2">
-                                <div className="h-24 bg-gray-200 rounded-lg animate-pulse"></div>
-                                <div><p className="font-bold text-sm">Zone B (Counter)</p><p className="text-xs text-gray-500">รองรับ 5-10 คน</p></div>
-                            </div>
-                        </div>
-                    )}
-
+                    <h2 className={`text-2xl font-bold mb-6 flex items-center gap-2 ${activeTab === 'venue' ? 'text-[#1E293B]' : 'text-gray-900'}`}>{activeTab === 'general' ? '📝 รายละเอียดและบรรยากาศร้าน' : '🏢 รายละเอียดพื้นที่และกฎระเบียบ'}</h2>
+                    {activeTab === 'venue' && (<div className="grid grid-cols-2 gap-4 mb-8"><div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex flex-col gap-2"><div className="h-24 bg-gray-200 rounded-lg animate-pulse"></div><div><p className="font-bold text-sm">Zone A (Indoor)</p><p className="text-xs text-gray-500">รองรับ 20-30 คน</p></div></div><div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex flex-col gap-2"><div className="h-24 bg-gray-200 rounded-lg animate-pulse"></div><div><p className="font-bold text-sm">Zone B (Counter)</p><p className="text-xs text-gray-500">รองรับ 5-10 คน</p></div></div></div>)}
                     <div className="prose prose-lg text-gray-600 leading-relaxed whitespace-pre-line mb-8">{cafe.description}</div>
                 </div>
-
-                {/* Sidebar (Menu/Packages) */}
                 <div className="lg:col-span-5 space-y-8">
                     {activeTab === 'general' && cafe.menu && (<div className="bg-[#FFF8F0] p-6 rounded-2xl border border-orange-100 shadow-sm"><h3 className="font-bold text-lg mb-4 text-[#8B5E3C] flex items-center gap-2">⭐ เมนูแนะนำ</h3><div className="space-y-4">{['food', 'dessert', 'drink'].map(type => cafe.menu[type] && (<div key={type}><p className="text-xs font-bold text-gray-400 uppercase mb-2">{type}</p>{cafe.menu[type].map((m, i) => (<div key={i} className="flex justify-between text-sm border-b border-orange-100 pb-1 mb-1 last:border-0"><span>{m.name}</span><span className="text-[#FF6B00] font-bold">{m.price}</span></div>))}</div>))}</div></div>)}
                 </div>
@@ -536,7 +451,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
             </div>
         </div>
 
-        {/* 🔥 MOBILE STICKY BAR (Bottom) */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 md:hidden z-50 flex items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] safe-area-bottom">
             {activeTab === 'general' ? (
                 <>
