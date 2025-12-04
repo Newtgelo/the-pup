@@ -39,6 +39,7 @@ export const NewsCard = ({ item, onClick, className = "" }) => (
 );
 
 // 2. การ์ดอีเวนต์ (Event Card) - แก้ไขให้โชว์รูปเต็มใบ + พื้นหลังเบลอ
+
 export const EventCard = ({ item, onClick, showNewBadge = false, className = "" }) => (
   <div 
     onClick={onClick} 
@@ -47,17 +48,17 @@ export const EventCard = ({ item, onClick, showNewBadge = false, className = "" 
     {/* Image Container (Cinematic Look) */}
     <div className="relative aspect-[3/4] bg-gray-900 overflow-hidden">
         
-        {/* Layer 1: ฉากหลังเบลอ (กันขอบดำ) */}
+        {/* Layer 1: ฉากหลังเบลอ (ขยายเยอะหน่อย) */}
         <div 
             className="absolute inset-0 bg-center bg-cover blur-xl opacity-50 scale-110 transition-transform duration-500 group-hover/event:scale-125"
             style={{ backgroundImage: `url(${item.image})` }}
         ></div>
 
-        {/* Layer 2: รูปหลัก (เห็นครบ ไม่โดนตัด) */}
+        {/* Layer 2: รูปหลัก (🔥 แก้ตรงนี้: เพิ่ม Animation ให้ขยายตาม) */}
         <SafeImage 
             src={item.image} 
             alt={item.title} 
-            className="absolute inset-0 w-full h-full object-contain z-10 p-2"
+            className="absolute inset-0 w-full h-full object-contain z-10 p-2 transition-transform duration-500 group-hover/event:scale-110"
         />
 
         {/* New Badge */}
@@ -68,6 +69,7 @@ export const EventCard = ({ item, onClick, showNewBadge = false, className = "" 
 
     {/* Content Section */}
     <div className="p-3 md:p-4 flex-1 flex flex-col">
+        {/* หัวข้อก็เปลี่ยนสีตอน Hover ด้วย */}
         <h3 className="font-bold text-sm md:text-base text-gray-900 mb-1 leading-tight group-hover/event:text-[#FF6B00] transition line-clamp-2">
             {item.title}
         </h3>

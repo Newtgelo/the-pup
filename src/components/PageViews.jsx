@@ -39,6 +39,16 @@ export const NewsDetail = ({ onTriggerToast }) => {
 
   if (!news) return <NotFound title="ไม่พบข่าวดังกล่าว" onBack={() => navigate('/')} />;
 
+  // 🔥 Smart Back Logic: ย้อนกลับจริง 1 สเต็ป
+  const goBack = () => {
+      // เช็คว่ามีประวัติย้อนหลังไหม (idx > 0)
+      if (window.history.state && window.history.state.idx > 0) {
+          navigate(-1); // ย้อนกลับไปหน้าก่อนหน้านี้
+      } else {
+          navigate('/#news-section'); // ถ้าไม่มีประวัติ ให้กลับไปส่วนข่าวหน้า Home
+      }
+  };
+
   const handleShare = async () => {
         const shareData = { title: news.title, url: window.location.href };
         try {
@@ -52,7 +62,7 @@ export const NewsDetail = ({ onTriggerToast }) => {
       {/* MOBILE FLOATING CONTROLS */}
       <div className="md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none">
           <button 
-            onClick={() => navigate('/#news-section')} 
+            onClick={goBack} 
             className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"
           >
             <IconChevronLeft size={24} />
@@ -71,7 +81,7 @@ export const NewsDetail = ({ onTriggerToast }) => {
         {/* DESKTOP HEADER */}
         <div className="hidden md:flex justify-between items-center mb-6">
             <button 
-              onClick={() => navigate('/#news-section')} 
+              onClick={goBack} 
               className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition"
             >
               <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition">
@@ -206,11 +216,12 @@ export const EventDetail = ({ onTriggerToast }) => {
       onTriggerToast("เปิด Google Calendar แล้ว"); 
   };
 
+  // 🔥 Smart Back Logic: ย้อนกลับจริง 1 สเต็ป
   const goBack = () => {
-      if (location.state?.from) {
-          navigate(location.state.from);
+      if (window.history.state && window.history.state.idx > 0) {
+          navigate(-1);
       } else {
-          navigate('/#events-section'); 
+          navigate('/#events-section');
       }
   };
   
@@ -332,8 +343,8 @@ export const CafeDetail = ({ onTriggerToast }) => {
     const [activeTab, setActiveTab] = useState('general');
     const [selectedImage, setSelectedImage] = useState(cafe?.image || "");
     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-    
-    // 🔥 Touch States for Swipe
+
+    // 🔥 State สำหรับจับการปัดนิ้ว (Swipe)
     const [touchStart, setTouchStart] = useState(null);
     const [touchEnd, setTouchEnd] = useState(null);
     const minSwipeDistance = 50;
@@ -350,44 +361,25 @@ export const CafeDetail = ({ onTriggerToast }) => {
     if (!cafe) return <NotFound title="ไม่พบคาเฟ่ดังกล่าว" onBack={() => navigate('/')} />;
     
     const otherCafes = SAMPLE_CAFES.filter(c => c.id !== cafe.id).slice(0, 4);
-    
     const handleBooking = () => onTriggerToast("เปิดฟอร์มติดต่อเช่าสถานที่...");
     const handleMap = () => window.open(cafe.map_link || "#", '_blank');
     const handleCall = () => window.location.href = `tel:${cafe.phone || ""}`;
-    const handleShare = async () => {
-        const shareData = { title: cafe.name, url: window.location.href };
-        try {
-            if (navigator.share) await navigator.share(shareData);
-            else { await navigator.clipboard.writeText(shareData.url); onTriggerToast("คัดลอกลิงก์แล้ว"); }
-        } catch (err) { console.log("Error:", err); }
-    };
-
-    // 🔥 Navigation Functions
-    const handlePrevImage = (e) => {
-        if(e) e.stopPropagation();
-        const currentIndex = allImages.indexOf(selectedImage);
-        const newIndex = (currentIndex - 1 + allImages.length) % allImages.length;
-        setSelectedImage(allImages[newIndex]);
-    };
-
-    const handleNextImage = (e) => {
-        if(e) e.stopPropagation();
-        const currentIndex = allImages.indexOf(selectedImage);
-        const newIndex = (currentIndex + 1) % allImages.length;
-        setSelectedImage(allImages[newIndex]);
-    };
-
-    // 🔥 Swipe Handlers
+    const handleShare = async () => { /* ... */ };
+    
+    // 🔥 Navigation & Swipe
+    const handlePrevImage = (e) => { if(e) e.stopPropagation(); const idx = allImages.indexOf(selectedImage); setSelectedImage(allImages[(idx - 1 + allImages.length) % allImages.length]); };
+    const handleNextImage = (e) => { if(e) e.stopPropagation(); const idx = allImages.indexOf(selectedImage); setSelectedImage(allImages[(idx + 1) % allImages.length]); };
     const onTouchStart = (e) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
     const onTouchMove = (e) => { setTouchEnd(e.targetTouches[0].clientX); };
-    const onTouchEnd = () => {
-        if (!touchStart || !touchEnd) return;
-        const distance = touchStart - touchEnd;
-        if (distance > minSwipeDistance) handleNextImage();
-        if (distance < -minSwipeDistance) handlePrevImage();
+    const onTouchEnd = () => { if (!touchStart || !touchEnd) return; const d = touchStart - touchEnd; if (d > minSwipeDistance) handleNextImage(); if (d < -minSwipeDistance) handlePrevImage(); };
+    
+    // 🔥 Smart Back Logic
+    const goBack = () => {
+        if (window.history.state && window.history.state.idx > 0) navigate(-1);
+        else navigate('/#cafes-section');
     };
 
-    // 🔥 Keyboard Navigation
+    // Keyboard Nav
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (!isLightboxOpen) return;
@@ -405,26 +397,23 @@ export const CafeDetail = ({ onTriggerToast }) => {
             <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setIsLightboxOpen(false)}>
                 <button onClick={() => setIsLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-[#FF6B00] transition z-50 p-2"><IconX size={32} /></button>
                 {allImages.length > 1 && (<button onClick={handlePrevImage} className="hidden md:flex absolute left-8 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10 transition z-50"><IconChevronLeft size={40} /></button>)}
-                
-                {/* Main Image with Swipe */}
                 <div className="relative w-full max-w-5xl flex items-center justify-center" onClick={(e) => e.stopPropagation()} onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
                     <SafeImage src={selectedImage} alt="Full View" className="max-w-full max-h-[85vh] object-contain rounded-lg animate-fade-in select-none" />
                     {allImages.length > 1 && (<div className="md:hidden absolute bottom-[-40px] text-white/50 text-xs flex items-center gap-2"><IconChevronLeft size={12}/> ปัดเพื่อเปลี่ยนรูป <IconChevronRight size={12}/></div>)}
                 </div>
-
                 {allImages.length > 1 && (<button onClick={handleNextImage} className="hidden md:flex absolute right-8 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10 transition z-50"><IconChevronRight size={40} /></button>)}
                 {allImages.length > 1 && (<div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/90 bg-white/10 border border-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-medium">{allImages.indexOf(selectedImage) + 1} / {allImages.length}</div>)}
             </div>
         )}
         
         <div className="md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none">
-            <button onClick={() => navigate('/#cafes-section')} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
+            <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
             <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconShare size={20} /></button>
         </div>
 
         <div className="max-w-6xl mx-auto px-4 py-8 pb-24 relative animate-fade-in">
             <div className="hidden md:flex justify-between items-center mb-6">
-                <button onClick={() => navigate('/#cafes-section')} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
+                <button onClick={goBack} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
                     <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition"><IconChevronLeft size={24} /></div>
                     <span className="font-bold text-gray-900 group-hover:text-[#FF6B00]">ย้อนกลับ</span>
                 </button>
