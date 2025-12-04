@@ -6,10 +6,10 @@ import { IconClock, IconCalendar, IconMapPin } from '../icons/Icons';
 export const NewsCard = ({ item, onClick, className = "" }) => (
   <div 
     onClick={onClick} 
-    className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md cursor-pointer flex flex-col group/news ${className}`}
+    className={`bg-white rounded-xl overflow-hidden cursor-pointer flex flex-col group/news ${className}`}
   >
-    {/* 1. ส่วนรูปภาพ (คลีนๆ ไม่มีเงาบัง) */}
-    <div className="aspect-[4/3] md:aspect-square bg-gray-100 relative overflow-hidden">
+    {/* Image Section */}
+    <div className="aspect-[4/3] md:aspect-square bg-gray-100 relative overflow-hidden rounded-xl">
         <SafeImage 
             src={item.image} 
             alt={item.title} 
@@ -24,7 +24,7 @@ export const NewsCard = ({ item, onClick, className = "" }) => (
         </div>
     </div>
 
-    {/* 2. ส่วนเนื้อหา (พื้นขาว ตัวหนังสือดำ) */}
+    {/* Content Section */}
     <div className="p-4 flex flex-col flex-1">
         <h3 className="text-gray-900 font-bold text-lg leading-tight line-clamp-2 mb-2 group-hover/news:text-[#FF6B00] transition">
             {item.title}
@@ -38,22 +38,35 @@ export const NewsCard = ({ item, onClick, className = "" }) => (
   </div>
 );
 
-// ... (EventCard และ CafeCard ปล่อยไว้เหมือนเดิม)
+// 2. การ์ดอีเวนต์ (Event Card) - แก้ไขให้โชว์รูปเต็มใบ + พื้นหลังเบลอ
 export const EventCard = ({ item, onClick, showNewBadge = false, className = "" }) => (
   <div 
     onClick={onClick} 
     className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition flex flex-col h-full cursor-pointer group/event ${className}`}
   >
-    <div className="relative aspect-[3/4] overflow-hidden bg-gray-100">
+    {/* Image Container (Cinematic Look) */}
+    <div className="relative aspect-[3/4] bg-gray-900 overflow-hidden">
+        
+        {/* Layer 1: ฉากหลังเบลอ (กันขอบดำ) */}
+        <div 
+            className="absolute inset-0 bg-center bg-cover blur-xl opacity-50 scale-110 transition-transform duration-500 group-hover/event:scale-125"
+            style={{ backgroundImage: `url(${item.image})` }}
+        ></div>
+
+        {/* Layer 2: รูปหลัก (เห็นครบ ไม่โดนตัด) */}
         <SafeImage 
             src={item.image} 
             alt={item.title} 
-            className="w-full h-full object-cover transition-transform duration-500 group-hover/event:scale-110" 
+            className="absolute inset-0 w-full h-full object-contain z-10 p-2"
         />
+
+        {/* New Badge */}
         {showNewBadge && (
-            <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">NEW</div>
+            <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm z-20">NEW</div>
         )}
     </div>
+
+    {/* Content Section */}
     <div className="p-3 md:p-4 flex-1 flex flex-col">
         <h3 className="font-bold text-sm md:text-base text-gray-900 mb-1 leading-tight group-hover/event:text-[#FF6B00] transition line-clamp-2">
             {item.title}
@@ -82,6 +95,7 @@ export const EventCard = ({ item, onClick, showNewBadge = false, className = "" 
   </div>
 );
 
+// 3. การ์ดคาเฟ่ (Cafe Card)
 export const CafeCard = ({ item, onClick, className = "" }) => (
   <div 
     onClick={onClick} 
