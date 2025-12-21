@@ -187,34 +187,41 @@ export const ScrollableRow = ({ children, className = "" }) => {
 // ==========================================
 // 6. LOADING SKELETONS
 // ==========================================
+// 1. Skeleton สำหรับ News (แนวนอน/แนวตั้งตามการ์ดจริง)
 export const SkeletonNews = () => (
-  <div className="flex-shrink-0 w-[85vw] sm:w-[350px] md:w-auto snap-start bg-white rounded-xl overflow-hidden border border-gray-100 animate-pulse">
-    <div className="aspect-[4/3] bg-gray-200"></div>
-    <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2">
-       <div className="h-6 bg-gray-300 rounded w-3/4"></div>
-       <div className="h-4 bg-gray-300 rounded w-1/3"></div>
+  <div className="w-[85vw] sm:w-[350px] md:w-full flex flex-col gap-3 animate-pulse">
+    {/* ส่วนรูปภาพ (เลียนแบบสัดส่วนจริง) */}
+    <div className="w-full aspect-video bg-gray-200 rounded-2xl"></div>
+    {/* ส่วนเนื้อหา */}
+    <div className="space-y-2">
+      <div className="h-4 bg-gray-200 rounded-full w-3/4"></div>
+      <div className="h-3 bg-gray-200 rounded-full w-1/2"></div>
     </div>
   </div>
 );
 
+// 2. Skeleton สำหรับ Events (แนวตั้งสูง)
 export const SkeletonEvent = () => (
-  <div className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[260px] snap-start bg-white rounded-xl overflow-hidden border border-gray-100 animate-pulse flex flex-col h-full">
-    <div className="aspect-[3/4] bg-gray-200"></div>
-    <div className="p-3 md:p-4 flex-1 space-y-2">
-      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-      <div className="h-3 bg-gray-200 rounded w-full mt-2"></div>
+  <div className="w-[38vw] min-w-[140px] md:w-[220px] lg:w-[260px] flex flex-col gap-3 animate-pulse">
+    {/* ส่วนรูปภาพแนวตั้ง */}
+    <div className="w-full aspect-[3/4] bg-gray-200 rounded-2xl"></div>
+    {/* ส่วนเนื้อหา */}
+    <div className="space-y-2 px-1">
+      <div className="h-4 bg-gray-200 rounded-full w-2/3"></div>
+      <div className="h-3 bg-gray-200 rounded-full w-full"></div>
     </div>
   </div>
 );
 
+// 3. Skeleton สำหรับ Cafes (สี่เหลี่ยมจัตุรัส + ข้อความ)
 export const SkeletonCafe = () => (
-  <div className="bg-white rounded-xl border border-gray-100 overflow-hidden animate-pulse">
-    <div className="h-48 bg-gray-200"></div>
-    <div className="p-4 space-y-2">
-      <div className="h-5 bg-gray-200 rounded w-2/3"></div>
-      <div className="h-3 bg-gray-200 rounded w-full"></div>
-      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+  <div className="flex flex-col gap-3 animate-pulse">
+    {/* ส่วนรูปภาพจัตุรัส */}
+    <div className="w-full aspect-square bg-gray-200 rounded-2xl"></div>
+    {/* ส่วนเนื้อหา */}
+    <div className="space-y-2">
+      <div className="h-4 bg-gray-200 rounded-full w-2/3"></div>
+      <div className="h-3 bg-gray-200 rounded-full w-1/3"></div>
     </div>
   </div>
 );
