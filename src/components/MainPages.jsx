@@ -392,183 +392,140 @@ export const HomePage = () => {
 };
 
 // ==========================================
-// 2. SEARCH PAGE (ยังใช้ Mock Data ในการ Search อยู่ ถ้าจะแก้บอกพี่ได้)
+// 2. SEARCH PAGE (Real Database Version)
 // ==========================================
 export const SearchPage = () => {
-  // (โค้ด SearchPage เดิมของน้องยังใช้ได้อยู่ครับ ปล่อยไว้ก่อนก็ได้ หรือจะให้แก้เลยบอกได้ครับ)
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const term = (searchParams.get("q") || "").toLowerCase();
-  const tabParam = searchParams.get("tab") || "all";
-
+  const term = (searchParams.get('q') || "").toLowerCase();
+  const tabParam = searchParams.get('tab') || 'all';
+  
   const [activeSearchTab, setActiveSearchTab] = useState(tabParam);
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    setActiveSearchTab(tabParam);
-  }, [tabParam]);
+  // State เก็บผลลัพธ์จริง
+  const [resultsNews, setResultsNews] = useState([]);
+  const [resultsEvents, setResultsEvents] = useState([]);
+  const [resultsCafes, setResultsCafes] = useState([]);
+
+  useEffect(() => { setActiveSearchTab(tabParam); }, [tabParam]);
+
   const updateTab = (t) => {
     setActiveSearchTab(t);
-    setSearchParams((prev) => {
-      prev.set("tab", t);
-      return prev;
-    });
-  };
+    setSearchParams(prev => { prev.set('tab', t); return prev; });
+  }
 
-  // NOTE: ตรงนี้ยังใช้ Mock Data อยู่ ถ้าอยาก Search Database จริง ต้องแก้เพิ่ม (Phase ต่อไป)
-  const {
-    SAMPLE_NEWS,
-    SAMPLE_EVENTS,
-    SAMPLE_CAFES,
-  } = require("../data/mockData"); // Fallback import
+  // 🔥 FETCH SEARCH RESULTS
+  useEffect(() => {
+    const fetchSearch = async () => {
+        if (!term) {
+            setResultsNews([]); setResultsEvents([]); setResultsCafes([]);
+            return;
+        }
+        setIsLoading(true);
 
-  const resultsNews = SAMPLE_NEWS.filter((n) =>
-    n.title.toLowerCase().includes(term)
-  );
-  const resultsEvents = SAMPLE_EVENTS.filter(
-    (e) =>
-      e.title.toLowerCase().includes(term) ||
-      (e.artist || "").toLowerCase().includes(term) ||
-      e.location.toLowerCase().includes(term)
-  );
-  const resultsCafes = SAMPLE_CAFES.filter(
-    (c) =>
-      c.name.toLowerCase().includes(term) ||
-      c.location.toLowerCase().includes(term)
-  );
-  const totalResults =
-    resultsNews.length + resultsEvents.length + resultsCafes.length;
-  const title = term ? `ผลการค้นหา: "${term}"` : "รายการทั้งหมด";
+        // 1. ค้นหาข่าว (จาก Title หรือ Tags)
+        const { data: news } = await supabase
+            .from('news')
+            .select('*')
+            .or(`title.ilike.%${term}%,tags.ilike.%${term}%`) // ค้นทั้งชื่อและแท็ก
+            .limit(10);
+        if (news) setResultsNews(news);
 
+        // 2. ค้นหากิจกรรม
+        const { data: events } = await supabase
+            .from('events')
+            .select('*')
+            .or(`title.ilike.%${term}%,location_name.ilike.%${term}%,tags.ilike.%${term}%`) 
+            .limit(10);
+        if (events) setResultsEvents(events);
+
+        // 3. ค้นหาคาเฟ่
+        const { data: cafes } = await supabase
+            .from('cafes')
+            .select('*')
+            .or(`name.ilike.%${term}%,location_text.ilike.%${term}%`)
+            .limit(10);
+        if (cafes) setResultsCafes(cafes);
+
+        setIsLoading(false);
+    };
+
+    // ทำ Debounce เล็กน้อย (รอพิมพ์เสร็จ 0.5 วิ ค่อยค้นหา)
+    const timeoutId = setTimeout(() => {
+        fetchSearch();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [term]);
+
+  const totalResults = resultsNews.length + resultsEvents.length + resultsCafes.length;
+  const title = term ? `ผลการค้นหา: "${term}"` : 'กรุณาพิมพ์คำค้นหา';
+
+  // Helper Render Card
   const renderCard = (item, type) => {
-    if (type === "news")
-      return (
-        <NewsCard
-          key={item.id}
-          item={item}
-          onClick={() => navigate(`/news/${item.id}`)}
-        />
-      );
-    if (type === "event")
-      return (
-        <EventCard
-          key={item.id}
-          item={item}
-          onClick={() => navigate(`/event/${item.id}`)}
-        />
-      );
-    if (type === "cafe")
-      return (
-        <CafeCard
-          key={item.id}
-          item={item}
-          onClick={() => navigate(`/cafe/${item.id}`)}
-        />
-      );
+    if (type === 'news') return <NewsCard key={item.id} item={item} onClick={() => navigate(`/news/${item.id}`)} />;
+    if (type === 'event') return <EventCard key={item.id} item={item} onClick={() => navigate(`/event/${item.id}`)} />;
+    if (type === 'cafe') return <CafeCard key={item.id} item={item} onClick={() => navigate(`/cafe/${item.id}`)} />;
   };
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-      <div className="py-6 border-b border-gray-100 mb-6">
-        <button
-          onClick={() => navigate("/")}
-          className="text-sm text-gray-500 mb-2 hover:text-[#FF6B00] flex items-center gap-1"
-        >
-          <IconChevronLeft size={16} /> กลับหน้าหลัก
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-        {term && (
-          <p className="text-gray-500 text-sm mt-1">
-            พบทั้งหมด {totalResults} รายการ
-          </p>
-        )}
-      </div>
-      <div className="flex gap-2 border-b border-gray-200 mb-8 overflow-x-auto scrollbar-hide">
-        {["all", "news", "events", "cafes"].map((tab) => {
-          const label =
-            tab === "all"
-              ? "ทั้งหมด"
-              : tab === "news"
-              ? "ข่าวสาร"
-              : tab === "events"
-              ? "กิจกรรม"
-              : "คาเฟ่";
-          const count =
-            tab === "all"
-              ? totalResults
-              : tab === "news"
-              ? resultsNews.length
-              : tab === "events"
-              ? resultsEvents.length
-              : resultsCafes.length;
-          return (
-            <button
-              key={tab}
-              onClick={() => updateTab(tab)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap flex items-center gap-2 ${
-                activeSearchTab === tab
-                  ? "border-[#FF6B00] text-[#FF6B00]"
-                  : "border-transparent text-gray-500 hover:text-gray-800"
-              }`}
-            >
-              {label}{" "}
-              <span className="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full">
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      {totalResults === 0 ? (
-        <EmptyState
-          title="ไม่พบข้อมูลที่ค้นหา"
-          subtitle={`ลองใช้คำค้นหาอื่นแทน "${term}" ดูนะ`}
-          onReset={() => {
-            setSearchParams({});
-          }}
-        />
-      ) : (
-        <div className="space-y-12">
-          {(activeSearchTab === "all" || activeSearchTab === "news") &&
-            resultsNews.length > 0 && (
-              <section>
-                {activeSearchTab === "all" && (
-                  <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    📰 ข่าวสาร ({resultsNews.length})
-                  </h2>
-                )}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {resultsNews.map((item) => renderCard(item, "news"))}
-                </div>
-              </section>
-            )}
-          {(activeSearchTab === "all" || activeSearchTab === "events") &&
-            resultsEvents.length > 0 && (
-              <section>
-                {activeSearchTab === "all" && (
-                  <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2 mt-8">
-                    🎟️ กิจกรรม ({resultsEvents.length})
-                  </h2>
-                )}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {resultsEvents.map((item) => renderCard(item, "event"))}
-                </div>
-              </section>
-            )}
-          {(activeSearchTab === "all" || activeSearchTab === "cafes") &&
-            resultsCafes.length > 0 && (
-              <section>
-                {activeSearchTab === "all" && (
-                  <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2 mt-8">
-                    ☕ คาเฟ่ ({resultsCafes.length})
-                  </h2>
-                )}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {resultsCafes.map((item) => renderCard(item, "cafe"))}
-                </div>
-              </section>
-            )}
+        <div className="py-6 border-b border-gray-100 mb-6">
+            <button onClick={() => navigate('/')} className="text-sm text-gray-500 mb-2 hover:text-[#FF6B00] flex items-center gap-1"><IconChevronLeft size={16}/> กลับหน้าหลัก</button>
+            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+            {term && !isLoading && <p className="text-gray-500 text-sm mt-1">พบทั้งหมด {totalResults} รายการ</p>}
+            {isLoading && <p className="text-[#FF6B00] text-sm mt-1 animate-pulse">กำลังค้นหา...</p>}
         </div>
-      )}
+
+        <div className="flex gap-2 border-b border-gray-200 mb-8 overflow-x-auto scrollbar-hide">
+            {['all', 'news', 'events', 'cafes'].map(tab => {
+                const label = tab === 'all' ? 'ทั้งหมด' : tab === 'news' ? 'ข่าวสาร' : tab === 'events' ? 'กิจกรรม' : 'คาเฟ่';
+                const count = tab === 'all' ? totalResults : tab === 'news' ? resultsNews.length : tab === 'events' ? resultsEvents.length : resultsCafes.length;
+                return (<button key={tab} onClick={() => updateTab(tab)} className={`px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap flex items-center gap-2 ${activeSearchTab === tab ? 'border-[#FF6B00] text-[#FF6B00]' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>{label} <span className="bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded-full">{count}</span></button>);
+            })}
+        </div>
+
+        {totalResults === 0 && !isLoading ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4"><IconFilter size={32}/></div>
+                <h3 className="text-lg font-bold text-gray-900">ไม่พบข้อมูลที่ค้นหา</h3>
+                <p className="text-gray-500 mt-2 text-sm">ลองค้นหาด้วยคำอื่น หรือกดดูรายการทั้งหมด</p>
+                <button onClick={() => { setSearchParams({}); navigate('/'); }} className="mt-6 text-[#FF6B00] font-bold text-sm hover:underline">กลับไปหน้าแรก</button>
+            </div>
+        ) : (
+            <div className="space-y-12 animate-fade-in">
+                {/* 1. NEWS RESULTS */}
+                {(activeSearchTab === 'all' || activeSearchTab === 'news') && resultsNews.length > 0 && (
+                    <section>
+                        {activeSearchTab === 'all' && <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">📰 ข่าวสาร ({resultsNews.length})</h2>}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {resultsNews.map(item => renderCard(item, 'news'))}
+                        </div>
+                    </section>
+                )}
+
+                {/* 2. EVENTS RESULTS */}
+                {(activeSearchTab === 'all' || activeSearchTab === 'events') && resultsEvents.length > 0 && (
+                    <section>
+                        {activeSearchTab === 'all' && <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2 mt-8">🎟️ กิจกรรม ({resultsEvents.length})</h2>}
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {resultsEvents.map(item => renderCard(item, 'event'))}
+                        </div>
+                    </section>
+                )}
+
+                {/* 3. CAFES RESULTS */}
+                {(activeSearchTab === 'all' || activeSearchTab === 'cafes') && resultsCafes.length > 0 && (
+                    <section>
+                        {activeSearchTab === 'all' && <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2 mt-8">☕ คาเฟ่ ({resultsCafes.length})</h2>}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {resultsCafes.map(item => renderCard(item, 'cafe'))}
+                        </div>
+                    </section>
+                )}
+            </div>
+        )}
     </div>
   );
 };
