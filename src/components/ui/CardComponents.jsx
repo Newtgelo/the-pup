@@ -2,7 +2,9 @@ import React from "react";
 import { SafeImage } from "./UIComponents";
 import { IconClock, IconCalendar, IconMapPin } from "../icons/Icons";
 
+// ==========================================
 // 1. การ์ดข่าว (News Card)
+// ==========================================
 export const NewsCard = ({ item, onClick, className = "" }) => (
   <div
     onClick={onClick}
@@ -38,8 +40,10 @@ export const NewsCard = ({ item, onClick, className = "" }) => (
   </div>
 );
 
-// 2. การ์ดอีเวนต์ (Event Card) - แก้ไขให้โชว์รูปเต็มใบ + พื้นหลังเบลอ
-
+// ==========================================
+// 2. การ์ดอีเวนต์ (Event Card) 
+// 🔥 แก้ไข: รองรับ date_display และ location_name จาก Supabase
+// ==========================================
 export const EventCard = ({
   item,
   onClick,
@@ -52,13 +56,13 @@ export const EventCard = ({
   >
     {/* Image Container (Cinematic Look) */}
     <div className="relative aspect-[3/4] bg-gray-900 overflow-hidden">
-      {/* Layer 1: ฉากหลังเบลอ (ขยายเยอะหน่อย) */}
+      {/* Layer 1: ฉากหลังเบลอ */}
       <div
         className="absolute inset-0 bg-center bg-cover blur-xl opacity-50 scale-110 transition-transform duration-500 group-hover/event:scale-125"
-        style={{ backgroundImage: `url(${item.image})` }}
+        style={{ backgroundImage: `url(${item.image_url || item.image})` }}
       ></div>
 
-      {/* Layer 2: รูปหลัก (🔥 แก้ตรงนี้: เพิ่ม Animation ให้ขยายตาม) */}
+      {/* Layer 2: รูปหลัก */}
       <SafeImage
         src={item.image_url || item.image || item.cover}
         alt={item.title}
@@ -75,52 +79,48 @@ export const EventCard = ({
 
     {/* Content Section */}
     <div className="p-3 md:p-4 flex-1 flex flex-col">
-      {/* หัวข้อก็เปลี่ยนสีตอน Hover ด้วย */}
       <h3 className="font-bold text-sm md:text-base text-gray-900 mb-1 leading-tight group-hover/event:text-[#FF6B00] transition line-clamp-2">
         {item.title}
       </h3>
+      
       <div className="space-y-1 md:space-y-2 mt-2 text-xs md:text-sm text-gray-600 flex-1">
+        
+        {/* 📅 วันที่ (แก้แล้ว: ใช้ date_display เป็นหลัก) */}
         <div className="flex items-start gap-1.5 text-[#E11D48] font-semibold">
           <IconCalendar
             size={12}
             className="mt-0.5 flex-shrink-0 md:w-[14px] md:h-[14px]"
           />
           <div>
-            {item.schedules && item.schedules.length > 0 ? (
-              item.schedules.map((s, i) => (
-                <div key={i} className="mb-0.5 last:mb-0 whitespace-nowrap">
-                  {(s.date || "").split(" ").length > 1
-                    ? `${(s.date || "").split(" ")[0]} ${
-                        (s.date || "").split(" ")[1]
-                      }`
-                    : s.date}
-                </div>
-              ))
-            ) : (
-              <span>{item.date}</span>
-            )}
+              <span>{item.date_display || item.date || "ไม่ระบุวันที่"}</span>
           </div>
         </div>
+
+        {/* 📍 สถานที่ (แก้แล้ว: ใช้ location_name เป็นหลัก) */}
         <p className="flex items-start gap-1.5 line-clamp-1">
           <IconMapPin
             size={12}
             className="mt-0.5 flex-shrink-0 md:w-[14px] md:h-[14px]"
           />{" "}
-          {item.location}
+          {item.location_name || item.location || "ไม่ระบุสถานที่"}
         </p>
+
       </div>
+
       <div className="mt-3 pt-2 border-t">
         <span
           className={`text-[10px] px-2 py-1 rounded-full font-medium bg-gray-100 text-gray-600`}
         >
-          {item.type}
+          {item.type || "Event"}
         </span>
       </div>
     </div>
   </div>
 );
 
+// ==========================================
 // 3. การ์ดคาเฟ่ (Cafe Card)
+// ==========================================
 export const CafeCard = ({ item, onClick, className = "" }) => (
   <div
     onClick={onClick}
@@ -145,7 +145,8 @@ export const CafeCard = ({ item, onClick, className = "" }) => (
         {item.description}
       </p>
       <div className="mt-2 md:mt-4 flex items-center gap-1 text-[10px] md:text-xs text-gray-400">
-        <IconMapPin size={12} /> {(item.location || "").split(",")[0]}
+        {/* รองรับ location_text ด้วย */}
+        <IconMapPin size={12} /> {(item.location_text || item.location || "").split(",")[0]}
       </div>
     </div>
   </div>
