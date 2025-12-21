@@ -41,9 +41,9 @@ export const NewsDetail = ({ onTriggerToast }) => {
           setNews(null);
       } else {
           setNews(data);
-          
-          // 2. ดึงข่าวอื่นๆ (เอา 2 อันที่ไม่ใช่อันปัจจุบัน)
-          const { data: others } = await supabase.from('news').select('*').neq('id', id).limit(2);
+
+          // 2. ดึงข่าวอื่นๆ (เอา 3 อันที่ไม่ใช่อันปัจจุบัน)
+          const { data: others } = await supabase.from('news').select('*').neq('id', id).limit(3);
           if (others) setOtherNews(others);
 
           // 3. ดึงอีเวนต์ที่เกี่ยวข้อง (สมมติเอามาโชว์ 2 อัน)
