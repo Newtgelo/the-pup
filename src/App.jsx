@@ -9,9 +9,17 @@ import { Toast, NotFound } from './components/ui/UIComponents';
 import RouteLoader from './components/RouteLoader'; 
 import ScrollToTop from './components/ScrollToTop'; 
 
-// Import Views
+// Import Views (Detail Pages)
 import { NewsDetail, EventDetail, CafeDetail } from './components/PageViews';
-import { HomePage, SearchPage } from './components/MainPages';
+
+// Import Main Pages (รวมหน้า See All ด้วย)
+import { 
+  HomePage, 
+  SearchPage,
+  NewsPage,     // ✅ เพิ่ม NewsPage
+  EventsPage,   // ✅ เพิ่ม EventsPage
+  CafesPage     // ✅ เพิ่ม CafesPage
+} from './components/MainPages';
 
 export default function App() {
   const navigate = useNavigate();
@@ -49,7 +57,6 @@ export default function App() {
   };
 
   return (
-    // 🔥 แก้จุดที่ 1: ลบ pb-20 ออกจากตรงนี้ครับ (เพื่อให้ไม่มีขอบขาวท้ายสุด)
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
       
       <RouteLoader />
@@ -117,23 +124,30 @@ export default function App() {
         </div>
       </nav>
 
-      {/* HEADER (Show only on Home) */}
-      {location.pathname === '/' && (<div className="text-center py-12 bg-white mb-8 border-b border-gray-100"><h1 className="text-4xl font-bold text-[#FF6B00] mb-2">The Popup Plan</h1><p className="text-gray-500">Minimalist K-Pop Hub & Event Planner</p></div>)}
+      {/* HEADER (Show only on Home) - ซ่อนไว้ถ้าอยากให้หน้า Home คลีนๆ หรือเปิดไว้ก็ได้ครับ */}
+      {/* {location.pathname === '/' && (<div className="text-center py-12 bg-white mb-8 border-b border-gray-100"><h1 className="text-4xl font-bold text-[#FF6B00] mb-2">The Popup Plan</h1><p className="text-gray-500">Minimalist K-Pop Hub & Event Planner</p></div>)} */}
 
       {/* --- ROUTES --- */}
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/search" element={<SearchPage />} />
+
+        {/* ✅ เพิ่ม Route สำหรับหน้า "ดูทั้งหมด" ตรงนี้ครับ */}
+        <Route path="/news" element={<NewsPage />} />
+        <Route path="/events" element={<EventsPage />} />
+        <Route path="/cafes" element={<CafesPage />} />
+
+        {/* Detail Pages */}
         <Route path="/news/:id" element={<NewsDetail onTriggerToast={triggerToast} />} />
         <Route path="/event/:id" element={<EventDetail onTriggerToast={triggerToast} />} />
         <Route path="/cafe/:id" element={<CafeDetail onTriggerToast={triggerToast} />} />
+        
+        {/* Not Found */}
         <Route path="*" element={<NotFound onBack={() => navigate('/')} />} />
       </Routes>
 
       <Toast message={toast.message} show={toast.show} onClose={closeToast} />
 
-      {/* 🔥 แก้จุดที่ 2: เพิ่ม pb-28 (padding bottom) ที่ Footer แทน */}
-      {/* เพื่อให้ Footer ยืดลงไปสุดขอบ และเว้นที่ให้ปุ่ม Sticky Bar ทับโดยไม่บังตัวหนังสือ */}
       <footer className="bg-[#0F172A] text-white mt-20 pt-12 pb-28 md:py-12">
          <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-start gap-8">
             <div><div className="flex items-center gap-3 mb-4"><div className="w-8 h-8 rounded-full bg-white/20"></div><span className="font-bold text-lg">The Popup Plan</span></div><p className="text-gray-400 text-sm">Minimalist K-Pop Hub & Event Planner</p></div>
