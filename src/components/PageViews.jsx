@@ -21,14 +21,21 @@ import { SafeImage, NotFound } from "./ui/UIComponents";
 export const NewsDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // State
   const [news, setNews] = useState(null);
   const [loading, setLoading] = useState(true);
   const [otherNews, setOtherNews] = useState([]);
 
-  // ✅ ฟังก์ชันย้อนกลับ (มีแค่อันนี้อันเดียว ห้ามมีซ้ำ)
-  const goBack = () => navigate('/#news-section');
+  // ✅ Logic ย้อนกลับ: ถ้ามาจาก Home ให้ไปหา Section, ถ้าไม่ ให้ถอยหลัง
+  const goBack = () => {
+    if (location.state?.fromHome) {
+      navigate('/#news-section');
+    } else {
+      navigate(-1);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -123,13 +130,20 @@ export const NewsDetail = ({ onTriggerToast }) => {
 export const EventDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-  // ✅ ฟังก์ชันย้อนกลับ (มีแค่อันนี้อันเดียว ห้ามมีซ้ำ)
-  const goBack = () => navigate('/#events-section');
+  // ✅ Logic ย้อนกลับ
+  const goBack = () => {
+    if (location.state?.fromHome) {
+      navigate('/#events-section');
+    } else {
+      navigate(-1);
+    }
+  };
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -242,6 +256,7 @@ export const EventDetail = ({ onTriggerToast }) => {
 export const CafeDetail = ({ onTriggerToast }) => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     
     // State
     const [cafe, setCafe] = useState(null);
@@ -254,8 +269,14 @@ export const CafeDetail = ({ onTriggerToast }) => {
     const [touchEnd, setTouchEnd] = useState(null);
     const [showStickyTabs, setShowStickyTabs] = useState(false);
 
-    // ✅ ฟังก์ชันย้อนกลับ (มีแค่อันนี้อันเดียว ห้ามมีซ้ำ)
-    const goBack = () => navigate('/#cafes-section');
+    // ✅ Logic ย้อนกลับ
+    const goBack = () => {
+        if (location.state?.fromHome) {
+            navigate('/#cafes-section');
+        } else {
+            navigate(-1);
+        }
+    };
 
     useEffect(() => {
         const fetchCafe = async () => {
