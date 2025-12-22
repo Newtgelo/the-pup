@@ -614,570 +614,351 @@ export const EventDetail = ({ onTriggerToast }) => {
 };
 
 // ==========================================
-// 3. CAFE DETAIL (ไม่เปลี่ยนแปลง)
+// 3. CAFE DETAIL (Full Gallery: Arrows, Swipe, Horizontal Scroll)
 // ==========================================
 export const CafeDetail = ({ onTriggerToast }) => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+    const { id } = useParams();
+    const navigate = useNavigate();
+    
+    // State ข้อมูลจริง
+    const [cafe, setCafe] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [otherCafes, setOtherCafes] = useState([]);
 
-  // State ข้อมูลจริง
-  const [cafe, setCafe] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [otherCafes, setOtherCafes] = useState([]);
+    const [activeTab, setActiveTab] = useState('general');
+    
+    // 🔥 Gallery State Upgrade: เปลี่ยนมาเก็บ Index แทน URL เพื่อให้คำนวณ Next/Prev ได้
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0); 
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    
+    // State สำหรับ Swipe
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
+    
+    // State สำหรับโชว์ Sticky Tabs
+    const [showStickyTabs, setShowStickyTabs] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("general");
-  const [selectedImage, setSelectedImage] = useState("");
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    // Fetch Data
+    useEffect(() => {
+        const fetchCafe = async () => {
+            setLoading(true);
+            const { data, error } = await supabase.from('cafes').select('*').eq('id', id).single();
+            if (error) {
+                console.error(error);
+                setCafe(null);
+            } else {
+                // แปลงรูปภาพ
+                let processedImages = [];
+                if (Array.isArray(data.images)) {
+                    processedImages = data.images;
+                } else if (typeof data.images === 'string' && data.images.startsWith('{')) {
+                    processedImages = data.images
+                        .replace(/^{|}$/g, '')
+                        .split(',')
+                        .map(url => url.replace(/"/g, '').trim());
+                }
+                data.images = processedImages;
+                setCafe(data);
 
-  // State สำหรับโชว์ Sticky Tabs
-  const [showStickyTabs, setShowStickyTabs] = useState(false);
+                // Fetch Other Cafes
+                const { data: others } = await supabase.from('cafes').select('*').neq('id', id).limit(4);
+                if (others) setOtherCafes(others);
+            }
+            setLoading(false);
+        };
+        fetchCafe();
+    }, [id]);
 
-  // Swipe States
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
-  const minSwipeDistance = 50;
+    const allImages = cafe?.images || [];
+    const currentImage = allImages[selectedImageIndex] || cafe?.image_url || "";
 
-  // Fetch Data
-  useEffect(() => {
-    const fetchCafe = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("cafes")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (error) {
-        console.error(error);
-        setCafe(null);
-      } else {
-        setCafe(data);
-        if (data.images && data.images.length > 0) {
-          setSelectedImage(data.images[0]);
-        }
-        // Fetch Other Cafes
-        const { data: others } = await supabase
-          .from("cafes")
-          .select("*")
-          .neq("id", id)
-          .limit(4);
-        if (others) setOtherCafes(others);
-      }
-      setLoading(false);
+    // ==========================================
+    // 🔥 LOGIC: Next / Prev Image
+    // ==========================================
+    const handleNext = (e) => {
+        e?.stopPropagation();
+        if (allImages.length <= 1) return;
+        setSelectedImageIndex((prev) => (prev + 1) % allImages.length);
     };
-    fetchCafe();
-  }, [id]);
 
-  const allImages = cafe?.images || [];
-
-  // Logic ดักจับการ Scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 300) {
-        setShowStickyTabs(true);
-      } else {
-        setShowStickyTabs(false);
-      }
+    const handlePrev = (e) => {
+        e?.stopPropagation();
+        if (allImages.length <= 1) return;
+        setSelectedImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
-  if (loading)
+    // ==========================================
+    // 🔥 LOGIC: Touch Swipe (Mobile)
+    // ==========================================
+    const onTouchStart = (e) => {
+        setTouchEnd(null); 
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+    const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > 50;
+        const isRightSwipe = distance < -50;
+        
+        if (isLeftSwipe) handleNext();
+        if (isRightSwipe) handlePrev();
+    };
+
+    // ==========================================
+    // 🔥 LOGIC: Keyboard Navigation
+    // ==========================================
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (!isLightboxOpen) return;
+            if (e.key === 'ArrowRight') handleNext();
+            if (e.key === 'ArrowLeft') handlePrev();
+            if (e.key === 'Escape') setIsLightboxOpen(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isLightboxOpen, allImages.length]); // Dependencies
+
+    // Helper: Facilities
+    const getFacilities = () => {
+        if (!cafe || !cafe.facilities) return [];
+        if (Array.isArray(cafe.facilities)) return cafe.facilities;
+        if (typeof cafe.facilities === 'string') return cafe.facilities.split(',');
+        return [];
+    };
+    const facilities = getFacilities();
+
+    // Scroll Logic
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.scrollY > 300) setShowStickyTabs(true);
+            else setShowStickyTabs(false);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลดคาเฟ่...</div>;
+    if (!cafe) return <NotFound title="ไม่พบคาเฟ่ดังกล่าว" onBack={() => navigate('/')} />;
+    
+    // Handlers อื่นๆ
+    const handleBooking = () => onTriggerToast("เปิดฟอร์มติดต่อเช่าสถานที่...");
+    const handleMap = () => {
+         if (cafe.lat && cafe.lng) {
+             window.open(`https://www.google.com/maps/search/?api=1&query=${cafe.lat},${cafe.lng}`, '_blank');
+         } else {
+             onTriggerToast("กำลังเปิดแผนที่...");
+         }
+    };
+    const handleCall = () => {
+        if (cafe.phone) window.location.href = `tel:${cafe.phone}`;
+        else onTriggerToast("ไม่มีเบอร์โทรศัพท์");
+    };
+    const handleShare = async () => {
+        const shareData = { title: cafe.name, url: window.location.href };
+        try {
+            if (navigator.share) await navigator.share(shareData);
+            else { await navigator.clipboard.writeText(shareData.url); onTriggerToast("คัดลอกลิงก์แล้ว"); }
+        } catch (err) { console.log("Error:", err); }
+    };
+    const goBack = () => {
+        if (window.history.state && window.history.state.idx > 0) navigate(-1);
+        else navigate('/#cafes-section');
+    };
+
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-400">
-        กำลังโหลดคาเฟ่...
-      </div>
-    );
-  if (!cafe)
-    return <NotFound title="ไม่พบคาเฟ่ดังกล่าว" onBack={() => navigate("/")} />;
-
-  // Action Handlers
-  const handleBooking = () => onTriggerToast("เปิดฟอร์มติดต่อเช่าสถานที่...");
-  const handleMap = () => {
-    if (cafe.lat && cafe.lng) {
-      window.open(
-        `https://www.google.com/maps/search/?api=1&query=${cafe.lat},${cafe.lng}`,
-        "_blank"
-      );
-    } else {
-      onTriggerToast("กำลังเปิดแผนที่...");
-    }
-  };
-  const handleCall = () => (window.location.href = `tel:${cafe.phone || ""}`);
-
-  const handleShare = async () => {
-    const shareData = { title: cafe.name, url: window.location.href };
-    try {
-      if (navigator.share) await navigator.share(shareData);
-      else {
-        await navigator.clipboard.writeText(shareData.url);
-        onTriggerToast("คัดลอกลิงก์แล้ว");
-      }
-    } catch (err) {
-      console.log("Error:", err);
-    }
-  };
-
-  // Navigation Logic
-  const handlePrevImage = (e) => {
-    if (e) e.stopPropagation();
-    const idx = allImages.indexOf(selectedImage);
-    setSelectedImage(
-      allImages[(idx - 1 + allImages.length) % allImages.length]
-    );
-  };
-  const handleNextImage = (e) => {
-    if (e) e.stopPropagation();
-    const idx = allImages.indexOf(selectedImage);
-    setSelectedImage(allImages[(idx + 1) % allImages.length]);
-  };
-  const onTouchStart = (e) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-  const onTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const d = touchStart - touchEnd;
-    if (d > minSwipeDistance) handleNextImage();
-    if (d < -minSwipeDistance) handlePrevImage();
-  };
-
-  const goBack = () => {
-    if (window.history.state && window.history.state.idx > 0) navigate(-1);
-    else navigate("/#cafes-section");
-  };
-
-  return (
-    <>
-      {/* 🔥 STICKY HEADER TAB (One Line Layout) */}
-      <div
-        className={`fixed top-16 md:top-20 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-gray-100 z-40 shadow-sm transition-transform duration-300 ${
-          showStickyTabs ? "translate-y-0" : "-translate-y-[200%]"
-        }`}
-      >
-        <div className="max-w-6xl mx-auto px-3 md:px-6 lg:px-8 flex items-center justify-between gap-2 py-2 md:py-3">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <button
-              onClick={goBack}
-              className="md:hidden flex-shrink-0 text-gray-500 hover:text-[#FF6B00]"
-            >
-              <IconChevronLeft size={24} />
-            </button>
-            <h3 className="font-bold text-gray-900 text-sm md:text-lg truncate leading-tight flex-1">
-              {cafe.name}
-            </h3>
-          </div>
-          <div className="flex bg-gray-100 p-0.5 rounded-lg flex-shrink-0">
-            <button
-              onClick={() => {
-                setActiveTab("general");
-                window.scrollTo({ top: 400, behavior: "smooth" });
-              }}
-              className={`px-3 py-1.5 rounded-md text-xs md:text-sm font-bold transition-all ${
-                activeTab === "general"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              ลูกค้า
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("venue");
-                window.scrollTo({ top: 400, behavior: "smooth" });
-              }}
-              className={`px-3 py-1.5 rounded-md text-xs md:text-sm font-bold transition-all flex items-center gap-1 ${
-                activeTab === "venue"
-                  ? "bg-white text-[#FF6B00] shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <span className="hidden md:inline">
-                <IconBriefcase size={14} />
-              </span>{" "}
-              ผู้จัด
-            </button>
-          </div>
-          <button
-            onClick={handleShare}
-            className="md:hidden flex-shrink-0 text-gray-400 hover:text-[#FF6B00] pl-1"
-          >
-            <IconShare size={20} />
-          </button>
-        </div>
-      </div>
-
-      {isLightboxOpen && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm"
-          onClick={() => setIsLightboxOpen(false)}
-        >
-          <button
-            onClick={() => setIsLightboxOpen(false)}
-            className="absolute top-4 right-4 text-white hover:text-[#FF6B00] transition z-50 p-2"
-          >
-            <IconX size={32} />
-          </button>
-          {allImages.length > 1 && (
-            <button
-              onClick={handlePrevImage}
-              className="hidden md:flex absolute left-8 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10 transition z-50"
-            >
-              <IconChevronLeft size={40} />
-            </button>
-          )}
-          <div
-            className="relative w-full max-w-5xl flex items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-          >
-            <SafeImage
-              src={selectedImage}
-              alt="Full View"
-              className="max-w-full max-h-[85vh] object-contain rounded-lg animate-fade-in select-none"
-            />
-            {allImages.length > 1 && (
-              <div className="md:hidden absolute bottom-[-40px] text-white/50 text-xs flex items-center gap-2">
-                <IconChevronLeft size={12} /> ปัดเพื่อเปลี่ยนรูป{" "}
-                <IconChevronRight size={12} />
-              </div>
-            )}
-          </div>
-          {allImages.length > 1 && (
-            <button
-              onClick={handleNextImage}
-              className="hidden md:flex absolute right-8 text-white/70 hover:text-white p-3 rounded-full hover:bg-white/10 transition z-50"
-            >
-              <IconChevronRight size={40} />
-            </button>
-          )}
-          {allImages.length > 1 && (
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/90 bg-white/10 border border-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-medium">
-              {allImages.indexOf(selectedImage) + 1} / {allImages.length}
+      <>
+        {/* Sticky Header */}
+        <div className={`fixed top-16 md:top-20 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-gray-100 z-40 shadow-sm transition-transform duration-300 ${showStickyTabs ? 'translate-y-0' : '-translate-y-[200%]'}`}>
+            <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <button onClick={goBack} className="md:hidden flex-shrink-0 text-gray-500 hover:text-[#FF6B00]"><IconChevronLeft size={24} /></button>
+                    <h3 className="font-bold text-gray-900 truncate leading-tight flex-1">{cafe.name}</h3>
+                </div>
+                <div className="flex bg-gray-100 p-1 rounded-lg flex-shrink-0">
+                    <button onClick={() => { setActiveTab('general'); window.scrollTo({ top: 400, behavior: 'smooth' }); }} className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'general' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>ลูกค้า</button>
+                    <button onClick={() => { setActiveTab('venue'); window.scrollTo({ top: 400, behavior: 'smooth' }); }} className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-1 ${activeTab === 'venue' ? 'bg-white text-[#FF6B00] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><IconBriefcase size={14} /> ผู้จัด</button>
+                </div>
             </div>
-          )}
-        </div>
-      )}
-
-      <div
-        className={`md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none transition-opacity duration-300 ${
-          showStickyTabs ? "opacity-0 pointer-events-none" : "opacity-100"
-        }`}
-      >
-        <button
-          onClick={goBack}
-          className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"
-        >
-          <IconChevronLeft size={24} />
-        </button>
-        <button
-          onClick={handleShare}
-          className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"
-        >
-          <IconShare size={20} />
-        </button>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 relative animate-fade-in">
-        <div className="hidden md:flex justify-between items-center mb-6">
-          <button
-            onClick={() => navigate("/#cafes-section")}
-            className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition"
-          >
-            <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition">
-              <IconChevronLeft size={24} />
-            </div>
-            <span className="font-bold text-gray-900 group-hover:text-[#FF6B00]">
-              ย้อนกลับ
-            </span>
-          </button>
-          <button
-            onClick={handleShare}
-            className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#FF6B00] transition shadow-sm"
-          >
-            <IconShare size={20} />
-          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 mt-8 md:mt-0">
-          <div>
-            <div
-              className="rounded-2xl overflow-hidden shadow-md mb-3 h-[300px] md:h-[400px] bg-gray-100 relative group cursor-pointer"
-              onClick={() => setIsLightboxOpen(true)}
-            >
-              <SafeImage
-                src={selectedImage}
-                alt={cafe.name}
-                className="w-full h-full object-cover transition-opacity duration-300"
-              />
-              <div className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/70 transition flex items-center justify-center">
-                <IconZoomIn size={16} color="white" />
-              </div>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-4 md:grid md:grid-cols-6 md:gap-2 md:pb-0 scrollbar-hide snap-x">
-              {(cafe.images || []).map((img, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setSelectedImage(img)}
-                  className={`flex-shrink-0 snap-start w-24 h-24 md:w-auto md:h-16 rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
-                    selectedImage === img
-                      ? "border-[#FF6B00] scale-95 ring-2 ring-[#FF6B00]/30"
-                      : "border-transparent hover:border-gray-300"
-                  }`}
+        {/* 🔥 LIGHTBOX (Updated with Arrows & Swipe) */}
+        {isLightboxOpen && (
+            <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center backdrop-blur-sm" onClick={() => setIsLightboxOpen(false)}>
+                {/* Close Button */}
+                <button onClick={() => setIsLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-[#FF6B00] transition z-50 p-2"><IconX size={32} /></button>
+                
+                {/* Left Arrow (Desktop) */}
+                <button onClick={handlePrev} className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full items-center justify-center text-white transition z-50">
+                    <IconChevronLeft size={32} />
+                </button>
+
+                {/* Main Image Container (with Touch Events) */}
+                <div 
+                    className="relative w-full max-w-5xl h-full flex items-center justify-center px-2 md:px-16" 
+                    onClick={(e) => e.stopPropagation()}
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
                 >
-                  <SafeImage
-                    src={img}
-                    alt={`gallery-${idx}`}
-                    className="w-full h-full object-cover"
-                  />
+                    <SafeImage src={currentImage} alt="Full View" className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl select-none" />
                 </div>
-              ))}
+
+                {/* Right Arrow (Desktop) - Rotate Left Icon */}
+                <button onClick={handleNext} className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full items-center justify-center text-white transition z-50">
+                    <div className="rotate-180"><IconChevronLeft size={32} /></div>
+                </button>
+
+                {/* Counter */}
+                {allImages.length > 1 && (<div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/90 bg-white/10 border border-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-medium">{selectedImageIndex + 1} / {allImages.length}</div>)}
             </div>
-          </div>
-
-          <div className="flex flex-col">
-            <div className="mb-6">
-              <span className="bg-[#FF69B4] text-white text-xs font-bold px-3 py-1.5 rounded-full mb-3 inline-block">
-                K-Pop Cafe
-              </span>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-                {cafe.name}
-              </h1>
-              <div className="flex items-center text-gray-500 text-sm">
-                <IconMapPin size={16} className="mr-1" /> {cafe.location_text}
-              </div>
-            </div>
-
-            <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
-              <button
-                onClick={() => setActiveTab("general")}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${
-                  activeTab === "general"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                สำหรับลูกค้า
-              </button>
-              <button
-                onClick={() => setActiveTab("venue")}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                  activeTab === "venue"
-                    ? "bg-white text-[#FF6B00] shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <IconBriefcase size={16} /> สำหรับผู้จัด
-              </button>
-            </div>
-
-            {activeTab === "general" && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4">
-                  <div className="flex gap-4 items-start">
-                    <IconClock className="text-gray-400 mt-1" />
-                    <div>
-                      <p className="font-bold text-sm">เวลาทำการ</p>
-                      <p className="text-sm whitespace-pre-line text-gray-600">
-                        {cafe.opening_hours}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 items-start">
-                    <div className="w-5 h-5 flex items-center justify-center text-gray-400 font-bold">
-                      🏷️
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm">ราคาเฉลี่ย</p>
-                      <p className="text-sm text-[#FF6B00] font-bold">
-                        ~100 - 250 บาท
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="hidden md:flex gap-3">
-                  <button
-                    onClick={handleMap}
-                    className="flex-1 bg-[#FF6B00] hover:bg-[#E65000] text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"
-                  >
-                    <IconMapPin size={18} /> ดูแผนที่
-                  </button>
-                  <button
-                    onClick={handleCall}
-                    className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"
-                  >
-                    <IconPhone size={18} /> โทร
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "venue" && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 space-y-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-2 h-6 bg-[#FF6B00] rounded-full"></span>
-                    <h3 className="font-bold text-lg text-gray-900">
-                      ข้อมูลสถานที่จัดงาน
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white p-3 rounded-xl border border-orange-100">
-                      <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                        <IconUsers size={12} /> ความจุ
-                      </div>
-                      <div className="font-bold text-gray-900">สอบถามร้าน</div>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl border border-orange-100">
-                      <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                        <IconLayout size={12} /> พื้นที่
-                      </div>
-                      <div className="font-bold text-gray-900">
-                        Indoor / Outdoor
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="font-bold text-sm mb-2 text-gray-700">
-                      สิ่งอำนวยความสะดวก
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {(cafe.facilities || []).map((fac, i) => (
-                        <span
-                          key={i}
-                          className="text-xs bg-white border border-orange-100 px-3 py-1.5 rounded-full text-gray-600"
-                        >
-                          {fac}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="hidden md:flex gap-3">
-                  <button
-                    onClick={handleMap}
-                    className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"
-                  >
-                    <IconMapPin size={18} /> ดูแผนที่
-                  </button>
-                  <button
-                    onClick={handleBooking}
-                    className="flex-1 bg-[#1E293B] hover:bg-black text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"
-                  >
-                    <IconBriefcase size={18} /> สนใจจัดงานที่นี่
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 border-t border-gray-100 pt-10">
-          <div className="lg:col-span-7">
-            <h2
-              className={`text-2xl font-bold mb-6 flex items-center gap-2 ${
-                activeTab === "venue" ? "text-[#1E293B]" : "text-gray-900"
-              }`}
-            >
-              {activeTab === "general"
-                ? "📝 รายละเอียดและบรรยากาศร้าน"
-                : "🏢 รายละเอียดพื้นที่และกฎระเบียบ"}
-            </h2>
-            {activeTab === "venue" && (
-              <div className="grid grid-cols-2 gap-4 mb-8">
-                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex flex-col gap-2">
-                  <div className="h-24 bg-gray-200 rounded-lg animate-pulse"></div>
-                  <div>
-                    <p className="font-bold text-sm">Zone A (Indoor)</p>
-                    <p className="text-xs text-gray-500">รองรับ 20-30 คน</p>
-                  </div>
-                </div>
-                <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex flex-col gap-2">
-                  <div className="h-24 bg-gray-200 rounded-lg animate-pulse"></div>
-                  <div>
-                    <p className="font-bold text-sm">Zone B (Counter)</p>
-                    <p className="text-xs text-gray-500">รองรับ 5-10 คน</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            <div className="prose prose-lg text-gray-600 leading-relaxed whitespace-pre-line mb-8">
-              {cafe.description}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-16 pt-10 border-t border-gray-200">
-          <h3 className="text-xl font-bold mb-6 text-gray-900">
-            คาเฟ่แนะนำอื่นๆ
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {otherCafes.map((c) => (
-              <div
-                key={c.id}
-                onClick={() => navigate(`/cafe/${c.id}`)}
-                className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition cursor-pointer"
-              >
-                <div className="h-32 md:h-40 overflow-hidden">
-                  <SafeImage
-                    src={c.images?.[0]}
-                    alt={c.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                  />
-                </div>
-                <div className="p-3">
-                  <h4 className="font-bold text-sm text-gray-900 line-clamp-1 group-hover:text-[#FF6B00] transition">
-                    {c.name}
-                  </h4>
-                  <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-400">
-                    <IconMapPin size={10} />{" "}
-                    {(c.location_text || "").split(",")[0]}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 md:hidden z-50 flex items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] safe-area-bottom">
-        {activeTab === "general" ? (
-          <>
-            <button
-              onClick={handleMap}
-              className="flex-1 bg-[#FF6B00] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition"
-            >
-              <IconMapPin size={20} /> ดูแผนที่
-            </button>
-            <button
-              onClick={handleCall}
-              className="flex-1 border border-gray-200 text-gray-700 bg-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition"
-            >
-              <IconPhone size={20} /> โทร
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              onClick={handleMap}
-              className="flex-1 border border-gray-200 text-gray-700 bg-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition"
-            >
-              <IconMapPin size={20} /> ดูแผนที่
-            </button>
-            <button
-              onClick={handleBooking}
-              className="flex-[2] bg-[#1E293B] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition"
-            >
-              <IconBriefcase size={20} /> สนใจจัดงาน
-            </button>
-          </>
         )}
-      </div>
-    </>
-  );
+        
+        {/* Mobile Nav */}
+        <div className={`md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none transition-opacity duration-300 ${showStickyTabs ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+            <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
+            <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconShare size={20} /></button>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 relative animate-fade-in">
+            {/* Desktop Nav */}
+            <div className="hidden md:flex justify-between items-center mb-6">
+                <button onClick={() => navigate('/#cafes-section')} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
+                    <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition"><IconChevronLeft size={24} /></div>
+                    <span className="font-bold text-gray-900 group-hover:text-[#FF6B00]">ย้อนกลับ</span>
+                </button>
+                <button onClick={handleShare} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#FF6B00] transition shadow-sm"><IconShare size={20}/></button>
+            </div>
+
+            {/* MAIN CONTENT GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 mt-8 md:mt-0">
+                {/* 🖼️ GALLERY SECTION */}
+                <div>
+                    {/* รูปใหญ่ */}
+                    <div className="rounded-2xl overflow-hidden shadow-md mb-3 h-[300px] md:h-[400px] bg-gray-100 relative group cursor-pointer" onClick={() => setIsLightboxOpen(true)}>
+                        <SafeImage src={currentImage} alt={cafe.name} className="w-full h-full object-cover transition-opacity duration-300" />
+                        <div className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/70 transition flex items-center justify-center"><IconZoomIn size={16} color="white"/></div>
+                    </div>
+                    
+                    {/* 🔥 Thumbnails: Mobile (Scroll Horizontal) / Desktop (Grid) */}
+                    {allImages.length > 1 && (
+                        <div className="flex overflow-x-auto gap-2 pb-2 md:grid md:grid-cols-6 md:gap-2 md:pb-0 scrollbar-hide snap-x">
+                            {allImages.map((img, idx) => (
+                                <div 
+                                    key={idx} 
+                                    onClick={() => setSelectedImageIndex(idx)} 
+                                    className={`flex-shrink-0 snap-start w-24 aspect-square md:w-auto rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${selectedImageIndex === idx ? 'border-[#FF6B00] scale-95 ring-2 ring-[#FF6B00]/30' : 'border-transparent hover:border-gray-300'}`}
+                                >
+                                    <SafeImage src={img} alt={`gallery-${idx}`} className="w-full h-full object-cover" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                
+                {/* 📄 INFO SECTION */}
+                <div className="flex flex-col">
+                    <div className="mb-6">
+                        <span className="bg-[#FF69B4] text-white text-xs font-bold px-3 py-1.5 rounded-full mb-3 inline-block">K-Pop Cafe</span>
+                        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">{cafe.name}</h1>
+                        <div className="flex items-center text-gray-500 text-sm"><IconMapPin size={16} className="mr-1"/> {cafe.location_text || "ไม่ระบุสถานที่"}</div>
+                    </div>
+                    
+                    {/* Tabs */}
+                    <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
+                        <button onClick={() => setActiveTab('general')} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${activeTab === 'general' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>สำหรับลูกค้า</button>
+                        <button onClick={() => setActiveTab('venue')} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'venue' ? 'bg-white text-[#FF6B00] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><IconBriefcase size={16} /> สำหรับผู้จัด</button>
+                    </div>
+
+                    {/* CONTENT TABS (General / Venue) ... เหมือนเดิม */}
+                    {activeTab === 'general' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4">
+                                <div className="flex gap-4 items-start"><IconClock className="text-gray-400 mt-1" /><div><p className="font-bold text-sm">เวลาทำการ</p><p className="text-sm whitespace-pre-line text-gray-600">{cafe.opening_hours || "สอบถามทางร้าน"}</p></div></div>
+                                <div className="flex gap-4 items-start"><div className="w-5 h-5 flex items-center justify-center text-gray-400 font-bold">🏷️</div><div><p className="font-bold text-sm">ราคาเฉลี่ย</p><p className="text-sm text-[#FF6B00] font-bold">~100 - 250 บาท</p></div></div>
+                            </div>
+                            <div className="hidden md:flex gap-3">
+                                <button onClick={handleMap} className="flex-1 bg-[#FF6B00] hover:bg-[#E65000] text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"><IconMapPin size={18} /> ดูแผนที่</button>
+                                <button onClick={handleCall} className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"><IconPhone size={18} /> โทร</button>
+                            </div>
+                        </div>
+                    )}
+                    {activeTab === 'venue' && (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                             <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 space-y-5">
+                                <div className="flex items-center gap-2 mb-2"><span className="w-2 h-6 bg-[#FF6B00] rounded-full"></span><h3 className="font-bold text-lg text-gray-900">ข้อมูลสถานที่จัดงาน</h3></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white p-3 rounded-xl border border-orange-100"><div className="text-xs text-gray-500 mb-1 flex items-center gap-1"><IconUsers size={12}/> ความจุ</div><div className="font-bold text-gray-900">สอบถามร้าน</div></div>
+                                    <div className="bg-white p-3 rounded-xl border border-orange-100"><div className="text-xs text-gray-500 mb-1 flex items-center gap-1"><IconLayout size={12}/> พื้นที่</div><div className="font-bold text-gray-900">Indoor / Outdoor</div></div>
+                                </div>
+                                <div>
+                                    <p className="font-bold text-sm mb-2 text-gray-700">สิ่งอำนวยความสะดวก</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {facilities.length > 0 ? facilities.map((fac, i) => (
+                                            <span key={i} className="text-xs bg-white border border-orange-100 px-3 py-1.5 rounded-full text-gray-600">{fac.trim()}</span>
+                                        )) : ( <span className="text-xs text-gray-400">- ไม่มีข้อมูล -</span> )}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="hidden md:flex gap-3">
+                                <button onClick={handleMap} className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"><IconMapPin size={18} /> ดูแผนที่</button>
+                                <button onClick={handleBooking} className="flex-1 bg-[#1E293B] hover:bg-black text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"><IconBriefcase size={18} /> สนใจจัดงานที่นี่</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* DESCRIPTION ... เหมือนเดิม */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 border-t border-gray-100 pt-10">
+                <div className="lg:col-span-7">
+                    <h2 className={`text-2xl font-bold mb-6 flex items-center gap-2 ${activeTab === 'venue' ? 'text-[#1E293B]' : 'text-gray-900'}`}>{activeTab === 'general' ? '📝 รายละเอียดและบรรยากาศร้าน' : '🏢 รายละเอียดพื้นที่และกฎระเบียบ'}</h2>
+                    <div className="prose prose-lg text-gray-600 leading-relaxed whitespace-pre-line mb-8">{cafe.description || "ยังไม่มีรายละเอียดเพิ่มเติม"}</div>
+                </div>
+            </div>
+
+            {/* RELATED CAFES ... เหมือนเดิม */}
+            <div className="mt-16 pt-10 border-t border-gray-200">
+                <h3 className="text-xl font-bold mb-6 text-gray-900">คาเฟ่แนะนำอื่นๆ</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {otherCafes.map((c) => {
+                        let cImg = c.image_url;
+                        if (Array.isArray(c.images) && c.images.length > 0) {
+                            cImg = c.images[0];
+                        } else if (typeof c.images === 'string' && c.images.startsWith('{')) {
+                            const parsed = c.images.replace(/^{|}$/g, '').split(',').map(s=>s.replace(/"/g, ''));
+                            if (parsed.length > 0 && parsed[0] !== "") cImg = parsed[0];
+                        }
+                        return (
+                            <div key={c.id} onClick={() => navigate(`/cafe/${c.id}`)} className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition cursor-pointer group">
+                                <div className="h-32 md:h-40 overflow-hidden bg-gray-100">
+                                    <SafeImage src={cImg} alt={c.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
+                                </div>
+                                <div className="p-3">
+                                    <h4 className="font-bold text-sm text-gray-900 line-clamp-1 group-hover:text-[#FF6B00] transition">{c.name}</h4>
+                                    <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-400"><IconMapPin size={10}/> {(c.location_text || "").split(',')[0]}</div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+
+        {/* MOBILE BOTTOM BAR ... เหมือนเดิม */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 md:hidden z-50 flex items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] safe-area-bottom">
+            {activeTab === 'general' ? (
+                <>
+                    <button onClick={handleMap} className="flex-1 bg-[#FF6B00] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition"><IconMapPin size={20} /> ดูแผนที่</button>
+                    <button onClick={handleCall} className="flex-1 border border-gray-200 text-gray-700 bg-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition"><IconPhone size={20} /> โทร</button>
+                </>
+            ) : (
+                <>
+                    <button onClick={handleMap} className="flex-1 border border-gray-200 text-gray-700 bg-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition"><IconMapPin size={20} /> ดูแผนที่</button>
+                    <button onClick={handleBooking} className="flex-[2] bg-[#1E293B] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition"><IconBriefcase size={20} /> สนใจจัดงาน</button>
+                </>
+            )}
+        </div>
+      </>
+    );
 };
