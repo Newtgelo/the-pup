@@ -56,6 +56,19 @@ export const HomePage = () => {
     fetchData();
   }, []);
 
+  // Logic: Scroll to ID (รองรับการเด้งมาจากหน้าอื่น)
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.replace("#", "");
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100);
+      }
+    }
+  }, [location]);
+
   // Filter Logic (Events)
   useEffect(() => {
     let result = [...eventList];
@@ -100,7 +113,13 @@ export const HomePage = () => {
           <p className="text-white/90 text-sm md:text-base font-medium">รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว</p>
         </div>
         <div className="relative z-10">
-          <button onClick={() => navigate('/events')} className="bg-white text-[#E11D48] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95">สำรวจอีเวนต์</button>
+          {/* 🔥 แก้ตรงนี้: เปลี่ยนจาก navigate เป็น scrollIntoView */}
+          <button 
+            onClick={() => document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' })} 
+            className="bg-white text-[#E11D48] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95"
+          >
+            สำรวจอีเวนต์
+          </button>
         </div>
       </div>
 
@@ -127,13 +146,10 @@ export const HomePage = () => {
         <div className="flex flex-col mb-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
             
-            {/* Header (Left) + Mobile Controls */}
             <div className="flex items-center justify-between w-full md:w-auto">
               <div className="border-l-4 border-[#FF6B00] pl-4">
                 <h2 className="text-2xl font-bold text-gray-900">ตาราง Event</h2>
               </div>
-              
-              {/* 🔥 Mobile Only: Filter Button + See All */}
               <div className="flex items-center gap-3 md:hidden">
                 <button
                   onClick={() => setShowMobileFilters(!showMobileFilters)}
@@ -149,7 +165,6 @@ export const HomePage = () => {
               </div>
             </div>
 
-            {/* 🔥 Desktop Only: Filters Dropdown + See All (กู้คืนส่วนนี้กลับมาแล้วครับ) */}
             <div className="hidden md:flex flex-1 items-center justify-end gap-3 ml-4">
               <div className="flex gap-2 shrink-0">
                 <select
@@ -185,14 +200,12 @@ export const HomePage = () => {
 
           </div>
 
-          {/* Filter Pills */}
           <ScrollableRow className="pb-2 gap-2">
             {["ทั้งหมด", "Concert", "Fan Meeting", "Fansign", "Workshop", "Exhibition", "Fan Event", "Others"].map((filter) => (
               <button key={filter} onClick={() => setEventFilter(filter)} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition ${eventFilter === filter ? "bg-[#FF6B00] text-white" : "bg-white border text-gray-600 hover:bg-gray-50"}`}>{filter}</button>
             ))}
           </ScrollableRow>
 
-          {/* Mobile Filter Panel (Slide Down) */}
           {showMobileFilters && (
             <div className="md:hidden mt-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm animate-in slide-in-from-top-2 fade-in duration-200">
               <div className="grid grid-cols-2 gap-3">
@@ -213,7 +226,6 @@ export const HomePage = () => {
           )}
         </div>
 
-        {/* Event Cards */}
         <ScrollableRow className="gap-4 pb-4 -mx-4 px-4 scroll-pl-4">
           {isLoading ? [...Array(5)].map((_, i) => <SkeletonEvent key={i} />) : filteredHomeEvents.length > 0 ? filteredHomeEvents.map((event) => (
             <div key={event.id} className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[260px] snap-start h-full"><EventCard item={event} onClick={() => navigate(`/event/${event.id}`)} showNewBadge={eventSort === "newest"} /></div>
