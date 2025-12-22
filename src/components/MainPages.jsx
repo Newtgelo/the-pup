@@ -142,9 +142,13 @@ export const HomePage = () => {
   }, [eventFilter, eventSort, timeframeFilter, eventList]);
 
   // Filter News (Frontend Side)
-  const filteredNews = newsList.filter(
-    (n) => homeNewsFilter === "ทั้งหมด" || n.category === homeNewsFilter
-  );
+  // แบบใหม่ (ปลอดภัยกว่า)
+const filteredNews = newsList.filter((n) => {
+  if (homeNewsFilter === "ทั้งหมด") return true;
+  
+  // ปรับทั้งสองฝั่งให้เป็นตัวพิมพ์เล็ก และตัดช่องว่าง (trim) ก่อนเช็ค
+  return n.category?.toLowerCase().trim() === homeNewsFilter.toLowerCase().trim();
+});
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 pb-16">
