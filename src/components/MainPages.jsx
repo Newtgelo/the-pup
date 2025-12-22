@@ -56,18 +56,19 @@ export const HomePage = () => {
     fetchData();
   }, []);
 
-  // Logic: Scroll to ID (รองรับการเด้งมาจากหน้าอื่น)
+  // 🔥 LOGIC: Scroll to ID (แก้ใหม่: รอให้ isLoading เป็น false ก่อน ค่อยเลื่อน!)
   useEffect(() => {
-    if (location.hash) {
+    if (!isLoading && location.hash) {
       const id = location.hash.replace("#", "");
       const element = document.getElementById(id);
       if (element) {
+        // เพิ่มเวลาหน่วงนิดนึงเพื่อให้ DOM วาดเสร็จชัวร์ๆ
         setTimeout(() => {
           element.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 100);
+        }, 300); 
       }
     }
-  }, [location]);
+  }, [location, isLoading]); // ✅ เพิ่ม isLoading ใน dependency
 
   // Filter Logic (Events)
   useEffect(() => {
@@ -113,18 +114,12 @@ export const HomePage = () => {
           <p className="text-white/90 text-sm md:text-base font-medium">รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว</p>
         </div>
         <div className="relative z-10">
-          {/* 🔥 แก้ตรงนี้: เปลี่ยนจาก navigate เป็น scrollIntoView */}
-          <button 
-            onClick={() => document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' })} 
-            className="bg-white text-[#E11D48] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95"
-          >
-            สำรวจอีเวนต์
-          </button>
+          <button onClick={() => document.getElementById('events-section')?.scrollIntoView({ behavior: 'smooth' })} className="bg-white text-[#E11D48] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95">สำรวจอีเวนต์</button>
         </div>
       </div>
 
       {/* NEWS */}
-      <section id="news-section">
+      <section id="news-section" className="mt-8 scroll-mt-28">
         <div className="flex justify-between items-center mb-4 border-l-4 border-[#0047FF] pl-4">
           <h2 className="text-2xl font-bold text-gray-900">Latest News</h2>
           <button onClick={() => navigate("/news")} className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1">ดูทั้งหมด <IconChevronRight size={16} /></button>
@@ -142,7 +137,7 @@ export const HomePage = () => {
       </section>
 
       {/* EVENTS */}
-      <section id="events-section">
+      <section id="events-section" className="scroll-mt-28">
         <div className="flex flex-col mb-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
             
@@ -234,7 +229,7 @@ export const HomePage = () => {
       </section>
 
       {/* CAFES */}
-      <section id="cafes-section">
+      <section id="cafes-section" className="scroll-mt-28">
         <div className="flex justify-between items-center mb-6 border-l-4 border-purple-500 pl-4">
           <h2 className="text-2xl font-bold text-gray-900">แนะนำที่จัด Fancafe</h2>
           <button onClick={() => navigate("/cafes")} className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1">ดูทั้งหมด <IconChevronRight size={16} /></button>
