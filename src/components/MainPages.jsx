@@ -451,10 +451,10 @@ export const SearchPage = () => {
         setIsLoading(false);
     };
 
-    // ทำ Debounce เล็กน้อย (รอพิมพ์เสร็จ 0.5 วิ ค่อยค้นหา)
+    // ทำ Debounce เล็กน้อย (รอพิมพ์เสร็จ 0.1 วิ ค่อยค้นหา)
     const timeoutId = setTimeout(() => {
         fetchSearch();
-    }, 500);
+    }, 100);
 
     return () => clearTimeout(timeoutId);
   }, [term]);
