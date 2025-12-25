@@ -8,7 +8,22 @@ export const AdminEditNews = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [isAuthChecking, setIsAuthChecking] = useState(true); // เพิ่มสถานะเช็ค Auth
 
+  // 🔥 1. ระบบ รปภ. (ตรวจสอบล็อกอิน)
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/admin/login');
+      } else {
+        setIsAuthChecking(false);
+      }
+    };
+    checkUser();
+  }, [navigate]);
+
+  // State ข้อมูล
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('K-pop');
   const [imageUrl, setImageUrl] = useState('');
@@ -25,7 +40,10 @@ export const AdminEditNews = () => {
     ],
   };
 
+  // ดึงข้อมูลข่าว
   useEffect(() => {
+    if (isAuthChecking) return; // ถ้ายังไม่ได้ล็อกอิน ไม่ต้องดึงข้อมูล
+
     const fetchNews = async () => {
         const { data, error } = await supabase.from('news').select('*').eq('id', id).single();
         if (data) {
@@ -38,7 +56,7 @@ export const AdminEditNews = () => {
         setLoading(false);
     };
     fetchNews();
-  }, [id]);
+  }, [id, isAuthChecking]); // เพิ่ม isAuthChecking เป็น dependency
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -54,20 +72,22 @@ export const AdminEditNews = () => {
     if (error) {
         alert('เกิดข้อผิดพลาด: ' + error.message);
     } else {
-        // ✅ 1. เปิดหน้าข่าวที่เพิ่งแก้ ใน Tab ใหม่
         window.open(`/news/${id}`, '_blank');
-
-        // ✅ 2. หน้าปัจจุบัน ดีดกลับไป Dashboard
         navigate('/admin/dashboard');
     }
   };
 
+  // ถ้า รปภ. ยังตรวจไม่เสร็จ อย่าเพิ่งโชว์ฟอร์ม
+  if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังตรวจสอบสิทธิ์...</div>;
   if (loading) return <div className="p-10 text-center">กำลังโหลดข้อมูลเดิม...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">✏️ แก้ไขข่าว (Admin)</h1>
+        <div className="flex justify-between items-center mb-6 border-b pb-4">
+             <h1 className="text-3xl font-bold text-gray-900">✏️ แก้ไขข่าว (Admin)</h1>
+             <button onClick={() => navigate('/admin/dashboard')} className="text-gray-500 hover:text-orange-500 font-bold">Cancel</button>
+        </div>
         
         <form onSubmit={handleUpdate} className="space-y-6">
             <div>
