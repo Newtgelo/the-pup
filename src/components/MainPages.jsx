@@ -270,16 +270,94 @@ export const SearchPage = () => {
 // ==========================================
 // 3. SEE ALL PAGES (แก้ปุ่มย้อนกลับให้บังคับไปหา Section)
 // ==========================================
+
+// ==========================================
+// NEWS PAGE (With Category Tabs)
+// ==========================================
+
 export const NewsPage = () => {
   const navigate = useNavigate();
+  
+  // Data State
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { supabase.from('news').select('*').order('id', { ascending: false }).then(({ data }) => { setNews(data || []); setLoading(false); }); }, []);
+
+  // Filter State
+  const [categoryFilter, setCategoryFilter] = useState("ทั้งหมด");
+  const [filteredNews, setFilteredNews] = useState([]);
+
+  // 1. Fetch Data
+  useEffect(() => { 
+      supabase
+        .from('news')
+        .select('*')
+        .order('id', { ascending: false })
+        .then(({ data }) => { 
+            const newsData = data || [];
+            setNews(newsData); 
+            setFilteredNews(newsData); // เริ่มต้นโชว์ทั้งหมด
+            setLoading(false); 
+        }); 
+  }, []);
+
+  // 2. Filtering Logic
+  useEffect(() => {
+    if (categoryFilter === "ทั้งหมด") {
+        setFilteredNews(news);
+    } else {
+        const result = news.filter((item) => 
+            item.category?.toLowerCase().trim() === categoryFilter.toLowerCase().trim()
+        );
+        setFilteredNews(result);
+    }
+  }, [categoryFilter, news]);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-20">
-      {/* 🔥 แก้ตรงนี้: ย้อนกลับไปหา #news-section */}
-      <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center"><button onClick={() => navigate('/#news-section')}><IconChevronLeft size={24}/></button><div><h1 className="text-2xl font-bold text-gray-900">ข่าวสารทั้งหมด</h1>{!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {news.length} รายการ</p>}</div></div>
-      {loading ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">{[...Array(8)].map((_, i) => <SkeletonNews key={i} />)}</div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">{news.map((item) => <NewsCard key={item.id} item={item} onClick={() => navigate(`/news/${item.id}`)} />)}</div>}
+      {/* Header & Back Button */}
+      <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center">
+          <button onClick={() => navigate('/#news-section')}><IconChevronLeft size={24}/></button>
+          <div>
+              <h1 className="text-2xl font-bold text-gray-900">ข่าวสารทั้งหมด</h1>
+              {!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {filteredNews.length} รายการ</p>}
+          </div>
+      </div>
+
+      {/* 🔥 Category Tabs */}
+      <div className="flex flex-wrap gap-2 mb-8">
+          {["ทั้งหมด", "K-pop", "T-pop"].map((filter) => (
+            <button 
+                key={filter} 
+                onClick={() => setCategoryFilter(filter)} 
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+                    categoryFilter === filter 
+                    ? "bg-[#FF6B00] text-white" 
+                    : "bg-white border text-gray-600 hover:bg-gray-50"
+                }`}
+            >
+                {filter}
+            </button>
+          ))}
+      </div>
+
+      {/* Grid Display */}
+      {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => <SkeletonNews key={i} />)}
+          </div>
+      ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+              {filteredNews.length > 0 ? (
+                  filteredNews.map((item) => (
+                      <NewsCard key={item.id} item={item} onClick={() => navigate(`/news/${item.id}`)} />
+                  ))
+              ) : (
+                  <div className="col-span-full text-center py-16 text-gray-400">
+                      ไม่พบข่าวสารในหมวดหมู่นี้
+                  </div>
+              )}
+          </div>
+      )}
     </div>
   );
 };
