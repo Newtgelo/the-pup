@@ -272,7 +272,7 @@ export const SearchPage = () => {
 // ==========================================
 
 // ==========================================
-// NEWS PAGE (With Category Tabs)
+// NEWS PAGE (With Tabs, Responsive Grid & Pagination)
 // ==========================================
 
 export const NewsPage = () => {
@@ -286,6 +286,10 @@ export const NewsPage = () => {
   const [categoryFilter, setCategoryFilter] = useState("ทั้งหมด");
   const [filteredNews, setFilteredNews] = useState([]);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12; // โชว์หน้าละ 12 ชิ้น (หาร 2, 3, 4 ลงตัว สวยทุกจอ)
+
   // 1. Fetch Data
   useEffect(() => { 
       supabase
@@ -295,27 +299,39 @@ export const NewsPage = () => {
         .then(({ data }) => { 
             const newsData = data || [];
             setNews(newsData); 
-            setFilteredNews(newsData); // เริ่มต้นโชว์ทั้งหมด
+            setFilteredNews(newsData); 
             setLoading(false); 
         }); 
   }, []);
 
   // 2. Filtering Logic
   useEffect(() => {
-    if (categoryFilter === "ทั้งหมด") {
-        setFilteredNews(news);
-    } else {
-        const result = news.filter((item) => 
+    let result = news;
+    if (categoryFilter !== "ทั้งหมด") {
+        result = news.filter((item) => 
             item.category?.toLowerCase().trim() === categoryFilter.toLowerCase().trim()
         );
-        setFilteredNews(result);
     }
+    setFilteredNews(result);
+    setCurrentPage(1); // รีเซ็ตกลับไปหน้า 1 เสมอเมื่อเปลี่ยนหมวดหมู่
   }, [categoryFilter, news]);
+
+  // 3. Pagination Logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredNews.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredNews.length / itemsPerPage);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    // เลื่อนขึ้นไปบนสุดของรายการข่าว (ไม่ใช่บนสุดของเว็บ) แบบนุ่มนวล
+    document.getElementById('news-grid-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-20">
       {/* Header & Back Button */}
-      <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center">
+      <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center" id="news-grid-anchor">
           <button onClick={() => navigate('/#news-section')}><IconChevronLeft size={24}/></button>
           <div>
               <h1 className="text-2xl font-bold text-gray-900">ข่าวสารทั้งหมด</h1>
@@ -323,7 +339,7 @@ export const NewsPage = () => {
           </div>
       </div>
 
-      {/* 🔥 Category Tabs */}
+      {/* Category Tabs */}
       <div className="flex flex-wrap gap-2 mb-8">
           {["ทั้งหมด", "K-pop", "T-pop"].map((filter) => (
             <button 
@@ -342,21 +358,83 @@ export const NewsPage = () => {
 
       {/* Grid Display */}
       {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          // Skeleton: ปรับ Grid ให้ตรงกับของจริง (2 -> 3 -> 4 columns)
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               {[...Array(8)].map((_, i) => <SkeletonNews key={i} />)}
           </div>
       ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
-              {filteredNews.length > 0 ? (
-                  filteredNews.map((item) => (
-                      <NewsCard key={item.id} item={item} onClick={() => navigate(`/news/${item.id}`)} />
-                  ))
-              ) : (
-                  <div className="col-span-full text-center py-16 text-gray-400">
-                      ไม่พบข่าวสารในหมวดหมู่นี้
-                  </div>
-              )}
-          </div>
+          <>
+            {/* Real Content */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in min-h-[500px] content-start">
+                {currentItems.length > 0 ? (
+                    currentItems.map((item) => (
+                        <NewsCard key={item.id} item={item} onClick={() => navigate(`/news/${item.id}`)} />
+                    ))
+                ) : (
+                    <div className="col-span-full text-center py-16 text-gray-400">
+                        ไม่พบข่าวสารในหมวดหมู่นี้
+                    </div>
+                )}
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <div className="flex justify-center items-center mt-12 gap-2">
+                    {/* ปุ่มย้อนกลับ */}
+                    <button 
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 transition ${
+                            currentPage === 1 ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-50 hover:text-[#FF6B00]"
+                        }`}
+                    >
+                        <IconChevronLeft size={20} />
+                    </button>
+
+                    {/* เลขหน้า */}
+                    {[...Array(totalPages)].map((_, index) => {
+                        const page = index + 1;
+                        // Logic ซ่อนเลขหน้าถ้ายาวเกินไป (แสดงหน้าแรก, หน้าสุดท้าย, และหน้ารอบๆ ปัจจุบัน)
+                        if (
+                            page === 1 || 
+                            page === totalPages || 
+                            (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                            return (
+                                <button
+                                    key={page}
+                                    onClick={() => handlePageChange(page)}
+                                    className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-bold transition ${
+                                        currentPage === page
+                                            ? "bg-[#FF6B00] text-white shadow-md"
+                                            : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
+                                    }`}
+                                >
+                                    {page}
+                                </button>
+                            );
+                        } else if (
+                            page === currentPage - 2 || 
+                            page === currentPage + 2
+                        ) {
+                            return <span key={page} className="text-gray-400">...</span>;
+                        }
+                        return null;
+                    })}
+
+                    {/* ปุ่มถัดไป */}
+                    <button 
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 transition ${
+                            currentPage === totalPages ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-50 hover:text-[#FF6B00]"
+                        }`}
+                    >
+                        <div className="rotate-180"><IconChevronLeft size={20} /></div>
+                    </button>
+                </div>
+            )}
+          </>
       )}
     </div>
   );
