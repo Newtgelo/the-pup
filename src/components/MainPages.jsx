@@ -288,12 +288,56 @@ export const EventsPage = () => {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { supabase.from('events').select('*').order('start_date', { ascending: true }).then(({ data }) => { setEvents(data || []); setLoading(false); }); }, []);
+
+  useEffect(() => {
+    // 1. หาเวลาปัจจุบัน (เริ่มจากเที่ยงคืนของวันนี้ เพื่อให้งานวันนี้ยังโชว์อยู่)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); 
+    const todayISO = today.toISOString();
+
+    const fetchEvents = async () => {
+        setLoading(true);
+        const { data } = await supabase
+            .from('events')
+            .select('*')
+            .gte("start_date", todayISO) // 🔥 กรอง: เอาเฉพาะวันที่ >= วันนี้
+            .order('start_date', { ascending: true });
+            
+        if (data) setEvents(data);
+        setLoading(false);
+    }
+    fetchEvents();
+  }, []);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-20">
-       {/* 🔥 แก้ตรงนี้: ย้อนกลับไปหา #events-section */}
-       <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center"><button onClick={() => navigate('/#events-section')}><IconChevronLeft size={24}/></button><div><h1 className="text-2xl font-bold text-gray-900">กิจกรรมทั้งหมด</h1>{!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {events.length} รายการ</p>}</div></div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">{events.map((item) => <EventCard key={item.id} item={item} onClick={() => navigate(`/event/${item.id}`)} />)}</div>
+       {/* Header & Back Button */}
+       <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center">
+            <button onClick={() => navigate('/#events-section')}><IconChevronLeft size={24}/></button>
+            <div>
+                <h1 className="text-2xl font-bold text-gray-900">กิจกรรมทั้งหมด</h1>
+                {!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {events.length} รายการ (เร็วๆ นี้)</p>}
+            </div>
+      </div>
+
+      {/* Grid */}
+      {loading ? (
+           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {[...Array(8)].map((_, i) => <SkeletonEvent key={i} />)}
+           </div>
+      ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in">
+              {events.map((item) => (
+                  <EventCard key={item.id} item={item} onClick={() => navigate(`/event/${item.id}`)} />
+              ))}
+              {events.length === 0 && (
+                  <div className="col-span-full flex flex-col items-center justify-center py-16 text-gray-400">
+                      <div className="text-4xl mb-2">📅</div>
+                      <p>ยังไม่มีกิจกรรมเร็วๆ นี้</p>
+                  </div>
+              )}
+          </div>
+      )}
     </div>
   );
 };
