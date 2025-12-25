@@ -45,7 +45,13 @@ export const HomePage = () => {
       const { data: news } = await supabase.from("news").select("*").limit(10).order("id", { ascending: false });
       if (news) setNewsList(news);
 
-      const { data: events } = await supabase.from("events").select("*").limit(20).order("start_date", { ascending: true });
+      const today = new Date().toISOString(); // เอาเวลาปัจจุบัน
+      const { data: events } = await supabase
+        .from("events")
+        .select("*")
+        .gte("start_date", today) // 🔥 เพิ่มบรรทัดนี้: start_date >= today
+        .limit(20)
+        .order("start_date", { ascending: true });
       if (events) setEventList(events);
 
       const { data: cafes } = await supabase.from("cafes").select("*").limit(8);
@@ -217,6 +223,7 @@ export const SearchPage = () => {
         setIsLoading(true);
         const { data: news } = await supabase.from('news').select('*').or(`title.ilike.%${term}%,tags.ilike.%${term}%`).limit(10);
         if (news) setResultsNews(news);
+        
         const { data: events } = await supabase.from('events').select('*').or(`title.ilike.%${term}%,location_name.ilike.%${term}%,tags.ilike.%${term}%`).limit(10);
         if (events) setResultsEvents(events);
         const { data: cafes } = await supabase.from('cafes').select('*').or(`name.ilike.%${term}%,location_text.ilike.%${term}%`).limit(10);
