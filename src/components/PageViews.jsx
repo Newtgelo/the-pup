@@ -91,14 +91,14 @@ export const NewsDetail = ({ onTriggerToast }) => {
           <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight mb-4">{news.title}</h1>
         </div>
         
-        {/* รูปปก (อันนี้ให้เต็มจอเหมือนเดิม สวยแล้ว) */}
+        {/* รูปปก */}
         {news.image_url && (
             <div className="rounded-2xl overflow-hidden mb-10 shadow-lg aspect-video bg-gray-100 relative group">
                 <SafeImage src={news.image_url} alt={news.title} className="w-full h-full object-cover" />
             </div>
         )}
         
-        {/* 🔥 ส่วนเนื้อหาข่าว (ปรับ CSS รูปภาพ) */}
+        {/* 🔥 ส่วนเนื้อหาข่าว */}
         <div className="max-w-3xl mx-auto mb-10 text-lg text-gray-700 leading-relaxed font-serif 
             prose prose-lg prose-orange max-w-none 
             [&>p]:mb-6 
@@ -107,17 +107,12 @@ export const NewsDetail = ({ onTriggerToast }) => {
             [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:mb-6 
             [&>ol]:list-decimal [&>ol]:pl-6
             [&>blockquote]:border-l-4 [&>blockquote]:border-gray-300 [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-gray-500
-            
-            /* 👇 ส่วน Video */
             [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-xl [&_iframe]:shadow-md [&_iframe]:my-8
-
-            /* 👇 แก้ไขตรงนี้ (เปลี่ยน > เป็น _ และเติม ! เพื่อบังคับ) */
             [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-8 
             [&_img]:!w-auto [&_img]:!max-w-full [&_img]:!max-h-[500px] [&_img]:mx-auto [&_img]:object-contain">
             
           {parse(news.content || "", {
             replace: (domNode) => {
-              // 1. Iframe Converter
               if (domNode.name === 'iframe' && domNode.attribs) {
                  return (
                     <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
@@ -125,7 +120,6 @@ export const NewsDetail = ({ onTriggerToast }) => {
                     </div>
                  );
               }
-              // 2. Link to Video Converter & Target Blank
               if (domNode.name === 'a' && domNode.attribs && domNode.attribs.href) {
                 const href = domNode.attribs.href;
                 if (href.includes("youtube.com/embed") || href.includes("youtu.be") || href.includes("youtube.com/watch")) {
@@ -184,8 +178,10 @@ export const NewsDetail = ({ onTriggerToast }) => {
 };
 
 // ==========================================
-// 2. EVENT DETAIL
+// 2. EVENT DETAIL (🔥 Updated Data Binding)
 // ==========================================
+// ... (imports ด้านบนเหมือนเดิม)
+
 export const EventDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -195,7 +191,7 @@ export const EventDetail = ({ onTriggerToast }) => {
   const [loading, setLoading] = useState(true);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
-  // ✅ Logic ย้อนกลับ
+  // Logic ย้อนกลับ
   const goBack = () => {
     if (location.state?.fromHome) {
       navigate('/#events-section');
@@ -217,9 +213,28 @@ export const EventDetail = ({ onTriggerToast }) => {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลดอีเวนต์...</div>;
   if (!event) return <NotFound title="ไม่พบกิจกรรมดังกล่าว" onBack={() => navigate("/")} />;
 
-  const handleMapClick = () => { if (event.lat && event.lng) window.open(`https://www.google.com/maps/search/?api=1&query=${event.lat},${event.lng}`, "_blank"); else onTriggerToast("กำลังเปิดแผนที่..."); };
-  const addToCalendar = () => { if (!event.start_date) { onTriggerToast("ไม่พบข้อมูลวันเวลา"); return; } const dateStr = event.start_date.replace(/-/g, ""); const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${dateStr}/${dateStr}&details=${encodeURIComponent(event.description)}&location=${encodeURIComponent(event.location_name)}`; window.open(url, "_blank"); onTriggerToast("เปิด Google Calendar แล้ว"); };
+  const handleMapClick = () => { 
+    if (event.lat && event.lng) {
+        window.open(`https://www.google.com/maps/search/?api=1&query=$${event.lat},${event.lng}`, "_blank");
+    } else if (event.location) {
+        window.open(`https://www.google.com/maps/search/?api=1&query=$${encodeURIComponent(event.location)}`, "_blank");
+    } else {
+        onTriggerToast("ไม่พบข้อมูลแผนที่"); 
+    }
+  };
+
+  const addToCalendar = () => { 
+    if (!event.date) { onTriggerToast("ไม่พบข้อมูลวันเวลา"); return; } 
+    const dateStr = event.date.replace(/-/g, ""); 
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${dateStr}/${dateStr}&details=${encodeURIComponent(event.description || "")}&location=${encodeURIComponent(event.location || "")}`; 
+    window.open(url, "_blank"); 
+    onTriggerToast("เปิด Google Calendar แล้ว"); 
+  };
+
   const handleShare = async () => { const shareData = { title: event.title, url: window.location.href }; try { if (navigator.share) await navigator.share(shareData); else { await navigator.clipboard.writeText(shareData.url); onTriggerToast("คัดลอกลิงก์แล้ว"); } } catch (err) { console.log("Error:", err); } };
+
+  // Helper: แปลงวันที่ปกติ (เผื่อกรณีไม่มี date_display)
+  const formattedDate = event.date ? new Date(event.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : "วันงานแสดง";
 
   return (
     <>
@@ -230,12 +245,14 @@ export const EventDetail = ({ onTriggerToast }) => {
         </div>
       )}
 
+      {/* Mobile Navbar */}
       <div className="md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none">
         <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
         <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconShare size={20} /></button>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-8 pb-32 md:pb-8 relative animate-fade-in">
+        {/* Desktop Header */}
         <div className="hidden md:flex justify-between items-center mb-6">
           <button onClick={goBack} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
             <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition"><IconChevronLeft size={24} /></div>
@@ -253,16 +270,29 @@ export const EventDetail = ({ onTriggerToast }) => {
             </div>
             <div className="flex-1 p-8 lg:p-10 flex flex-col justify-center relative">
               <div className="mb-auto">
-                <span className="inline-block px-3 py-1 rounded-lg bg-orange-50 text-[#FF6B00] text-xs font-bold uppercase tracking-wider mb-3 w-fit border border-orange-100">{event.type}</span>
+                <span className="inline-block px-3 py-1 rounded-lg bg-orange-50 text-[#FF6B00] text-xs font-bold uppercase tracking-wider mb-3 w-fit border border-orange-100">{event.category}</span>
                 <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 leading-tight mb-4">{event.title}</h1>
               </div>
               <div className="space-y-6 my-6">
-                <div className="flex items-start gap-4 group"><div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-[#FF6B00] shadow-sm border border-orange-100 group-hover:scale-110 transition flex-shrink-0"><IconCalendar size={24} /></div><div><p className="text-gray-900 font-bold text-lg">{event.date_display}</p><p className="text-gray-500 text-sm">{event.time_display || "วันงานแสดง"}</p></div></div>
-                <div onClick={handleMapClick} className="flex items-start gap-4 group cursor-pointer hover:bg-blue-50 p-3 -ml-3 rounded-xl transition"><div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 shadow-sm border border-blue-100 flex-shrink-0"><IconMapPin size={24} /></div><div><p className="text-gray-900 font-bold text-lg">{event.location_name}</p><p className="text-gray-500 text-sm">คลิกเพื่อดูแผนที่</p></div></div>
+                
+                {/* 🔥 แก้ตรงนี้: แสดง date_display ถ้ามี */}
+                <div className="flex items-start gap-4 group">
+                    <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-[#FF6B00] shadow-sm border border-orange-100 group-hover:scale-110 transition flex-shrink-0">
+                        <IconCalendar size={24} />
+                    </div>
+                    <div>
+                        <p className="text-gray-900 font-bold text-lg">
+                            {event.date_display || formattedDate}
+                        </p>
+                        <p className="text-gray-500 text-sm">{event.time || "วันงานแสดง"}</p>
+                    </div>
+                </div>
+
+                <div onClick={handleMapClick} className="flex items-start gap-4 group cursor-pointer hover:bg-blue-50 p-3 -ml-3 rounded-xl transition"><div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 shadow-sm border border-blue-100 flex-shrink-0"><IconMapPin size={24} /></div><div><p className="text-gray-900 font-bold text-lg">{event.location}</p><p className="text-gray-500 text-sm">คลิกเพื่อดูแผนที่</p></div></div>
                 <div className="flex items-start gap-4 group"><div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center text-green-600 shadow-sm border border-green-100 flex-shrink-0"><IconTicket size={24} /></div><div><p className="text-gray-900 font-bold text-xl">{event.ticket_price || "Coming Soon"}</p><p className="text-gray-500 text-sm">ราคาบัตร</p></div></div>
               </div>
               <div className="flex gap-3 mt-auto pt-8 border-t border-dashed border-gray-200">
-                <a href={event.ticket_link || "#"} target={event.ticket_link ? "_blank" : "_self"} rel="noopener noreferrer" onClick={(e) => { if (!event.ticket_link) { e.preventDefault(); onTriggerToast("ยังไม่มีลิงก์จองบัตร"); } }} className="flex-1 bg-[#FF6B00] hover:bg-[#E65000] text-white py-4 px-6 rounded-xl font-bold text-lg transition shadow-lg hover:shadow-xl flex justify-center items-center gap-2 active:scale-95"><IconTicket size={24} /> จองบัตรเลย</a>
+                <a href={event.link || "#"} target={event.link ? "_blank" : "_self"} rel="noopener noreferrer" onClick={(e) => { if (!event.link) { e.preventDefault(); onTriggerToast("ยังไม่มีลิงก์จองบัตร"); } }} className="flex-1 bg-[#FF6B00] hover:bg-[#E65000] text-white py-4 px-6 rounded-xl font-bold text-lg transition shadow-lg hover:shadow-xl flex justify-center items-center gap-2 active:scale-95"><IconTicket size={24} /> จองบัตรเลย</a>
                 <button onClick={addToCalendar} className="flex-1 border-2 border-gray-200 hover:border-[#FF6B00] hover:text-[#FF6B00] text-gray-700 bg-white py-4 px-6 rounded-xl font-bold text-lg transition flex justify-center items-center gap-2 active:scale-95"><IconCalendar size={24} /> เพิ่มในปฏิทิน</button>
               </div>
             </div>
@@ -272,14 +302,24 @@ export const EventDetail = ({ onTriggerToast }) => {
             <div className="relative h-[450px] bg-gray-900 overflow-hidden cursor-pointer group" onClick={() => setIsLightboxOpen(true)}>
               <div className="absolute inset-0 bg-center bg-cover blur-xl opacity-50 transition-transform group-hover:scale-125" style={{ backgroundImage: `url(${event.image_url})` }}></div>
               <div className="absolute inset-0 flex items-center justify-center p-6"><SafeImage src={event.image_url} alt={event.title} className="w-full h-full object-contain rounded-lg shadow-lg z-10" /></div>
-              <div className="absolute top-4 left-4 z-20"><span className="inline-block px-2 py-1 rounded-lg bg-white/90 text-[#FF6B00] text-xs font-bold uppercase tracking-wider shadow-sm backdrop-blur-sm">{event.type}</span></div>
+              <div className="absolute top-4 left-4 z-20"><span className="inline-block px-2 py-1 rounded-lg bg-white/90 text-[#FF6B00] text-xs font-bold uppercase tracking-wider shadow-sm backdrop-blur-sm">{event.category}</span></div>
               <div className="absolute top-4 right-4 bg-black/60 text-white p-2.5 rounded-full backdrop-blur-md transition flex items-center justify-center border border-white/10 shadow-lg z-20"><IconMaximize size={20} /></div>
             </div>
             <div className="p-6 flex flex-col">
               <h1 className="text-2xl font-extrabold text-gray-900 leading-tight mb-4">{event.title}</h1>
               <div className="space-y-4">
-                <div className="flex items-start gap-3"><IconCalendar size={18} className="mt-1 text-[#FF6B00]" /><div><p className="text-gray-900 font-bold text-sm">{event.date_display}</p></div></div>
-                <div onClick={handleMapClick} className="flex items-start gap-3 cursor-pointer active:opacity-60 transition"><IconMapPin size={18} className="mt-1 text-blue-500" /><p className="text-gray-900 font-bold text-sm underline decoration-dotted underline-offset-4 decoration-gray-300">{event.location_name}</p></div>
+                
+                {/* 🔥 แก้ตรงนี้ของ Mobile ด้วย */}
+                <div className="flex items-start gap-3">
+                    <IconCalendar size={18} className="mt-1 text-[#FF6B00]" />
+                    <div>
+                        <p className="text-gray-900 font-bold text-sm">
+                            {event.date_display || formattedDate}
+                        </p>
+                    </div>
+                </div>
+
+                <div onClick={handleMapClick} className="flex items-start gap-3 cursor-pointer active:opacity-60 transition"><IconMapPin size={18} className="mt-1 text-blue-500" /><p className="text-gray-900 font-bold text-sm underline decoration-dotted underline-offset-4 decoration-gray-300">{event.location}</p></div>
                 <div className="flex items-start gap-3"><IconTicket size={18} className="mt-1 text-green-600"/><p className="text-gray-900 font-bold text-sm">{event.ticket_price || "Coming Soon"}</p></div>
               </div>
             </div>
@@ -303,14 +343,14 @@ export const EventDetail = ({ onTriggerToast }) => {
       
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 md:hidden z-50 flex items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] safe-area-bottom">
         <button onClick={addToCalendar} className="w-12 h-12 flex items-center justify-center rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 active:scale-95 transition"><IconCalendar size={24} /></button>
-        <a href={event.ticket_link || "#"} target={event.ticket_link ? "_blank" : "_self"} rel="noopener noreferrer" onClick={(e) => { if (!event.ticket_link) { e.preventDefault(); onTriggerToast("ยังไม่มีลิงก์จองบัตร"); } }} className="flex-1 bg-[#FF6B00] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center shadow-lg active:scale-95 transition">จองบัตรเลย</a>
+        <a href={event.link || "#"} target={event.link ? "_blank" : "_self"} rel="noopener noreferrer" onClick={(e) => { if (!event.link) { e.preventDefault(); onTriggerToast("ยังไม่มีลิงก์จองบัตร"); } }} className="flex-1 bg-[#FF6B00] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center shadow-lg active:scale-95 transition">จองบัตรเลย</a>
       </div>
     </>
   );
 };
 
 // ==========================================
-// 3. CAFE DETAIL
+// 3. CAFE DETAIL (ใช้เหมือนเดิมได้เลย)
 // ==========================================
 export const CafeDetail = ({ onTriggerToast }) => {
     const { id } = useParams();

@@ -42,18 +42,29 @@ export const HomePage = () => {
     const fetchData = async () => {
       setIsLoading(true);
       
+      // 1. ดึงข่าว
       const { data: news } = await supabase.from("news").select("*").limit(10).order("id", { ascending: false });
       if (news) setNewsList(news);
 
-      const today = new Date().toISOString(); // เอาเวลาปัจจุบัน
+      // 2. ดึงอีเวนต์
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      
       const { data: events } = await supabase
         .from("events")
         .select("*")
-        .gte("start_date", today) // 🔥 เพิ่มบรรทัดนี้: start_date >= today
-        .limit(20)
-        .order("start_date", { ascending: true });
-      if (events) setEventList(events);
+        // 🔥 LOGIC สำคัญ: 
+        // "ขอดูงานที่วันจบยังมาไม่ถึง (end_date >= today)" 
+        // หรือ "ถ้าไม่มีวันจบ ให้ดูวันเริ่มแทน (date >= today)"
+        .or(`end_date.gte.${today},and(end_date.is.null,date.gte.${today})`)
+        .order("date", { ascending: true }) // เรียงตามวันเริ่มเหมือนเดิม
+        .limit(20);
 
+      if (events) {
+          setEventList(events);
+          setFilteredHomeEvents(events);
+      }
+
+      // 3. ดึงคาเฟ่
       const { data: cafes } = await supabase.from("cafes").select("*").limit(8);
       if (cafes) setCafeList(cafes);
 
@@ -62,7 +73,7 @@ export const HomePage = () => {
     fetchData();
   }, []);
 
-  // 🔥 LOGIC: Scroll to ID (รอโหลดเสร็จค่อยเลื่อน)
+  // Scroll to ID
   useEffect(() => {
     if (!isLoading && location.hash) {
       const id = location.hash.replace("#", "");
@@ -78,14 +89,17 @@ export const HomePage = () => {
   // Filter Logic
   useEffect(() => {
     let result = [...eventList];
+    
+    // กรองประเภท (✅ ใช้ category)
     if (eventFilter !== "ทั้งหมด") {
-      result = result.filter((event) => event.type === eventFilter);
+      result = result.filter((event) => event.category === eventFilter); 
     }
+
     const now = new Date();
     if (timeframeFilter !== "all") {
       result = result.filter((e) => {
-        if (!e.start_date) return false;
-        const eventDate = new Date(e.start_date);
+        if (!e.date) return false; // ✅ ใช้ date
+        const eventDate = new Date(e.date);
         if (timeframeFilter === "this_month") {
           return eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear();
         } else if (timeframeFilter === "next_month") {
@@ -97,10 +111,12 @@ export const HomePage = () => {
         return true;
       });
     }
+
+    // Sort Logic
     if (eventSort === "newest") {
       result.sort((a, b) => b.id - a.id);
     } else {
-      result.sort((a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0));
+      result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)); // ✅ ใช้ date
     }
     setFilteredHomeEvents(result);
   }, [eventFilter, eventSort, timeframeFilter, eventList]);
@@ -200,6 +216,7 @@ export const HomePage = () => {
   );
 };
 
+
 // ==========================================
 // 2. SEARCH PAGE
 // ==========================================
@@ -221,11 +238,14 @@ export const SearchPage = () => {
     const fetchSearch = async () => {
         if (!term) { setResultsNews([]); setResultsEvents([]); setResultsCafes([]); return; }
         setIsLoading(true);
+        // Search Logic
         const { data: news } = await supabase.from('news').select('*').or(`title.ilike.%${term}%,tags.ilike.%${term}%`).limit(10);
         if (news) setResultsNews(news);
         
-        const { data: events } = await supabase.from('events').select('*').or(`title.ilike.%${term}%,location_name.ilike.%${term}%,tags.ilike.%${term}%`).limit(10);
+        // ✅ แก้ location_name เป็น location
+        const { data: events } = await supabase.from('events').select('*').or(`title.ilike.%${term}%,location.ilike.%${term}%,tags.ilike.%${term}%`).limit(10);
         if (events) setResultsEvents(events);
+
         const { data: cafes } = await supabase.from('cafes').select('*').or(`name.ilike.%${term}%,location_text.ilike.%${term}%`).limit(10);
         if (cafes) setResultsCafes(cafes);
         setIsLoading(false);
@@ -245,7 +265,6 @@ export const SearchPage = () => {
   return (
     <div className="max-w-6xl mx-auto px-4 pb-16">
         <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center">
-            {/* Search ใช้ navigate(-1) */}
             <button onClick={() => navigate(-1)}><IconChevronLeft size={24}/></button>
             <div><h1 className="text-2xl font-bold text-gray-900">{term ? `ผลการค้นหา: "${term}"` : 'ค้นหา'}</h1>{term && !isLoading && <p className="text-gray-500 text-sm">พบทั้งหมด {totalResults} รายการ</p>}</div>
         </div>
@@ -267,232 +286,111 @@ export const SearchPage = () => {
   );
 };
 
-// ==========================================
-// 3. SEE ALL PAGES (แก้ปุ่มย้อนกลับให้บังคับไปหา Section)
-// ==========================================
 
 // ==========================================
-// NEWS PAGE (With Tabs, Responsive Grid & Pagination)
+// 3. SEE ALL PAGES
 // ==========================================
 
+// ... (NewsPage ใช้เหมือนเดิมได้) ...
 export const NewsPage = () => {
   const navigate = useNavigate();
-  
-  // Data State
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Filter State
   const [categoryFilter, setCategoryFilter] = useState("ทั้งหมด");
   const [filteredNews, setFilteredNews] = useState([]);
-
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12; // โชว์หน้าละ 12 ชิ้น (หาร 2, 3, 4 ลงตัว สวยทุกจอ)
+  const itemsPerPage = 12;
 
-  // 1. Fetch Data
   useEffect(() => { 
-      supabase
-        .from('news')
-        .select('*')
-        .order('id', { ascending: false })
-        .then(({ data }) => { 
+      supabase.from('news').select('*').order('id', { ascending: false }).then(({ data }) => { 
             const newsData = data || [];
-            setNews(newsData); 
-            setFilteredNews(newsData); 
-            setLoading(false); 
+            setNews(newsData); setFilteredNews(newsData); setLoading(false); 
         }); 
   }, []);
 
-  // 2. Filtering Logic
   useEffect(() => {
     let result = news;
     if (categoryFilter !== "ทั้งหมด") {
-        result = news.filter((item) => 
-            item.category?.toLowerCase().trim() === categoryFilter.toLowerCase().trim()
-        );
+        result = news.filter((item) => item.category?.toLowerCase().trim() === categoryFilter.toLowerCase().trim());
     }
     setFilteredNews(result);
-    setCurrentPage(1); // รีเซ็ตกลับไปหน้า 1 เสมอเมื่อเปลี่ยนหมวดหมู่
+    setCurrentPage(1);
   }, [categoryFilter, news]);
 
-  // 3. Pagination Logic
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredNews.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredNews.length / itemsPerPage);
-
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-    // เลื่อนขึ้นไปบนสุดของรายการข่าว (ไม่ใช่บนสุดของเว็บ) แบบนุ่มนวล
-    document.getElementById('news-grid-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  const handlePageChange = (pageNumber) => { setCurrentPage(pageNumber); document.getElementById('news-grid-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-20">
-      {/* Header & Back Button */}
       <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center" id="news-grid-anchor">
           <button onClick={() => navigate('/#news-section')}><IconChevronLeft size={24}/></button>
-          <div>
-              <h1 className="text-2xl font-bold text-gray-900">ข่าวสารทั้งหมด</h1>
-              {!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {filteredNews.length} รายการ</p>}
-          </div>
+          <div><h1 className="text-2xl font-bold text-gray-900">ข่าวสารทั้งหมด</h1>{!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {filteredNews.length} รายการ</p>}</div>
       </div>
-
-      {/* Category Tabs */}
       <div className="flex flex-wrap gap-2 mb-8">
-          {["ทั้งหมด", "K-pop", "T-pop"].map((filter) => (
-            <button 
-                key={filter} 
-                onClick={() => setCategoryFilter(filter)} 
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
-                    categoryFilter === filter 
-                    ? "bg-[#FF6B00] text-white" 
-                    : "bg-white border text-gray-600 hover:bg-gray-50"
-                }`}
-            >
-                {filter}
-            </button>
-          ))}
+          {["ทั้งหมด", "K-pop", "T-pop"].map((filter) => (<button key={filter} onClick={() => setCategoryFilter(filter)} className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${categoryFilter === filter ? "bg-[#FF6B00] text-white" : "bg-white border text-gray-600 hover:bg-gray-50"}`}>{filter}</button>))}
       </div>
-
-      {/* Grid Display */}
-      {loading ? (
-          // Skeleton: ปรับ Grid ให้ตรงกับของจริง (2 -> 3 -> 4 columns)
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {[...Array(8)].map((_, i) => <SkeletonNews key={i} />)}
-          </div>
-      ) : (
+      {loading ? ( <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">{[...Array(8)].map((_, i) => <SkeletonNews key={i} />)}</div> ) : (
           <>
-            {/* Real Content */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in min-h-[500px] content-start">
-                {currentItems.length > 0 ? (
-                    currentItems.map((item) => (
-                        <NewsCard key={item.id} item={item} onClick={() => navigate(`/news/${item.id}`)} />
-                    ))
-                ) : (
-                    <div className="col-span-full text-center py-16 text-gray-400">
-                        ไม่พบข่าวสารในหมวดหมู่นี้
-                    </div>
-                )}
+                {currentItems.length > 0 ? (currentItems.map((item) => (<NewsCard key={item.id} item={item} onClick={() => navigate(`/news/${item.id}`)} />))) : (<div className="col-span-full text-center py-16 text-gray-400">ไม่พบข่าวสารในหมวดหมู่นี้</div>)}
             </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-                <div className="flex justify-center items-center mt-12 gap-2">
-                    {/* ปุ่มย้อนกลับ */}
-                    <button 
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                        className={`w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 transition ${
-                            currentPage === 1 ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-50 hover:text-[#FF6B00]"
-                        }`}
-                    >
-                        <IconChevronLeft size={20} />
-                    </button>
-
-                    {/* เลขหน้า */}
-                    {[...Array(totalPages)].map((_, index) => {
-                        const page = index + 1;
-                        // Logic ซ่อนเลขหน้าถ้ายาวเกินไป (แสดงหน้าแรก, หน้าสุดท้าย, และหน้ารอบๆ ปัจจุบัน)
-                        if (
-                            page === 1 || 
-                            page === totalPages || 
-                            (page >= currentPage - 1 && page <= currentPage + 1)
-                        ) {
-                            return (
-                                <button
-                                    key={page}
-                                    onClick={() => handlePageChange(page)}
-                                    className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-bold transition ${
-                                        currentPage === page
-                                            ? "bg-[#FF6B00] text-white shadow-md"
-                                            : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
-                                    }`}
-                                >
-                                    {page}
-                                </button>
-                            );
-                        } else if (
-                            page === currentPage - 2 || 
-                            page === currentPage + 2
-                        ) {
-                            return <span key={page} className="text-gray-400">...</span>;
-                        }
-                        return null;
-                    })}
-
-                    {/* ปุ่มถัดไป */}
-                    <button 
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                        className={`w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 transition ${
-                            currentPage === totalPages ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-50 hover:text-[#FF6B00]"
-                        }`}
-                    >
-                        <div className="rotate-180"><IconChevronLeft size={20} /></div>
-                    </button>
-                </div>
-            )}
+            {totalPages > 1 && (<div className="flex justify-center items-center mt-12 gap-2"><button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className={`w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 transition ${currentPage === 1 ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-50 hover:text-[#FF6B00]"}`}><IconChevronLeft size={20} /></button>{[...Array(totalPages)].map((_, index) => { const page = index + 1; if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) { return (<button key={page} onClick={() => handlePageChange(page)} className={`w-10 h-10 flex items-center justify-center rounded-full text-sm font-bold transition ${currentPage === page ? "bg-[#FF6B00] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"}`}>{page}</button>); } else if (page === currentPage - 2 || page === currentPage + 2) { return <span key={page} className="text-gray-400">...</span>; } return null; })}<button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className={`w-10 h-10 flex items-center justify-center rounded-full border border-gray-200 transition ${currentPage === totalPages ? "text-gray-300 cursor-not-allowed" : "text-gray-600 hover:bg-gray-50 hover:text-[#FF6B00]"}`}><div className="rotate-180"><IconChevronLeft size={20} /></div></button></div>)}
           </>
       )}
     </div>
   );
 };
 
+// 🔥🔥🔥 EVENTS PAGE (แก้จุดที่ผิดแล้ว) 🔥🔥🔥
 export const EventsPage = () => {
   const navigate = useNavigate();
-  
-  // Data State
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Filter States
   const [categoryFilter, setCategoryFilter] = useState("ทั้งหมด");
   const [timeframeFilter, setTimeframeFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("upcoming");
-  
-  // Filtered Result State
   const [filteredEvents, setFilteredEvents] = useState([]);
 
-  // 1. Fetch Data (ดึงงานที่ยังไม่หมดอายุมาทั้งหมดก่อน)
+  // 1. Fetch Data
   useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-    const todayISO = today.toISOString();
+    // ใช้ string split เพื่อให้ได้วันที่ YYYY-MM-DD แบบไม่เพี้ยนเรื่อง Timezone
+    const today = new Date().toISOString().split('T')[0]; 
 
     const fetchEvents = async () => {
         setLoading(true);
+        // ✅ แก้ start_date -> date ให้ตรงกับ Database ใหม่
         const { data } = await supabase
             .from('events')
             .select('*')
-            .gte("start_date", todayISO)
-            .order('start_date', { ascending: true });
+            .gte("date", today) 
+            .order('date', { ascending: true });
             
         if (data) {
             setEvents(data);
-            setFilteredEvents(data); // เริ่มต้นโชว์ทั้งหมด
+            setFilteredEvents(data);
         }
         setLoading(false);
     }
     fetchEvents();
   }, []);
 
-  // 2. Filtering Logic (ทำงานเมื่อมีการเปลี่ยน Filter)
+  // 2. Filtering Logic
   useEffect(() => {
     let result = [...events];
 
-    // 2.1 กรองตามหมวดหมู่ (Category)
+    // ✅ แก้ event.type -> event.category (เพราะ DB ใหม่ใช้ category)
     if (categoryFilter !== "ทั้งหมด") {
-        result = result.filter((event) => event.type === categoryFilter);
+        result = result.filter((event) => event.category === categoryFilter);
     }
 
-    // 2.2 กรองตามเวลา (Timeframe)
     const now = new Date();
     if (timeframeFilter !== "all") {
         result = result.filter((e) => {
-            if (!e.start_date) return false;
-            const eventDate = new Date(e.start_date);
+            if (!e.date) return false; // ✅ ใช้ date
+            const eventDate = new Date(e.date);
             
             if (timeframeFilter === "this_month") {
                 return eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear();
@@ -506,13 +404,11 @@ export const EventsPage = () => {
         });
     }
 
-    // 2.3 เรียงลำดับ (Sort)
     if (sortOrder === "newest") {
-        // เรียงตาม ID (สมมติ ID มาก = ประกาศล่าสุด)
         result.sort((a, b) => b.id - a.id);
     } else {
-        // เรียงตามวันที่จัดงาน (ใกล้วันงานขึ้นก่อน)
-        result.sort((a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0));
+        // ✅ ใช้ date
+        result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
     }
 
     setFilteredEvents(result);
@@ -520,81 +416,26 @@ export const EventsPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-20">
-       {/* Header & Back Button */}
        <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center">
             <button onClick={() => navigate('/#events-section')}><IconChevronLeft size={24}/></button>
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">กิจกรรมทั้งหมด</h1>
-                {!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {filteredEvents.length} รายการ</p>}
-            </div>
+            <div><h1 className="text-2xl font-bold text-gray-900">กิจกรรมทั้งหมด</h1>{!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {filteredEvents.length} รายการ</p>}</div>
       </div>
 
-      {/* 🔥 Filter Controls Section */}
       <div className="flex flex-col mb-8 gap-4">
-        {/* Dropdowns (ขวาบน) */}
         <div className="flex justify-end gap-3">
-            <select
-                className="pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] cursor-pointer"
-                value={timeframeFilter}
-                onChange={(e) => setTimeframeFilter(e.target.value)}
-            >
-                <option value="all">ทุกช่วงเวลา</option>
-                <option value="this_month">เดือนนี้</option>
-                <option value="next_month">เดือนหน้า</option>
-            </select>
-            <div className="relative">
-                <select
-                    className="w-full pl-8 pr-8 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer"
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value)}
-                >
-                    <option value="upcoming">ใกล้วันงาน</option>
-                    <option value="newest">ประกาศล่าสุด</option>
-                </select>
-                <div className="absolute left-2.5 top-2.5 text-gray-400 pointer-events-none">
-                    <IconSort size={14} />
-                </div>
-            </div>
+            <select className="pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] cursor-pointer" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value)}><option value="all">ทุกช่วงเวลา</option><option value="this_month">เดือนนี้</option><option value="next_month">เดือนหน้า</option></select>
+            <div className="relative"><select className="w-full pl-8 pr-8 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}><option value="upcoming">ใกล้วันงาน</option><option value="newest">ประกาศล่าสุด</option></select><div className="absolute left-2.5 top-2.5 text-gray-400 pointer-events-none"><IconSort size={14} /></div></div>
         </div>
-
-        {/* Category Tabs (เลื่อนซ้ายขวาได้) */}
         <div className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
             {["ทั้งหมด", "Concert", "Fan Meeting", "Fansign", "Workshop", "Exhibition", "Fan Event", "Others"].map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setCategoryFilter(filter)}
-                className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition flex-shrink-0 ${
-                  categoryFilter === filter
-                    ? "bg-[#FF6B00] text-white"
-                    : "bg-white border text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                {filter}
-              </button>
+              <button key={filter} onClick={() => setCategoryFilter(filter)} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition flex-shrink-0 ${categoryFilter === filter ? "bg-[#FF6B00] text-white" : "bg-white border text-gray-600 hover:bg-gray-50"}`}>{filter}</button>
             ))}
         </div>
       </div>
 
-      {/* Grid Display */}
-      {loading ? (
-           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {[...Array(8)].map((_, i) => <SkeletonEvent key={i} />)}
-           </div>
-      ) : (
+      {loading ? ( <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">{[...Array(8)].map((_, i) => <SkeletonEvent key={i} />)}</div> ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in">
-              {filteredEvents.length > 0 ? (
-                  filteredEvents.map((item) => (
-                      <EventCard key={item.id} item={item} onClick={() => navigate(`/event/${item.id}`)} />
-                  ))
-              ) : (
-                  <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-2xl">🔍</div>
-                      <p className="font-medium">ไม่พบกิจกรรมในหมวดหมู่นี้</p>
-                      <button onClick={() => { setCategoryFilter("ทั้งหมด"); setTimeframeFilter("all"); }} className="mt-4 text-[#FF6B00] text-sm font-bold hover:underline">
-                          ล้างตัวกรอง
-                      </button>
-                  </div>
-              )}
+              {filteredEvents.length > 0 ? (filteredEvents.map((item) => (<EventCard key={item.id} item={item} onClick={() => navigate(`/event/${item.id}`)} />))) : (<div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400"><div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-2xl">🔍</div><p className="font-medium">ไม่พบกิจกรรมในหมวดหมู่นี้</p><button onClick={() => { setCategoryFilter("ทั้งหมด"); setTimeframeFilter("all"); }} className="mt-4 text-[#FF6B00] text-sm font-bold hover:underline">ล้างตัวกรอง</button></div>)}
           </div>
       )}
     </div>
@@ -608,7 +449,6 @@ export const CafesPage = () => {
   useEffect(() => { supabase.from('cafes').select('*').order('id', { ascending: false }).then(({ data }) => { setCafes(data || []); setLoading(false); }); }, []);
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 pb-20">
-      {/* 🔥 แก้ตรงนี้: ย้อนกลับไปหา #cafes-section */}
       <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center"><button onClick={() => navigate('/#cafes-section')}><IconChevronLeft size={24}/></button><div><h1 className="text-2xl font-bold text-gray-900">รวมคาเฟ่จัดงาน</h1>{!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {cafes.length} รายการ</p>}</div></div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">{cafes.map((item) => <CafeCard key={item.id} item={item} onClick={() => navigate(`/cafe/${item.id}`)} />)}</div>
     </div>

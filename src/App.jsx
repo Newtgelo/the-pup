@@ -12,18 +12,23 @@ import ScrollToTop from './components/ScrollToTop';
 // Import Views (Detail Pages)
 import { NewsDetail, EventDetail, CafeDetail } from './components/PageViews';
 
+// --- Zone Admin Imports ---
+import { AdminLogin } from './pages/AdminLogin';
+import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminCreateNews } from './pages/AdminCreateNews';
-import { AdminEditNews } from './pages/AdminEditNews'; // นำเข้าไฟล์ใหม่
-import { AdminDashboard } from './pages/AdminDashboard'; // นำเข้าไฟล์ใหม่
-import { AdminLogin } from './pages/AdminLogin'; // เพิ่มบรรทัดบนสุด
+import { AdminEditNews } from './pages/AdminEditNews';
 
-// Import Main Pages (รวมหน้า See All ด้วย)
+import { AdminEventDashboard } from './pages/AdminEventDashboard';
+import { AdminCreateEvent } from './pages/AdminCreateEvent';
+import { AdminEditEvent } from './pages/AdminEditEvent';
+
+// ✅ Import Main Pages (รวม HomePage ตัวเก่าที่อยู่ในนี้)
 import { 
-  HomePage, 
+  HomePage, // ✅ ใช้ตัวเดิม
   SearchPage,
-  NewsPage,     // ✅ เพิ่ม NewsPage
-  EventsPage,   // ✅ เพิ่ม EventsPage
-  CafesPage     // ✅ เพิ่ม CafesPage
+  NewsPage,     
+  EventsPage,   
+  CafesPage     
 } from './components/MainPages';
 
 export default function App() {
@@ -125,42 +130,40 @@ export default function App() {
                 )}
              </div>
           </div>
-
         </div>
       </nav>
 
-      {/* HEADER (Show only on Home) - ซ่อนไว้ถ้าอยากให้หน้า Home คลีนๆ หรือเปิดไว้ก็ได้ครับ */}
-      {/* {location.pathname === '/' && (<div className="text-center py-12 bg-white mb-8 border-b border-gray-100"><h1 className="text-4xl font-bold text-[#FF6B00] mb-2">The Popup Plan</h1><p className="text-gray-500">Minimalist K-Pop Hub & Event Planner</p></div>)} */}
-
-      {/* --- ROUTES --- */}
+      {/* ROUTES */}
       <Routes>
+        {/* ✅ กลับมาใช้ HomePage ตัวเดิม (ที่มีข้อมูลจริงแล้ว) */}
         <Route path="/" element={<HomePage />} />
+        
         <Route path="/search" element={<SearchPage />} />
 
-        {/* ✅ เพิ่ม Route สำหรับหน้า "ดูทั้งหมด" ตรงนี้ครับ */}
         <Route path="/news" element={<NewsPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/cafes" element={<CafesPage />} />
 
-        {/* Detail Pages */}
         <Route path="/news/:id" element={<NewsDetail onTriggerToast={triggerToast} />} />
         <Route path="/event/:id" element={<EventDetail onTriggerToast={triggerToast} />} />
         <Route path="/cafe/:id" element={<CafeDetail onTriggerToast={triggerToast} />} />
         
+        {/* 🔐 Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/create-news" element={<AdminCreateNews />} />
+        <Route path="/admin/edit-news/:id" element={<AdminEditNews />} />
 
-        <Route path="/admin/create-news" element={<AdminCreateNews />} /> // ✅ เพิ่ม Route สำหรับสร้างข่าวใหม่
-
-        <Route path="/admin/edit-news/:id" element={<AdminEditNews />} /> // ✅ เพิ่ม Route สำหรับแก้ไขข่าว
-
+        <Route path="/admin/events" element={<AdminEventDashboard />} />
+        <Route path="/admin/create-event" element={<AdminCreateEvent />} />
+        <Route path="/admin/edit-event/:id" element={<AdminEditEvent />} />
         
-        {/* Not Found */}
         <Route path="*" element={<NotFound onBack={() => navigate('/')} />} />
       </Routes>
 
       <Toast message={toast.message} show={toast.show} onClose={closeToast} />
 
+      {/* FOOTER */}
       <footer className="bg-[#0F172A] text-white mt-20 pt-12 pb-28 md:py-12">
          <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-start gap-8">
             <div><div className="flex items-center gap-3 mb-4"><div className="w-8 h-8 rounded-full bg-white/20"></div><span className="font-bold text-lg">The Popup Plan</span></div><p className="text-gray-400 text-sm">Minimalist K-Pop Hub & Event Planner</p></div>

@@ -41,82 +41,97 @@ export const NewsCard = ({ item, onClick, className = "" }) => (
 );
 
 // ==========================================
-// 2. การ์ดอีเวนต์ (Event Card) 
+// 2. การ์ดอีเวนต์ (Event Card)
 // 🔥 แก้ไข: รองรับ date_display และ location_name จาก Supabase
 // ==========================================
+
 export const EventCard = ({
   item,
   onClick,
   showNewBadge = false,
   className = "",
-}) => (
-  <div
-    onClick={onClick}
-    className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition flex flex-col h-full cursor-pointer group/event ${className}`}
-  >
-    {/* Image Container (Cinematic Look) */}
-    <div className="relative aspect-[3/4] bg-gray-900 overflow-hidden">
-      {/* Layer 1: ฉากหลังเบลอ */}
-      <div
-        className="absolute inset-0 bg-center bg-cover blur-xl opacity-50 scale-110 transition-transform duration-500 group-hover/event:scale-125"
-        style={{ backgroundImage: `url(${item.image_url || item.image})` }}
-      ></div>
+}) => {
+  // 🔥 ฟังก์ชันแปลงวันที่ให้เป็นไทย (เพิ่มมาใหม่ แต่ไม่กระทบ UI)
+  const formatDate = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleDateString("th-TH", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
-      {/* Layer 2: รูปหลัก */}
-      <SafeImage
-        src={item.image_url || item.image || item.cover}
-        alt={item.title}
-        className="absolute inset-0 w-full h-full object-contain z-10 p-2 transition-transform duration-500 group-hover/event:scale-110"
-      />
+  return (
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition flex flex-col h-full cursor-pointer group/event ${className}`}
+    >
+      {/* Image Container (Cinematic Look) - คงเดิม 100% */}
+      <div className="relative aspect-[3/4] bg-gray-900 overflow-hidden">
+        {/* Layer 1: ฉากหลังเบลอ */}
+        <div
+          className="absolute inset-0 bg-center bg-cover blur-xl opacity-50 scale-110 transition-transform duration-500 group-hover/event:scale-125"
+          style={{ backgroundImage: `url(${item.image_url || item.image})` }}
+        ></div>
 
-      {/* New Badge */}
-      {showNewBadge && (
-        <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm z-20">
-          NEW
-        </div>
-      )}
-    </div>
+        {/* Layer 2: รูปหลัก */}
+        <SafeImage
+          src={item.image_url || item.image || item.cover}
+          alt={item.title}
+          className="absolute inset-0 w-full h-full object-contain z-10 p-2 transition-transform duration-500 group-hover/event:scale-110"
+        />
 
-    {/* Content Section */}
-    <div className="p-3 md:p-4 flex-1 flex flex-col">
-      <h3 className="font-bold text-sm md:text-base text-gray-900 mb-1 leading-tight group-hover/event:text-[#FF6B00] transition line-clamp-2">
-        {item.title}
-      </h3>
-      
-      <div className="space-y-1 md:space-y-2 mt-2 text-xs md:text-sm text-gray-600 flex-1">
-        
-        {/* 📅 วันที่ (แก้แล้ว: ใช้ date_display เป็นหลัก) */}
-        <div className="flex items-start gap-1.5 text-[#E11D48] font-semibold">
-          <IconCalendar
-            size={12}
-            className="mt-0.5 flex-shrink-0 md:w-[14px] md:h-[14px]"
-          />
-          <div>
-              <span>{item.date_display || item.date || "ไม่ระบุวันที่"}</span>
+        {/* New Badge */}
+        {showNewBadge && (
+          <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm z-20">
+            NEW
           </div>
+        )}
+      </div>
+
+      {/* Content Section */}
+      <div className="p-3 md:p-4 flex-1 flex flex-col">
+        <h3 className="font-bold text-sm md:text-base text-gray-900 mb-1 leading-tight group-hover/event:text-[#FF6B00] transition line-clamp-2">
+          {item.title}
+        </h3>
+
+        <div className="space-y-1 md:space-y-2 mt-2 text-xs md:text-sm text-gray-600 flex-1">
+          {/* 📅 วันที่ (แก้ logic ให้ใช้วันที่ไทย) */}
+          <div className="flex items-start gap-1.5 text-[#E11D48] font-semibold">
+            <IconCalendar
+              size={12}
+              className="mt-0.5 flex-shrink-0 md:w-[14px] md:h-[14px]"
+            />
+            {/* ถ้ามี date_display ให้โชว์อันนั้นก่อน ถ้าไม่มีค่อยไปใช้ formatDate */}
+            <span>
+              {item.date_display || formatDate(item.date) || "ไม่ระบุวันที่"}
+            </span>
+          </div>
+
+          {/* 📍 สถานที่ (แก้ logic ให้ดึง item.location ด้วย) */}
+          <p className="flex items-start gap-1.5 line-clamp-1">
+            <IconMapPin
+              size={12}
+              className="mt-0.5 flex-shrink-0 md:w-[14px] md:h-[14px]"
+            />{" "}
+            {/* 🔥 ดึง location (ชื่อใหม่) ก่อน location_name */}
+            {item.location || item.location_name || "ไม่ระบุสถานที่"}
+          </p>
         </div>
 
-        {/* 📍 สถานที่ (แก้แล้ว: ใช้ location_name เป็นหลัก) */}
-        <p className="flex items-start gap-1.5 line-clamp-1">
-          <IconMapPin
-            size={12}
-            className="mt-0.5 flex-shrink-0 md:w-[14px] md:h-[14px]"
-          />{" "}
-          {item.location_name || item.location || "ไม่ระบุสถานที่"}
-        </p>
-
-      </div>
-
-      <div className="mt-3 pt-2 border-t">
-        <span
-          className={`text-[10px] px-2 py-1 rounded-full font-medium bg-gray-100 text-gray-600`}
-        >
-          {item.type || "Event"}
-        </span>
+        <div className="mt-3 pt-2 border-t">
+          <span
+            className={`text-[10px] px-2 py-1 rounded-full font-medium bg-gray-100 text-gray-600`}
+          >
+            {/* 🔥 ดึง category (ชื่อใหม่) ก่อน type */}
+            {item.category || item.type || "Event"}
+          </span>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ==========================================
 // 3. การ์ดคาเฟ่ (Cafe Card)
@@ -146,7 +161,8 @@ export const CafeCard = ({ item, onClick, className = "" }) => (
       </p>
       <div className="mt-2 md:mt-4 flex items-center gap-1 text-[10px] md:text-xs text-gray-400">
         {/* รองรับ location_text ด้วย */}
-        <IconMapPin size={12} /> {(item.location_text || item.location || "").split(",")[0]}
+        <IconMapPin size={12} />{" "}
+        {(item.location_text || item.location || "").split(",")[0]}
       </div>
     </div>
   </div>
