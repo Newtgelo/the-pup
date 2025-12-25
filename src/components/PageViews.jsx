@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
+//import ReactMarkdown from "react-markdown";
+
+import parse, { domToReact } from "html-react-parser"; // 🔥 ใช้ parse() แปลง HTML
 
 // 🔥 Import Supabase
 import { supabase } from "../supabase";
@@ -15,20 +17,21 @@ import {
 // Import UI Components
 import { SafeImage, NotFound } from "./ui/UIComponents";
 
+
 // ==========================================
-// 1. NEWS DETAIL
+// 1. NEWS DETAIL (Final: Fix Image Size & Video)
 // ==========================================
+
 export const NewsDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // State
   const [news, setNews] = useState(null);
   const [loading, setLoading] = useState(true);
   const [otherNews, setOtherNews] = useState([]);
 
-  // ✅ Logic ย้อนกลับ: ถ้ามาจาก Home ให้ไปหา Section, ถ้าไม่ ให้ถอยหลัง
+  // Logic ย้อนกลับ
   const goBack = () => {
     if (location.state?.fromHome) {
       navigate('/#news-section');
@@ -70,11 +73,13 @@ export const NewsDetail = ({ onTriggerToast }) => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8 relative animate-fade-in">
+        {/* Header Desktop */}
         <div className="hidden md:flex justify-between items-center mb-6">
           <button onClick={goBack} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
             <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition"><IconChevronLeft size={24} /></div>
             <span className="font-bold text-gray-900 group-hover:text-[#FF6B00]">ย้อนกลับ</span>
           </button>
+          
           <button onClick={handleShare} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#FF6B00] transition shadow-sm"><IconShare size={20} /></button>
         </div>
 
@@ -85,17 +90,71 @@ export const NewsDetail = ({ onTriggerToast }) => {
           </div>
           <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight mb-4">{news.title}</h1>
         </div>
-        <div className="rounded-2xl overflow-hidden mb-10 shadow-lg aspect-video bg-gray-100 relative group">
-          <SafeImage src={news.image_url} alt={news.title} className="w-full h-full object-cover" />
-        </div>
-        <div className="max-w-3xl mx-auto mb-10 text-lg text-gray-700 leading-relaxed font-serif">
-          <ReactMarkdown components={{
-              h2: ({node, ...props}) => <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4 border-l-4 border-[#FF6B00] pl-4" {...props} />,
-              p: ({node, ...props}) => <p className="mb-6 leading-loose" {...props} />,
-              img: ({node, ...props}) => <div className="my-8"><img className="w-full rounded-xl shadow-md" {...props} /><p className="text-center text-sm text-gray-500 mt-2 italic">{props.title}</p></div>,
-              ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-6 space-y-2" {...props} />,
-              li: ({node, ...props}) => <li className="" {...props} />,
-            }}>{news.content || ""}</ReactMarkdown>
+        
+        {/* รูปปก (อันนี้ให้เต็มจอเหมือนเดิม สวยแล้ว) */}
+        {news.image_url && (
+            <div className="rounded-2xl overflow-hidden mb-10 shadow-lg aspect-video bg-gray-100 relative group">
+                <SafeImage src={news.image_url} alt={news.title} className="w-full h-full object-cover" />
+            </div>
+        )}
+        
+        {/* 🔥 ส่วนเนื้อหาข่าว (ปรับ CSS รูปภาพ) */}
+        <div className="max-w-3xl mx-auto mb-10 text-lg text-gray-700 leading-relaxed font-serif 
+            prose prose-lg prose-orange max-w-none 
+            [&>p]:mb-6 
+            [&>h1]:text-3xl [&>h1]:font-bold [&>h1]:mb-4 
+            [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:mt-8 [&>h2]:mb-4 [&>h2]:border-l-4 [&>h2]:border-[#FF6B00] [&>h2]:pl-4
+            [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:mb-6 
+            [&>ol]:list-decimal [&>ol]:pl-6
+            [&>blockquote]:border-l-4 [&>blockquote]:border-gray-300 [&>blockquote]:pl-4 [&>blockquote]:italic [&>blockquote]:text-gray-500
+            
+            /* 👇 ส่วน Video */
+            [&_iframe]:w-full [&_iframe]:aspect-video [&_iframe]:rounded-xl [&_iframe]:shadow-md [&_iframe]:my-8
+
+            /* 👇 แก้ไขตรงนี้ (เปลี่ยน > เป็น _ และเติม ! เพื่อบังคับ) */
+            [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-8 
+            [&_img]:!w-auto [&_img]:!max-w-full [&_img]:!max-h-[500px] [&_img]:mx-auto [&_img]:object-contain">
+            
+          {parse(news.content || "", {
+            replace: (domNode) => {
+              // 1. Iframe Converter
+              if (domNode.name === 'iframe' && domNode.attribs) {
+                 return (
+                    <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
+                        <iframe {...domNode.attribs} className="w-full h-full" allowFullScreen></iframe>
+                    </div>
+                 );
+              }
+              // 2. Link to Video Converter & Target Blank
+              if (domNode.name === 'a' && domNode.attribs && domNode.attribs.href) {
+                const href = domNode.attribs.href;
+                if (href.includes("youtube.com/embed") || href.includes("youtu.be") || href.includes("youtube.com/watch")) {
+                    let videoId = "";
+                    if (href.includes("/embed/")) videoId = href.split("/embed/")[1]?.split("?")[0];
+                    else if (href.includes("v=")) videoId = href.split("v=")[1]?.split("&")[0];
+                    
+                    if (videoId) {
+                        return (
+                            <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
+                                <iframe 
+                                    src={`https://www.youtube.com/embed/${videoId}`}
+                                    className="w-full h-full"
+                                    allowFullScreen
+                                    frameBorder="0"
+                                ></iframe>
+                            </div>
+                        );
+                    }
+                }
+                return (
+                  <a {...domNode.attribs} target="_blank" rel="noopener noreferrer" className="text-[#FF6B00] hover:underline break-words font-bold">
+                    {domToReact(domNode.children)}
+                  </a>
+                );
+              }
+            }
+          })}
+          
         </div>
         
         {news.tags && (

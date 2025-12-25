@@ -12,6 +12,10 @@ import ScrollToTop from './components/ScrollToTop';
 // Import Views (Detail Pages)
 import { NewsDetail, EventDetail, CafeDetail } from './components/PageViews';
 
+import { AdminCreateNews } from './pages/AdminCreateNews';
+import { AdminEditNews } from './pages/AdminEditNews'; // นำเข้าไฟล์ใหม่
+import { AdminDashboard } from './pages/AdminDashboard'; // นำเข้าไฟล์ใหม่
+
 // Import Main Pages (รวมหน้า See All ด้วย)
 import { 
   HomePage, 
@@ -141,6 +145,12 @@ export default function App() {
         <Route path="/news/:id" element={<NewsDetail onTriggerToast={triggerToast} />} />
         <Route path="/event/:id" element={<EventDetail onTriggerToast={triggerToast} />} />
         <Route path="/cafe/:id" element={<CafeDetail onTriggerToast={triggerToast} />} />
+
+        <Route path="/admin/create-news" element={<AdminCreateNews />} /> // ✅ เพิ่ม Route สำหรับสร้างข่าวใหม่
+
+        <Route path="/admin/edit-news/:id" element={<AdminEditNews />} /> // ✅ เพิ่ม Route สำหรับแก้ไขข่าว
+
+        <Route path="/admin/dashboard" element={<AdminDashboard />} /> // ✅ เพิ่ม Route สำหรับหน้าแดชบอร์ดแอดมิน
         
         {/* Not Found */}
         <Route path="*" element={<NotFound onBack={() => navigate('/')} />} />
