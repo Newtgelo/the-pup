@@ -838,6 +838,7 @@ export const CafeDetail = ({ onTriggerToast }) => {
             >
               ลูกค้า
             </button>
+            
             <button
               onClick={() => {
                 setActiveTab("venue");
@@ -845,7 +846,7 @@ export const CafeDetail = ({ onTriggerToast }) => {
               }}
               className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-1 ${
                 activeTab === "venue"
-                  ? "bg-white text-[#FF6B00] shadow-sm"
+                  ? "bg-blue-950 text-white shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
@@ -901,11 +902,9 @@ export const CafeDetail = ({ onTriggerToast }) => {
         </div>
       )}
 
-      <div
-        className={`md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none transition-opacity duration-300 ${
-          showStickyTabs ? "opacity-0 pointer-events-none" : "opacity-100"
-        }`}
-      >
+      <div className={`md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none transition-all duration-300 ${
+  showStickyTabs ? "opacity-0 pointer-events-none -translate-y-20" : "opacity-100 translate-y-0"
+}`}>
         <button
           onClick={goBack}
           className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"
@@ -1000,11 +999,12 @@ export const CafeDetail = ({ onTriggerToast }) => {
               >
                 สำหรับลูกค้า
               </button>
+              
               <button
                 onClick={() => setActiveTab("venue")}
                 className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                   activeTab === "venue"
-                    ? "bg-white text-[#FF6B00] shadow-sm"
+                    ? "bg-blue-950 text-white shadow-sm"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
@@ -1054,18 +1054,20 @@ export const CafeDetail = ({ onTriggerToast }) => {
                 </div>
               </div>
             )}
+
             {activeTab === "venue" && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 space-y-5">
+                <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 space-y-5">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="w-2 h-6 bg-[#FF6B00] rounded-full"></span>
+                    <span className="w-2 h-6 bg-blue-950 rounded-full"></span>
                     <h3 className="font-bold text-lg text-gray-900">
                       ข้อมูลสถานที่จัดงาน
                     </h3>
                   </div>
+
                   {/* ✅ แก้ตรงนี้: ใช้ capacity และ area_type ที่รับมาจาก DB */}
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white p-3 rounded-xl border border-orange-100">
+                    <div className="bg-white p-3 rounded-xl border border-blue-100">
                       <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
                         <IconUsers size={12} /> ความจุ
                       </div>
@@ -1073,7 +1075,7 @@ export const CafeDetail = ({ onTriggerToast }) => {
                         {cafe.capacity || "สอบถามร้าน"}
                       </div>
                     </div>
-                    <div className="bg-white p-3 rounded-xl border border-orange-100">
+                    <div className="bg-white p-3 rounded-xl border border-blue-100">
                       <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
                         <IconLayout size={12} /> พื้นที่
                       </div>
@@ -1091,7 +1093,7 @@ export const CafeDetail = ({ onTriggerToast }) => {
                         facilities.map((fac, i) => (
                           <span
                             key={i}
-                            className="text-xs bg-white border border-orange-100 px-3 py-1.5 rounded-full text-gray-600"
+                            className="text-xs bg-white border border-blue-100 px-3 py-1.5 rounded-full text-gray-600"
                           >
                             {fac.trim()}
                           </span>
