@@ -981,7 +981,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
 
           <div className="flex flex-col">
             <div className="mb-6">
-              
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
                 {cafe.name}
               </h1>
@@ -1022,9 +1021,7 @@ export const CafeDetail = ({ onTriggerToast }) => {
                     <div>
                       <p className="font-bold text-sm">เวลาทำการ</p>
                       <p className="text-sm whitespace-pre-line text-gray-600">
-                        {cafe.open_time ||
-                          cafe.opening_hours ||
-                          "สอบถามทางร้าน"}
+                        {cafe.open_time || "โปรดสอบถามข้อมูลจากทางร้าน"}
                       </p>
                     </div>
                   </div>
