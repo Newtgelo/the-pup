@@ -25,6 +25,10 @@ import { AdminEditEvent } from './pages/AdminEditEvent';
 
 import { AdminLayout } from './pages/AdminLayout';
 
+import { AdminCafeDashboard } from './pages/AdminCafeDashboard';
+import { AdminCreateCafe } from './pages/AdminCreateCafe';
+import { AdminEditCafe } from './pages/AdminEditCafe';
+
 // Import Main Pages
 import { 
   HomePage,
@@ -136,9 +140,17 @@ export default function App() {
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/news" element={<AdminNewsDashboard />} />  {/* ✅ 2. เพิ่ม Route นี้ */}
 
+            <Route path="/admin/create-news" element={<AdminCreateNews />} />
+            <Route path="/admin/edit-news/:id" element={<AdminEditNews />} />
+
             <Route path="/admin/events" element={<AdminEventDashboard />} />
             <Route path="/admin/create-event" element={<AdminCreateEvent />} />
             <Route path="/admin/edit-event/:id" element={<AdminEditEvent />} />
+
+            {/* ✅ Cafe Manager Routes */}
+            <Route path="/admin/cafes" element={<AdminCafeDashboard />} />
+            <Route path="/admin/create-cafe" element={<AdminCreateCafe />} />
+            <Route path="/admin/edit-cafe/:id" element={<AdminEditCafe />} />
         </Route>
 
         {/* 404 Not Found */}

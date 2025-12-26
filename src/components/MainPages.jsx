@@ -443,14 +443,72 @@ export const EventsPage = () => {
 };
 
 export const CafesPage = () => {
-  const navigate = useNavigate();
   const [cafes, setCafes] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => { supabase.from('cafes').select('*').order('id', { ascending: false }).then(({ data }) => { setCafes(data || []); setLoading(false); }); }, []);
+  const [activeTab, setActiveTab] = useState("All");
+
+  useEffect(() => {
+    const fetchCafes = async () => {
+      setLoading(true);
+      
+      // ✅ แก้ไขตรงนี้: เพิ่ม .eq('status', 'published') 
+      // เพื่อดึงเฉพาะที่กดเผยแพร่แล้วเท่านั้น
+      let query = supabase
+        .from('cafes')
+        .select('*')
+        .eq('status', 'published') 
+        .order('id', { ascending: false });
+
+      if (activeTab !== "All") {
+        // สมมติว่าในอนาคตมี filter ตามหมวดหมู่ (ตอนนี้เตรียมไว้ก่อน)
+        // query = query.eq('category', activeTab);
+      }
+
+      const { data, error } = await query;
+      if (error) console.error('Error fetching cafes:', error);
+      else setCafes(data || []);
+      
+      setLoading(false);
+    };
+
+    fetchCafes();
+  }, [activeTab]);
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 pb-20">
-      <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center"><button onClick={() => navigate('/#cafes-section')}><IconChevronLeft size={24}/></button><div><h1 className="text-2xl font-bold text-gray-900">รวมคาเฟ่จัดงาน</h1>{!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {cafes.length} รายการ</p>}</div></div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">{cafes.map((item) => <CafeCard key={item.id} item={item} onClick={() => navigate(`/cafe/${item.id}`)} />)}</div>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 pt-32 pb-12 px-4">
+        <div className="max-w-6xl mx-auto text-center">
+             <span className="text-[#FF6B00] font-bold tracking-wider text-sm uppercase mb-2 block">Space & Cafe</span>
+             <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-6">คาเฟ่และสถานที่จัดงาน</h1>
+             <p className="text-gray-500 max-w-2xl mx-auto text-lg font-light">
+                รวมพิกัดคาเฟ่จัดวันเกิดโปรเจกต์ศิลปิน และพื้นที่จัดงานอีเวนต์ที่คุณตามหา ครบจบในที่เดียว
+             </p>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-6xl mx-auto px-4 mt-12">
+        {loading ? (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1,2,3,4,5,6].map(i => (
+                  <div key={i} className="animate-pulse bg-gray-200 h-80 rounded-2xl"></div>
+              ))}
+           </div>
+        ) : (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {cafes.map((cafe) => (
+                 <CafeCard key={cafe.id} cafe={cafe} />
+              ))}
+              
+              {cafes.length === 0 && (
+                 <div className="col-span-full text-center py-20 text-gray-400">
+                    ยังไม่มีข้อมูลคาเฟ่ที่เผยแพร่ในขณะนี้
+                 </div>
+              )}
+           </div>
+        )}
+      </div>
     </div>
   );
 };
