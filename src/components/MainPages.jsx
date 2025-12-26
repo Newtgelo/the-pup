@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+// ✅ รวม Import ไว้บรรทัดเดียว
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 
 // ✅ Import Supabase
 import { supabase } from "../supabase";
@@ -47,16 +48,13 @@ export const HomePage = () => {
       if (news) setNewsList(news);
 
       // 2. ดึงอีเวนต์
-      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const today = new Date().toISOString().split('T')[0]; 
       
       const { data: events } = await supabase
         .from("events")
         .select("*")
-        // 🔥 LOGIC สำคัญ: 
-        // "ขอดูงานที่วันจบยังมาไม่ถึง (end_date >= today)" 
-        // หรือ "ถ้าไม่มีวันจบ ให้ดูวันเริ่มแทน (date >= today)"
         .or(`end_date.gte.${today},and(end_date.is.null,date.gte.${today})`)
-        .order("date", { ascending: true }) // เรียงตามวันเริ่มเหมือนเดิม
+        .order("date", { ascending: true }) 
         .limit(20);
 
       if (events) {
@@ -65,7 +63,11 @@ export const HomePage = () => {
       }
 
       // 3. ดึงคาเฟ่
-      const { data: cafes } = await supabase.from("cafes").select("*").limit(8);
+      const { data: cafes } = await supabase
+        .from("cafes")
+        .select("*")
+        .eq('status', 'published') 
+        .limit(8);
       if (cafes) setCafeList(cafes);
 
       setIsLoading(false);
@@ -89,16 +91,13 @@ export const HomePage = () => {
   // Filter Logic
   useEffect(() => {
     let result = [...eventList];
-    
-    // กรองประเภท (✅ ใช้ category)
     if (eventFilter !== "ทั้งหมด") {
       result = result.filter((event) => event.category === eventFilter); 
     }
-
     const now = new Date();
     if (timeframeFilter !== "all") {
       result = result.filter((e) => {
-        if (!e.date) return false; // ✅ ใช้ date
+        if (!e.date) return false; 
         const eventDate = new Date(e.date);
         if (timeframeFilter === "this_month") {
           return eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear();
@@ -111,12 +110,10 @@ export const HomePage = () => {
         return true;
       });
     }
-
-    // Sort Logic
     if (eventSort === "newest") {
       result.sort((a, b) => b.id - a.id);
     } else {
-      result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)); // ✅ ใช้ date
+      result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)); 
     }
     setFilteredHomeEvents(result);
   }, [eventFilter, eventSort, timeframeFilter, eventList]);
@@ -139,7 +136,7 @@ export const HomePage = () => {
         </div>
       </div>
 
-      {/* NEWS */}
+      {/* NEWS SECTION */}
       <section id="news-section" className="mt-8 scroll-mt-28">
         <div className="flex justify-between items-center mb-4 border-l-4 border-[#0047FF] pl-4">
           <h2 className="text-2xl font-bold text-gray-900">Latest News</h2>
@@ -159,7 +156,7 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* EVENTS */}
+      {/* EVENTS SECTION */}
       <section id="events-section" className="scroll-mt-28">
         <div className="flex flex-col mb-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
@@ -200,22 +197,38 @@ export const HomePage = () => {
         </ScrollableRow>
       </section>
 
-      {/* CAFES */}
-      <section id="cafes-section" className="scroll-mt-28">
-        <div className="flex justify-between items-center mb-6 border-l-4 border-purple-500 pl-4">
-          <h2 className="text-2xl font-bold text-gray-900">แนะนำที่จัด Fancafe</h2>
-          <button onClick={() => navigate("/cafes")} className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1">ดูทั้งหมด <IconChevronRight size={16} /></button>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-          {isLoading ? [...Array(4)].map((_, i) => <SkeletonCafe key={i} />) : cafeList.map((cafe) => (
-            <CafeCard key={cafe.id} item={cafe} onClick={() => navigate(`/cafe/${cafe.id}`, { state: { fromHome: true } })} />
-          ))}
-        </div>
-      </section>
+      {/* CAFES SECTION (HOME) - ✅ แก้ไข UI ตามที่ขอแล้ว */}
+      <div id="cafes-section" className="max-w-6xl mx-auto px-4 py-16">
+          <div className="flex justify-between items-center mb-6"> {/* items-center ให้ปุ่มตรงกับหัวข้อ */}
+              {/* ✅ หัวข้อใช้ขีดสีม่วงตามที่ขอ */}
+              <div className="border-l-4 border-[#5607ff] pl-4">
+                  <h2 className="text-2xl font-bold text-gray-900">แนะนำที่จัด Fancafe</h2>
+              </div>
+              
+              {/* ✅ ปุ่มดูทั้งหมด แบบเดียวกับ News/Events (เล็ก เรียบ มีไอคอน Chevron) */}
+              <button 
+                  onClick={() => navigate('/cafes')} 
+                  className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1"
+              >
+                  ดูทั้งหมด <IconChevronRight size={16} />
+              </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              {isLoading ? [...Array(4)].map((_, i) => <SkeletonCafe key={i} />) : cafeList.map((cafe) => (
+                  // ✅ ยังคงใช้ item={cafe} เพื่อกันจอขาว
+                  <CafeCard key={cafe.id} item={cafe} onClick={() => navigate(`/cafe/${cafe.id}`, { state: { fromHome: true } })} />
+              ))}
+          </div>
+
+          {/* Mobile Button - ซ่อนไว้ก่อนเพื่อให้เหมือน News/Events เป๊ะๆ หรือถ้าอยากเปิดก็ลบ hidden ออกได้ครับ */}
+          <div className="mt-8 md:hidden">
+              <button onClick={() => navigate('/cafes')} className="w-full py-3 rounded-xl border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition">ดูคาเฟ่และสถานที่ทั้งหมด</button>
+          </div>
+      </div>
     </div>
   );
 };
-
 
 // ==========================================
 // 2. SEARCH PAGE
@@ -238,14 +251,10 @@ export const SearchPage = () => {
     const fetchSearch = async () => {
         if (!term) { setResultsNews([]); setResultsEvents([]); setResultsCafes([]); return; }
         setIsLoading(true);
-        // Search Logic
         const { data: news } = await supabase.from('news').select('*').or(`title.ilike.%${term}%,tags.ilike.%${term}%`).limit(10);
         if (news) setResultsNews(news);
-        
-        // ✅ แก้ location_name เป็น location
         const { data: events } = await supabase.from('events').select('*').or(`title.ilike.%${term}%,location.ilike.%${term}%,tags.ilike.%${term}%`).limit(10);
         if (events) setResultsEvents(events);
-
         const { data: cafes } = await supabase.from('cafes').select('*').or(`name.ilike.%${term}%,location_text.ilike.%${term}%`).limit(10);
         if (cafes) setResultsCafes(cafes);
         setIsLoading(false);
@@ -286,12 +295,10 @@ export const SearchPage = () => {
   );
 };
 
-
 // ==========================================
-// 3. SEE ALL PAGES
+// 3. SEE ALL PAGES (News / Events / Cafes)
 // ==========================================
 
-// ... (NewsPage ใช้เหมือนเดิมได้) ...
 export const NewsPage = () => {
   const navigate = useNavigate();
   const [news, setNews] = useState([]);
@@ -344,7 +351,6 @@ export const NewsPage = () => {
   );
 };
 
-// 🔥🔥🔥 EVENTS PAGE (แก้จุดที่ผิดแล้ว) 🔥🔥🔥
 export const EventsPage = () => {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
@@ -354,63 +360,32 @@ export const EventsPage = () => {
   const [sortOrder, setSortOrder] = useState("upcoming");
   const [filteredEvents, setFilteredEvents] = useState([]);
 
-  // 1. Fetch Data
   useEffect(() => {
-    // ใช้ string split เพื่อให้ได้วันที่ YYYY-MM-DD แบบไม่เพี้ยนเรื่อง Timezone
     const today = new Date().toISOString().split('T')[0]; 
-
     const fetchEvents = async () => {
         setLoading(true);
-        // ✅ แก้ start_date -> date ให้ตรงกับ Database ใหม่
-        const { data } = await supabase
-            .from('events')
-            .select('*')
-            .gte("date", today) 
-            .order('date', { ascending: true });
-            
-        if (data) {
-            setEvents(data);
-            setFilteredEvents(data);
-        }
+        const { data } = await supabase.from('events').select('*').gte("date", today).order('date', { ascending: true });
+        if (data) { setEvents(data); setFilteredEvents(data); }
         setLoading(false);
     }
     fetchEvents();
   }, []);
 
-  // 2. Filtering Logic
   useEffect(() => {
     let result = [...events];
-
-    // ✅ แก้ event.type -> event.category (เพราะ DB ใหม่ใช้ category)
-    if (categoryFilter !== "ทั้งหมด") {
-        result = result.filter((event) => event.category === categoryFilter);
-    }
-
+    if (categoryFilter !== "ทั้งหมด") { result = result.filter((event) => event.category === categoryFilter); }
     const now = new Date();
     if (timeframeFilter !== "all") {
         result = result.filter((e) => {
-            if (!e.date) return false; // ✅ ใช้ date
+            if (!e.date) return false; 
             const eventDate = new Date(e.date);
-            
-            if (timeframeFilter === "this_month") {
-                return eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear();
-            } else if (timeframeFilter === "next_month") {
-                let nextMonth = now.getMonth() + 1;
-                let nextYear = now.getFullYear();
-                if (nextMonth > 11) { nextMonth = 0; nextYear++; }
-                return eventDate.getMonth() === nextMonth && eventDate.getFullYear() === nextYear;
-            }
+            if (timeframeFilter === "this_month") { return eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear(); } 
+            else if (timeframeFilter === "next_month") { let nextMonth = now.getMonth() + 1; let nextYear = now.getFullYear(); if (nextMonth > 11) { nextMonth = 0; nextYear++; } return eventDate.getMonth() === nextMonth && eventDate.getFullYear() === nextYear; }
             return true;
         });
     }
-
-    if (sortOrder === "newest") {
-        result.sort((a, b) => b.id - a.id);
-    } else {
-        // ✅ ใช้ date
-        result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-    }
-
+    if (sortOrder === "newest") { result.sort((a, b) => b.id - a.id); } 
+    else { result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0)); }
     setFilteredEvents(result);
   }, [categoryFilter, timeframeFilter, sortOrder, events]);
 
@@ -420,7 +395,6 @@ export const EventsPage = () => {
             <button onClick={() => navigate('/#events-section')}><IconChevronLeft size={24}/></button>
             <div><h1 className="text-2xl font-bold text-gray-900">กิจกรรมทั้งหมด</h1>{!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {filteredEvents.length} รายการ</p>}</div>
       </div>
-
       <div className="flex flex-col mb-8 gap-4">
         <div className="flex justify-end gap-3">
             <select className="pl-3 pr-8 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] cursor-pointer" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value)}><option value="all">ทุกช่วงเวลา</option><option value="this_month">เดือนนี้</option><option value="next_month">เดือนหน้า</option></select>
@@ -432,7 +406,6 @@ export const EventsPage = () => {
             ))}
         </div>
       </div>
-
       {loading ? ( <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">{[...Array(8)].map((_, i) => <SkeletonEvent key={i} />)}</div> ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-fade-in">
               {filteredEvents.length > 0 ? (filteredEvents.map((item) => (<EventCard key={item.id} item={item} onClick={() => navigate(`/event/${item.id}`)} />))) : (<div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400"><div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-2xl">🔍</div><p className="font-medium">ไม่พบกิจกรรมในหมวดหมู่นี้</p><button onClick={() => { setCategoryFilter("ทั้งหมด"); setTimeframeFilter("all"); }} className="mt-4 text-[#FF6B00] text-sm font-bold hover:underline">ล้างตัวกรอง</button></div>)}
@@ -442,73 +415,63 @@ export const EventsPage = () => {
   );
 };
 
+// 🔥🔥🔥 CAFES PAGE (NEW & RESTORED UI) 🔥🔥🔥
 export const CafesPage = () => {
+  const navigate = useNavigate();
   const [cafes, setCafes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("All");
 
   useEffect(() => {
     const fetchCafes = async () => {
       setLoading(true);
-      
-      // ✅ แก้ไขตรงนี้: เพิ่ม .eq('status', 'published') 
-      // เพื่อดึงเฉพาะที่กดเผยแพร่แล้วเท่านั้น
-      let query = supabase
+      // ดึงเฉพาะร้านที่กดเผยแพร่ (Published)
+      const { data, error } = await supabase
         .from('cafes')
         .select('*')
         .eq('status', 'published') 
         .order('id', { ascending: false });
 
-      if (activeTab !== "All") {
-        // สมมติว่าในอนาคตมี filter ตามหมวดหมู่ (ตอนนี้เตรียมไว้ก่อน)
-        // query = query.eq('category', activeTab);
-      }
-
-      const { data, error } = await query;
       if (error) console.error('Error fetching cafes:', error);
       else setCafes(data || []);
-      
       setLoading(false);
     };
-
     fetchCafes();
-  }, [activeTab]);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 pt-32 pb-12 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-             <span className="text-[#FF6B00] font-bold tracking-wider text-sm uppercase mb-2 block">Space & Cafe</span>
-             <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-6">คาเฟ่และสถานที่จัดงาน</h1>
-             <p className="text-gray-500 max-w-2xl mx-auto text-lg font-light">
-                รวมพิกัดคาเฟ่จัดวันเกิดโปรเจกต์ศิลปิน และพื้นที่จัดงานอีเวนต์ที่คุณตามหา ครบจบในที่เดียว
-             </p>
-        </div>
+    <div className="max-w-6xl mx-auto px-4 py-8 pb-20">
+      {/* 1. Header with Back Button (Same style as News/Events) */}
+      <div className="py-6 border-b border-gray-100 mb-6 flex gap-2 items-center">
+          <button onClick={() => navigate('/#cafes-section')} className="text-gray-500 hover:text-[#FF6B00] transition">
+              <IconChevronLeft size={24}/>
+          </button>
+          <div>
+              <h1 className="text-2xl font-bold text-gray-900">คาเฟ่และสถานที่ทั้งหมด</h1>
+              {!loading && <p className="text-gray-500 text-sm">พบทั้งหมด {cafes.length} รายการ</p>}
+          </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 mt-12">
-        {loading ? (
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[1,2,3,4,5,6].map(i => (
-                  <div key={i} className="animate-pulse bg-gray-200 h-80 rounded-2xl"></div>
-              ))}
-           </div>
-        ) : (
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {cafes.map((cafe) => (
-                 <CafeCard key={cafe.id} cafe={cafe} />
-              ))}
-              
-              {cafes.length === 0 && (
-                 <div className="col-span-full text-center py-20 text-gray-400">
-                    ยังไม่มีข้อมูลคาเฟ่ที่เผยแพร่ในขณะนี้
-                 </div>
-              )}
-           </div>
-        )}
-      </div>
+      {/* 2. Grid Content */}
+      {loading ? (
+         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[1,2,3,4,5,6].map(i => (
+                <SkeletonCafe key={i} />
+            ))}
+         </div>
+      ) : (
+         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-fade-in">
+            {cafes.map((cafe) => (
+               <CafeCard key={cafe.id} item={cafe} onClick={() => navigate(`/cafe/${cafe.id}`)} />
+            ))}
+            
+            {cafes.length === 0 && (
+               <div className="col-span-full text-center py-20 text-gray-400">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">☕️</div>
+                  ยังไม่มีข้อมูลคาเฟ่ที่เผยแพร่ในขณะนี้
+               </div>
+            )}
+         </div>
+      )}
     </div>
   );
 };

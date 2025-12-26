@@ -127,6 +127,7 @@ export default function App() {
         <Route path="/news" element={<NewsPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/cafes" element={<CafesPage />} />
+    
         <Route path="/news/:id" element={<NewsDetail onTriggerToast={triggerToast} />} />
         <Route path="/event/:id" element={<EventDetail onTriggerToast={triggerToast} />} />
         <Route path="/cafe/:id" element={<CafeDetail onTriggerToast={triggerToast} />} />
