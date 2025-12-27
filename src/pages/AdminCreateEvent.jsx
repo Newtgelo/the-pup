@@ -2,10 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 
+// ✅ Import Rich Text Editor
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
+
 export const AdminCreateEvent = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isAuth, setIsAuth] = useState(false);
+
+  // ✅ Config Toolbar (เครื่องมือจัดรูปแบบ)
+  const modules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ["bold", "italic", "underline", "strike"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["link", "image", "video"],
+      [{ color: [] }, { background: [] }],
+      ["clean"],
+    ],
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -13,12 +29,12 @@ export const AdminCreateEvent = () => {
     });
   }, [navigate]);
 
-  // ✅ 1. เพิ่ม end_date ใน State
+  // ✅ ใช้ State เดิมของพี่เป๊ะๆ (ไม่มี Lat/Lng)
   const [formData, setFormData] = useState({
     title: '', 
-    date: '',         // วันเริ่ม
-    end_date: '',     // วันจบ (เพิ่มใหม่)
-    date_display: '', // ข้อความโชว์
+    date: '',         
+    end_date: '',     
+    date_display: '', 
     time: '', 
     location: '', 
     category: 'Pop-up', 
@@ -31,11 +47,15 @@ export const AdminCreateEvent = () => {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // ✅ Handle Rich Text
+  const handleDescriptionChange = (value) => {
+    setFormData({ ...formData, description: value });
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    // ✅ 2. Logic ก่อนบันทึก: ถ้าไม่ใส่วันจบ ให้ถือว่าวันจบ = วันเริ่ม
     const finalData = {
         ...formData,
         end_date: formData.end_date || formData.date 
@@ -58,7 +78,6 @@ export const AdminCreateEvent = () => {
                 <input required name="title" onChange={handleChange} className="w-full border rounded-lg p-3 outline-none focus:ring-2 focus:ring-[#FF6B00]" placeholder="เช่น PiXXiE Tales Concert" />
             </div>
 
-            {/* ✅ 3. โซนวันที่ (Start - End) */}
             <div className="bg-orange-50 p-5 rounded-xl border border-orange-100 space-y-4">
                 <div className="flex items-center gap-2 mb-2">
                     <span className="bg-[#FF6B00] w-1 h-4 rounded-full"></span>
@@ -115,9 +134,19 @@ export const AdminCreateEvent = () => {
             <div><label className="block text-sm font-bold text-gray-700 mb-1">ลิงก์รูปโปสเตอร์ (URL)</label><input name="image_url" onChange={handleChange} className="w-full border rounded-lg p-3" /></div>
             <div><label className="block text-sm font-bold text-gray-700 mb-1">ลิงก์จองบัตร</label><input name="link" onChange={handleChange} className="w-full border rounded-lg p-3" /></div>
 
+            {/* ✅ เปลี่ยน Textarea เป็น ReactQuill */}
             <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">รายละเอียดงาน</label>
-                <textarea name="description" onChange={handleChange} className="w-full border rounded-lg p-3 min-h-[150px]" placeholder="ใส่รายละเอียดงานที่นี่..." />
+                <label className="block text-sm font-bold text-gray-700 mb-1">รายละเอียดงาน (Rich Text)</label>
+                <div className="bg-white">
+                    <ReactQuill 
+                        theme="snow"
+                        value={formData.description} 
+                        onChange={handleDescriptionChange}
+                        modules={modules}
+                        className="h-64 mb-12"
+                        placeholder="ใส่รายละเอียดงานที่นี่..."
+                    />
+                </div>
             </div>
 
             <div><label className="block text-sm font-bold text-gray-700 mb-1">Tags (คำค้นหา)</label><input name="tags" onChange={handleChange} className="w-full border rounded-lg p-3" /></div>

@@ -6,6 +6,9 @@ import {
 } from "../icons/Icons";
 import { SafeImage, NotFound } from "../ui/UIComponents";
 
+// ✅ 1. Import domToReact เพิ่มด้วย (เอาไว้จัดการ Link ธรรมดา)
+import parse, { domToReact } from "html-react-parser";
+
 export const EventDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -147,7 +150,54 @@ export const EventDetail = ({ onTriggerToast }) => {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-10">
           <div className="md:col-span-7 lg:col-span-8">
             <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-900 border-l-4 border-[#FF6B00] pl-4">รายละเอียดงาน</h2>
-            <div className="prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line">{event.description}</div>
+            
+            {/* ✅ ใส่สูตรแปลง (replace logic) เพื่อให้ YouTube และ iframe แสดงผลได้ */}
+            <div className="prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line 
+              [&>p]:mb-4 
+              [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-3
+              [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mt-6 [&>h2]:mb-3
+              [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-4
+              [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-4
+              [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-4 [&_img]:max-w-full"
+            >
+              {parse(event.description || "", {
+                replace: (domNode) => {
+                  // แปลง iframe (วิดีโอที่ Embed มา)
+                  if (domNode.name === "iframe" && domNode.attribs) {
+                    return (
+                      <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
+                        <iframe {...domNode.attribs} className="w-full h-full" allowFullScreen></iframe>
+                      </div>
+                    );
+                  }
+                  // แปลง Link YouTube ให้เป็นจอวิดีโอ
+                  if (domNode.name === "a" && domNode.attribs && domNode.attribs.href) {
+                    const href = domNode.attribs.href;
+                    if (href.includes("youtube.com/embed") || href.includes("youtu.be") || href.includes("youtube.com/watch")) {
+                      let videoId = "";
+                      if (href.includes("/embed/")) videoId = href.split("/embed/")[1]?.split("?")[0];
+                      else if (href.includes("v=")) videoId = href.split("v=")[1]?.split("&")[0];
+                      else if (href.includes("youtu.be/")) videoId = href.split("youtu.be/")[1]?.split("?")[0];
+
+                      if (videoId) {
+                        return (
+                          <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
+                            <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen frameBorder="0"></iframe>
+                          </div>
+                        );
+                      }
+                    }
+                    // ลิงก์ธรรมดา ให้เป็นสีส้ม + เปิด tab ใหม่
+                    return (
+                      <a {...domNode.attribs} target="_blank" rel="noopener noreferrer" className="text-[#FF6B00] hover:underline break-words font-bold">
+                        {domToReact(domNode.children)}
+                      </a>
+                    );
+                  }
+                },
+              })}
+            </div>
+
             {event.tags && (
               <div className="flex flex-wrap gap-2 mt-8 border-t border-gray-100 pt-6">
                 {event.tags.split(",").map((tag, index) => (<span key={index} className="px-3 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-600 text-sm font-medium hover:bg-[#FF6B00] hover:text-white hover:border-[#FF6B00] transition cursor-pointer" onClick={() => navigate(`/search?q=${tag.trim()}`)}>#{tag.trim()}</span>))}
