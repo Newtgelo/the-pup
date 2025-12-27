@@ -4,24 +4,14 @@ import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { supabase } from '../supabase';
 
+// ✅ Import SweetAlert2
+import Swal from "sweetalert2";
+
 export const AdminEditNews = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [isAuthChecking, setIsAuthChecking] = useState(true); // เพิ่มสถานะเช็ค Auth
-
-  // 🔥 1. ระบบ รปภ. (ตรวจสอบล็อกอิน)
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/admin/login');
-      } else {
-        setIsAuthChecking(false);
-      }
-    };
-    checkUser();
-  }, [navigate]);
+  const [loading, setLoading] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
   // State ข้อมูล
   const [title, setTitle] = useState('');
@@ -29,6 +19,34 @@ export const AdminEditNews = () => {
   const [imageUrl, setImageUrl] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
+
+  // 1. เช็ค Auth และดึงข้อมูลข่าวเก่า
+  useEffect(() => {
+    const fetchData = async () => {
+      // เช็ค Login
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/admin/login');
+        return;
+      }
+      setIsAuthChecking(false);
+
+      // ดึงข้อมูลข่าวตาม ID
+      const { data, error } = await supabase.from('news').select('*').eq('id', id).single();
+      if (error) {
+        Swal.fire("Error", "ไม่พบข้อมูลข่าว", "error");
+        navigate('/admin/news');
+      } else if (data) {
+        setTitle(data.title || '');
+        setCategory(data.category || 'K-pop');
+        setImageUrl(data.image_url || '');
+        setContent(data.content || '');
+        setTags(data.tags || '');
+      }
+    };
+
+    fetchData();
+  }, [id, navigate]);
 
   const modules = {
     toolbar: [
@@ -40,53 +58,50 @@ export const AdminEditNews = () => {
     ],
   };
 
-  // ดึงข้อมูลข่าว
-  useEffect(() => {
-    if (isAuthChecking) return; // ถ้ายังไม่ได้ล็อกอิน ไม่ต้องดึงข้อมูล
-
-    const fetchNews = async () => {
-        const { data, error } = await supabase.from('news').select('*').eq('id', id).single();
-        if (data) {
-            setTitle(data.title);
-            setCategory(data.category);
-            setImageUrl(data.image_url);
-            setContent(data.content);
-            setTags(data.tags || '');
-        }
-        setLoading(false);
-    };
-    fetchNews();
-  }, [id, isAuthChecking]); // เพิ่ม isAuthChecking เป็น dependency
-
   const handleUpdate = async (e) => {
     e.preventDefault();
+    if (!title || !content) {
+        Swal.fire("แจ้งเตือน", "กรุณาใส่หัวข้อและเนื้อหาข่าว", "warning");
+        return;
+    }
+
     setLoading(true);
     
-    const { error } = await supabase
-        .from('news')
-        .update({ title, category, image_url: imageUrl, content, tags })
-        .eq('id', id);
+    // อัปเดตข้อมูลลง Database
+    const { error } = await supabase.from('news').update({
+        title,
+        category,
+        image_url: imageUrl,
+        content,
+        tags,
+    }).eq('id', id);
 
     setLoading(false);
 
     if (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        Swal.fire("Error", error.message, "error");
     } else {
-        window.open(`/news/${id}`, '_blank');
-        navigate('/admin/dashboard');
+        // ✅ Popup Success -> กด OK -> ไปหน้าจัดการข่าวสาร (/admin/news)
+        Swal.fire({
+            title: "Success",
+            text: "แก้ไขข่าวเรียบร้อย",
+            icon: "success",
+            confirmButtonText: "OK",
+            confirmButtonColor: "#FF6B00",
+        }).then(() => {
+            navigate('/admin/news'); 
+        });
     }
   };
 
-  // ถ้า รปภ. ยังตรวจไม่เสร็จ อย่าเพิ่งโชว์ฟอร์ม
   if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังตรวจสอบสิทธิ์...</div>;
-  if (loading) return <div className="p-10 text-center">กำลังโหลดข้อมูลเดิม...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8">
         <div className="flex justify-between items-center mb-6 border-b pb-4">
              <h1 className="text-3xl font-bold text-gray-900">✏️ แก้ไขข่าว (Admin)</h1>
-             <button onClick={() => navigate('/admin/dashboard')} className="text-gray-500 hover:text-orange-500 font-bold">Cancel</button>
+             <button onClick={() => navigate('/admin/news')} className="text-gray-500 hover:text-orange-500 font-bold">Cancel</button>
         </div>
         
         <form onSubmit={handleUpdate} className="space-y-6">
@@ -123,7 +138,7 @@ export const AdminEditNews = () => {
                  <input type="text" className="w-full border border-gray-300 rounded-lg p-3" value={tags} onChange={e => setTags(e.target.value)} />
             </div>
 
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition">
+            <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition disabled:bg-gray-400">
                 {loading ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
             </button>
         </form>

@@ -3,20 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { supabase } from '../supabase';
+import Swal from "sweetalert2";
 
 export const AdminCreateNews = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [isAuthChecking, setIsAuthChecking] = useState(true); // เพิ่มสถานะเช็ค Auth
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
-  // 🔥 1. ระบบ รปภ. (ตรวจสอบล็อกอิน)
+  // ระบบ รปภ. (ตรวจสอบล็อกอิน)
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        navigate('/admin/login'); // ถ้าไม่มีบัตรผ่าน เชิญไปหน้า Login
+        navigate('/admin/login');
       } else {
-        setIsAuthChecking(false); // ผ่าน! เลิกตรวจ แล้วให้ทำงานต่อ
+        setIsAuthChecking(false);
       }
     };
     checkUser();
@@ -42,35 +43,41 @@ export const AdminCreateNews = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!title || !content) {
-        alert("กรุณาใส่หัวข้อและเนื้อหาข่าว");
+        Swal.fire("แจ้งเตือน", "กรุณาใส่หัวข้อและเนื้อหาข่าว", "warning");
         return;
     }
 
     setLoading(true);
     
-    const { data, error } = await supabase.from('news').insert({
+    // บันทึกลง Database
+    const { error } = await supabase.from('news').insert({
         title,
         category,
         image_url: imageUrl,
         content,
         tags,
         date: new Date().toISOString().split('T')[0],
-    }).select();
+    });
 
     setLoading(false);
 
     if (error) {
-        alert('เกิดข้อผิดพลาด: ' + error.message);
+        Swal.fire("Error", error.message, "error");
     } else {
-        if (data && data.length > 0) {
-            const newNewsId = data[0].id;
-            window.open(`/news/${newNewsId}`, '_blank');
-        }
-        navigate('/admin/dashboard');
+        // ✅ Popup Success -> กด OK -> ไปหน้าจัดการข่าวสาร (/admin/news)
+        Swal.fire({
+            title: "Success",
+            text: "บันทึกข่าวเรียบร้อย",
+            icon: "success",
+            confirmButtonText: "OK",
+            confirmButtonColor: "#FF6B00",
+        }).then(() => {
+            // 🚀 แก้ตรงนี้ครับ!
+            navigate('/admin/news'); 
+        });
     }
   };
 
-  // ถ้า รปภ. ยังตรวจไม่เสร็จ อย่าเพิ่งโชว์ฟอร์ม
   if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังตรวจสอบสิทธิ์...</div>;
 
   return (
@@ -78,7 +85,8 @@ export const AdminCreateNews = () => {
       <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8">
         <div className="flex justify-between items-center mb-6 border-b pb-4">
              <h1 className="text-3xl font-bold text-gray-900">📝 เขียนข่าวใหม่ (Admin)</h1>
-             <button onClick={() => navigate('/admin/dashboard')} className="text-gray-500 hover:text-orange-500 font-bold">Cancel</button>
+             {/* ปุ่ม Cancel ก็แก้ให้กลับไปหน้าจัดการข่าวสารด้วยเหมือนกัน เพื่อความเนียน */}
+             <button onClick={() => navigate('/admin/news')} className="text-gray-500 hover:text-orange-500 font-bold">Cancel</button>
         </div>
         
         <form onSubmit={handleSave} className="space-y-6">
