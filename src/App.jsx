@@ -10,7 +10,7 @@ import RouteLoader from './components/RouteLoader';
 import ScrollToTop from './components/ScrollToTop'; 
 
 // Import Views (Detail Pages)
-import { NewsDetail, EventDetail, CafeDetail } from './components/PageViews';
+import { NewsDetail, EventDetail, CafeDetail } from './components/Detail';
 
 // --- Zone Admin Imports ---
 import { AdminLogin } from './pages/AdminLogin';
