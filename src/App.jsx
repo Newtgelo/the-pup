@@ -29,14 +29,10 @@ import { AdminCafeDashboard } from './pages/AdminCafeDashboard';
 import { AdminCreateCafe } from './pages/AdminCreateCafe';
 import { AdminEditCafe } from './pages/AdminEditCafe';
 
-// Import Main Pages
 import { 
-  HomePage,
-  SearchPage,
-  NewsPage,     
-  EventsPage,   
-  CafesPage     
-} from './components/MainPages';
+  HomePage, SearchPage, NewsPage, EventsPage, CafesPage 
+} from './components/Main'; 
+// 👆 Import จากโฟลเดอร์ Main ง่ายๆ เลย เพราะเราทำ index.js ไว้แล้ว
 
 export default function App() {
   const navigate = useNavigate();
