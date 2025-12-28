@@ -33,7 +33,8 @@ export const AdminEditCafe = () => {
     description: '', // Rich Text 1
     capacity: '', area_type: '', facilities: '', 
     organizer_description: '', // Rich Text 2
-    status: 'draft' 
+    status: 'draft',
+    created_at: null // ✅ เพิ่ม state สำหรับเก็บวันที่สร้าง (กันเหนียว)
   });
 
   useEffect(() => {
@@ -70,14 +71,15 @@ export const AdminEditCafe = () => {
               area_type: data.area_type || '',
               facilities: data.facilities || '',
               organizer_description: data.organizer_description || '',
-              status: data.status || 'draft'
+              status: data.status || 'draft',
+              created_at: data.created_at // ✅ เก็บค่าเดิมไว้เช็ค
           });
       }
   };
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // ✅ Handle Rich Text (ใช้ prev เพื่อกันข้อมูลหาย)
+  // ✅ Handle Rich Text
   const handleDescriptionChange = (value) => {
     setFormData(prev => ({ ...prev, description: value }));
   };
@@ -86,7 +88,8 @@ export const AdminEditCafe = () => {
     setFormData(prev => ({ ...prev, organizer_description: value }));
   };
 
-  const handleUpdate = async (statusType) => {
+  // ✅ ฟังก์ชันอัปเดต (ปรับปรุง Logic วันที่)
+  const handleUpdate = async (statusType, isPreview = false) => {
     // Validation
     if (!formData.name || !formData.location_text || !formData.image_url) {
         Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลที่จำเป็น (*) ให้ครบถ้วน", "warning");
@@ -94,23 +97,40 @@ export const AdminEditCafe = () => {
     }
 
     setLoading(true);
-    const dataToSave = { ...formData, status: statusType };
+
+    // เตรียมข้อมูลที่จะเซฟ
+    const dataToSave = { 
+        ...formData, 
+        status: statusType,
+        updated_at: new Date().toISOString() // ✅ 1. อัปเดตเวลาแก้ไขล่าสุดเสมอ
+    };
+
+    // ✅ 2. เช็คว่าถ้าของเดิมไม่มีวันที่สร้าง (null) ให้เติมเข้าไปด้วย (แก้ปัญหาหน้า Dashboard ขึ้นขีด -)
+    if (!formData.created_at) {
+        dataToSave.created_at = new Date().toISOString();
+    }
+
     const { error } = await supabase.from('cafes').update(dataToSave).eq('id', id);
     setLoading(false);
 
     if (error) {
         Swal.fire("Error", error.message, "error");
     } else {
-        // Popup Success -> กลับหน้าจัดการคาเฟ่
-        Swal.fire({
-            title: "Success",
-            text: "บันทึกการแก้ไขเรียบร้อย",
-            icon: "success",
-            confirmButtonText: "OK",
-            confirmButtonColor: "#FF6B00",
-        }).then(() => {
-            navigate('/admin/cafes');
-        });
+        if (isPreview) {
+            // ดูตัวอย่าง (ไม่ต้องเด้งกลับ)
+            window.open(`/cafe/${id}`, '_blank');
+        } else {
+            // บันทึกเสร็จ -> กลับหน้ารวม
+            Swal.fire({
+                title: "Success",
+                text: "บันทึกการแก้ไขเรียบร้อย",
+                icon: "success",
+                confirmButtonText: "OK",
+                confirmButtonColor: "#FF6B00",
+            }).then(() => {
+                navigate('/admin/cafes');
+            });
+        }
     }
   };
 
@@ -120,9 +140,9 @@ export const AdminEditCafe = () => {
         <div className="bg-white border-b border-gray-100 p-8 pb-4 flex justify-between items-center">
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">✏️ แก้ไขคาเฟ่/สถานที่</h1>
-                <p className="text-sm text-gray-500 mt-1">ID: {id}</p>
+                <p className="text-sm text-gray-500 mt-1">ID: {id} • สถานะปัจจุบัน: <span className={`font-bold ${formData.status === 'published' ? 'text-green-600' : 'text-gray-500'}`}>{formData.status === 'published' ? 'เผยแพร่แล้ว' : 'แบบร่าง'}</span></p>
             </div>
-            <button onClick={() => navigate('/admin/cafes')} className="text-gray-500 hover:text-orange-500 font-bold">Cancel</button>
+            <button onClick={() => navigate('/admin/cafes')} className="text-gray-500 hover:text-orange-500 font-bold">กลับหน้ารวม</button>
         </div>
 
         <div className="p-8 space-y-10">
@@ -237,12 +257,39 @@ export const AdminEditCafe = () => {
                 </div>
             </section>
 
-            <div className="pt-6 flex gap-3 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
-                <button type="button" onClick={() => navigate('/admin/cafes')} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200">
+            {/* ✅ ACTION BUTTONS ZONE (เพิ่มปุ่ม Preview และแยก Draft/Publish) */}
+            <div className="pt-6 flex flex-col md:flex-row gap-3 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+                <button type="button" onClick={() => navigate('/admin/cafes')} className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">
                     ยกเลิก
                 </button>
-                <button type="button" onClick={() => handleUpdate(formData.status)} disabled={loading} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700">
-                    {loading ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
+
+                <div className="flex-1"></div>
+
+                <button 
+                    type="button" 
+                    onClick={() => handleUpdate('draft', false)} 
+                    disabled={loading}
+                    className="px-6 py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-900 shadow-md"
+                >
+                    💾 บันทึกร่าง
+                </button>
+
+                <button 
+                    type="button" 
+                    onClick={() => handleUpdate(formData.status, true)} // status เดิม แต่ดูตัวอย่าง
+                    disabled={loading}
+                    className="px-6 py-3 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl font-bold hover:bg-blue-100 shadow-sm"
+                >
+                    👁️ ดูตัวอย่าง
+                </button>
+
+                <button 
+                    type="button" 
+                    onClick={() => handleUpdate('published', false)} 
+                    disabled={loading}
+                    className="px-8 py-3 bg-[#FF6B00] text-white rounded-xl font-bold hover:bg-[#e65000] shadow-lg"
+                >
+                    🚀 เผยแพร่
                 </button>
             </div>
 

@@ -64,7 +64,12 @@ export const AdminCreateCafe = () => {
 
     setLoading(true);
     
-    const dataToSave = { ...formData, status: statusType };
+    // ✅ เพิ่ม created_at: new Date() เพื่อให้มีเวลาบันทึกลงฐานข้อมูลแน่นอน
+    const dataToSave = { 
+        ...formData, 
+        status: statusType,
+        created_at: new Date().toISOString() // 🔥 เพิ่มบรรทัดนี้ครับ
+    };
     
     // Insert ลง DB
     const { data, error } = await supabase.from('cafes').insert([dataToSave]).select().single();
