@@ -5,12 +5,15 @@ import { SafeImage } from '../components/ui/UIComponents';
 
 export const AdminNewsDashboard = () => {
   const navigate = useNavigate();
-  const [newsList, setNewsList] = useState([]); // ✅ ใช้ชื่อ newsList ตามที่คุณต้องการ
+  const [newsList, setNewsList] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // State สำหรับ Filter และ Sort
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [sortConfig, setSortConfig] = useState({ key: 'updated_at', direction: 'desc' });
 
   useEffect(() => {
-    // เช็ค Login
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) navigate('/admin/login');
       else fetchNews();
@@ -22,11 +25,10 @@ export const AdminNewsDashboard = () => {
     // ดึงข้อมูลข่าวทั้งหมด
     const { data, error } = await supabase
       .from('news')
-      .select('*')
-      .order('id', { ascending: false });
+      .select('*');
       
     if (error) console.error(error);
-    else setNewsList(data || []); // ✅ setNewsList
+    else setNewsList(data || []);
     setLoading(false);
   };
 
@@ -34,31 +36,91 @@ export const AdminNewsDashboard = () => {
     if (window.confirm("ยืนยันที่จะลบข่าวนี้?")) {
       const { error } = await supabase.from('news').delete().eq('id', id);
       if (!error) {
-        setNewsList(newsList.filter(n => n.id !== id)); // ✅ อัปเดต list หลังลบ
+        setNewsList(newsList.filter(n => n.id !== id));
       } else {
         alert(error.message);
       }
     }
   };
 
-  // กรองคำค้นหา
-  const filteredNews = newsList.filter(n => 
-    n.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    (n.category && n.category.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // ฟังก์ชันกดเปลี่ยนการเรียง (Sorting)
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (name) => {
+    if (sortConfig.key !== name) return <span className="text-gray-300 ml-1">⇅</span>;
+    return sortConfig.direction === 'asc' ? <span className="text-[#FF6B00] ml-1">↑</span> : <span className="text-[#FF6B00] ml-1">↓</span>;
+  };
+
+  // Logic การกรอง + เรียงลำดับ
+  const processedNews = [...newsList]
+    .filter(n => {
+        // 1. กรอง Search
+        const matchesSearch = n.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              (n.category && n.category.toLowerCase().includes(searchTerm.toLowerCase()));
+        
+        // 2. กรอง Status
+        const currentStatus = n.status || 'published';
+        const matchesStatus = filterStatus === 'all' || currentStatus === filterStatus;
+
+        return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+        // 3. เรียงลำดับ
+        const { key, direction } = sortConfig;
+        let aValue = a[key];
+        let bValue = b[key];
+
+        // กรณีพิเศษ: วันที่ (ให้เช็ค created_at ก่อน ถ้าไม่มีให้ไปดู date ของเก่า)
+        if (key === 'updated_at') {
+            // วันที่แก้ไข ใช้ updated_at ถ้าไม่มีใช้ created_at หรือ date
+            aValue = new Date(a.updated_at || a.created_at || a.date).getTime();
+            bValue = new Date(b.updated_at || b.created_at || b.date).getTime();
+        } 
+        else if (typeof aValue === 'string') {
+            aValue = aValue.toLowerCase();
+            bValue = bValue.toLowerCase();
+        }
+        else if (key === 'status') {
+             aValue = a.status || 'published';
+             bValue = b.status || 'published';
+        }
+
+        if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+  // Helper แปลงวันที่ (รองรับทั้ง Timestamp และ Text Date แบบเก่า)
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    // ถ้าเป็น timestamp จะแปลงได้เลย แต่ถ้าเป็น text date เก่าๆ อาจจะต้องเช็คหน่อย
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString; // ถ้าแปลงไม่ได้ ให้โชว์ text เดิมไปเลย
+    
+    return d.toLocaleDateString('th-TH', {
+        day: 'numeric', month: 'short', year: '2-digit'
+    });
+  };
+
+  const allCount = newsList.length;
+  const publishedCount = newsList.filter(n => (n.status || 'published') === 'published').length;
+  const draftCount = newsList.filter(n => n.status === 'draft').length;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto">
         
-        {/* Header ส่วนบน (ที่คุณแก้มา) */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-            {/* ✅ ใช้โค้ดใหม่ของคุณตรงนี้ */}
             <div>
                 <h1 className="text-3xl font-bold text-gray-900">จัดการ ข่าวสาร ทั้งหมด</h1>
-                <p className="text-gray-500 text-sm mt-1">จัดการข่าวสารทั้งหมดในระบบ ({newsList.length} ข่าว)</p>
+                <p className="text-gray-500 text-sm mt-1">บทความและประชาสัมพันธ์ ({allCount} ข่าว)</p>
             </div>
-
             <button 
                 onClick={() => navigate('/admin/create-news')} 
                 className="bg-[#FF6B00] hover:bg-[#e65000] text-white px-6 py-2.5 rounded-xl font-bold shadow-lg transition flex items-center gap-2"
@@ -67,63 +129,133 @@ export const AdminNewsDashboard = () => {
             </button>
         </div>
 
-        {/* Search Bar */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex gap-4">
-           <div className="flex-1 relative">
+        {/* TABS + SEARCH */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+           <div className="flex bg-gray-100 p-1 rounded-lg self-start md:self-auto">
+                <button 
+                    onClick={() => setFilterStatus('all')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition ${filterStatus === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    ทั้งหมด ({allCount})
+                </button>
+                <button 
+                    onClick={() => setFilterStatus('published')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition flex items-center gap-2 ${filterStatus === 'published' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    <span className="w-2 h-2 rounded-full bg-green-500"></span> เผยแพร่ ({publishedCount})
+                </button>
+                <button 
+                    onClick={() => setFilterStatus('draft')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition flex items-center gap-2 ${filterStatus === 'draft' ? 'bg-white text-gray-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    <span className="w-2 h-2 rounded-full bg-gray-400"></span> แบบร่าง ({draftCount})
+                </button>
+           </div>
+
+           <div className="w-full md:w-auto relative min-w-[300px]">
                 <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
                 <input 
                     type="text" 
                     placeholder="ค้นหาชื่อข่าว..." 
-                    className="w-full pl-10 border rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-[#FF6B00] border-gray-200"
+                    className="w-full pl-10 border rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-[#FF6B00] border-gray-200 text-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
            </div>
         </div>
 
-        {/* Table แสดงผล */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-sm">
-                  <th className="p-4 font-bold w-[60px]">ID</th>
-                  <th className="p-4 font-bold">หัวข้อข่าว</th>
+                  
+                  {/* ✅ 1. แยก ID ออกมาเป็นคอลัมน์แรก */}
+                  <th 
+                    className="p-4 font-bold w-[60px] cursor-pointer hover:bg-gray-100 transition select-none"
+                    onClick={() => requestSort('id')}
+                  >
+                    ID {getSortIcon('id')}
+                  </th>
+
+                  <th className="p-4 font-bold w-[80px]">รูปปก</th>
+                  
+                  <th 
+                    className="p-4 font-bold cursor-pointer hover:bg-gray-100 transition select-none"
+                    onClick={() => requestSort('title')}
+                  >
+                    หัวข้อข่าว {getSortIcon('title')}
+                  </th>
+
                   <th className="p-4 font-bold w-[120px]">หมวดหมู่</th>
-                  <th className="p-4 font-bold w-[150px]">วันที่</th>
-                  <th className="p-4 font-bold w-[200px] text-center">จัดการ</th>
+
+                  <th 
+                    className="p-4 font-bold w-[120px] text-center cursor-pointer hover:bg-gray-100 transition select-none"
+                    onClick={() => requestSort('status')}
+                  >
+                    สถานะ {getSortIcon('status')}
+                  </th>
+
+                  <th 
+                    className="p-4 font-bold w-[140px] text-center cursor-pointer hover:bg-gray-100 transition select-none"
+                    onClick={() => requestSort('updated_at')}
+                  >
+                    แก้ไขล่าสุด {getSortIcon('updated_at')}
+                  </th>
+
+                  <th className="p-4 font-bold w-[180px] text-center">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
-                  <tr><td colSpan="5" className="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr>
-                ) : filteredNews.length === 0 ? (
-                  <tr><td colSpan="5" className="p-8 text-center text-gray-400">ไม่พบข่าวสาร</td></tr>
+                  <tr><td colSpan="7" className="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr>
+                ) : processedNews.length === 0 ? (
+                  <tr><td colSpan="7" className="p-8 text-center text-gray-400">ไม่พบข่าวสารตามเงื่อนไข</td></tr>
                 ) : (
-                  filteredNews.map((item) => (
+                  processedNews.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition group">
-                      <td className="p-4 text-gray-400 text-sm">#{item.id}</td>
                       
-                      {/* หัวข้อข่าว + รูปเล็ก */}
+                      {/* ✅ แสดง ID ในช่องแรก */}
+                      <td className="p-4 text-gray-400 text-sm font-medium">#{item.id}</td>
+
                       <td className="p-4">
-                         <div className="flex items-center gap-3">
-                             {item.image_url && (
-                                 <div className="w-10 h-10 rounded bg-gray-100 overflow-hidden flex-shrink-0">
-                                     <SafeImage src={item.image_url} className="w-full h-full object-cover" />
-                                 </div>
-                             )}
-                             <p className="font-bold text-gray-900 line-clamp-1">{item.title}</p>
+                         <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden border border-gray-200 flex-shrink-0">
+                             <SafeImage src={item.image_url} className="w-full h-full object-cover" />
                          </div>
+                      </td>
+                      
+                      <td className="p-4">
+                         <p className="font-bold text-gray-900 line-clamp-2">{item.title}</p>
                       </td>
 
                       <td className="p-4">
-                        <span className="px-2 py-1 rounded-md bg-orange-50 text-[#FF6B00] text-xs font-bold border border-orange-100">
+                        <span className="px-2 py-1 rounded-md bg-orange-50 text-[#FF6B00] text-xs font-bold border border-orange-100 inline-block">
                             {item.category || "General"}
                         </span>
                       </td>
 
-                      <td className="p-4 text-gray-500 text-sm">
-                         {item.date || "-"}
+                      <td className="p-4 text-center">
+                         {(item.status || 'published') === 'published' ? (
+                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold inline-block border border-green-200">
+                                Published
+                            </span>
+                         ) : (
+                            <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold inline-block border border-gray-200">
+                                Draft
+                            </span>
+                         )}
+                      </td>
+
+                      {/* ✅ 2. แก้วันที่: ถ้าไม่มี created_at ให้ใช้ date (ของเก่า) */}
+                      <td className="p-4 text-center">
+                         <div className="flex flex-col items-center">
+                            <span className="text-sm font-bold text-gray-700">
+                                {formatDate(item.updated_at || item.created_at || item.date)}
+                            </span>
+                            <span className="text-[10px] text-gray-400 mt-0.5">
+                                สร้าง: {formatDate(item.created_at || item.date)}
+                            </span>
+                         </div>
                       </td>
 
                       <td className="p-4">
@@ -137,13 +269,13 @@ export const AdminNewsDashboard = () => {
                            </button>
                            <button 
                               onClick={() => navigate(`/admin/edit-news/${item.id}`)}
-                              className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1 rounded-lg text-xs font-bold transition"
+                              className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition"
                            >
                               แก้ไข
                            </button>
                            <button 
                               onClick={() => handleDelete(item.id)}
-                              className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1 rounded-lg text-xs font-bold transition"
+                              className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition"
                            >
                               ลบ
                            </button>
@@ -156,9 +288,8 @@ export const AdminNewsDashboard = () => {
             </table>
           </div>
           
-          {/* Footer ของตาราง */}
           <div className="p-4 border-t border-gray-100 bg-gray-50 text-right text-xs text-gray-400">
-              แสดง {filteredNews.length} จากทั้งหมด {newsList.length} ข่าว
+              แสดง {processedNews.length} จากทั้งหมด {allCount} ข่าว
           </div>
         </div>
         
