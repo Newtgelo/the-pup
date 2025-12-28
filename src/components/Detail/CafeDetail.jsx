@@ -15,7 +15,7 @@ import {
 } from "../icons/Icons";
 import { SafeImage, NotFound } from "../ui/UIComponents";
 
-// ✅ 1. เพิ่ม Import ตัวแปลง HTML
+// ✅ 1. Import ตัวแปลง HTML
 import parse, { domToReact } from "html-react-parser";
 
 export const CafeDetail = ({ onTriggerToast }) => {
@@ -72,6 +72,16 @@ export const CafeDetail = ({ onTriggerToast }) => {
     fetchCafe();
   }, [id]);
 
+  // Helper สำหรับแปลงวันที่เป็นภาษาไทย (แบบย่อสวยๆ)
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    return new Date(dateString).toLocaleDateString("th-TH", {
+      year: "2-digit", // ใช้ปี 2 หลักพอ (68)
+      month: "short",  // เดือนย่อ (ธ.ค.)
+      day: "numeric",
+    });
+  };
+
   const allImages = cafe?.images || [];
   const currentImage = allImages[selectedImageIndex] || cafe?.image_url || "";
 
@@ -126,11 +136,10 @@ export const CafeDetail = ({ onTriggerToast }) => {
   };
   const facilities = getFacilities();
 
-  // ✅ 2. เพิ่มฟังก์ชัน renderRichText (Logic แปลง YouTube และ HTML)
+  // ✅ 2. ฟังก์ชัน renderRichText
   const renderRichText = (htmlContent) => {
     return parse(htmlContent || "", {
       replace: (domNode) => {
-        // กรณี 1: iframe
         if (domNode.name === "iframe" && domNode.attribs) {
           return (
             <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
@@ -138,7 +147,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
             </div>
           );
         }
-        // กรณี 2: Link <a>
         if (domNode.name === "a" && domNode.attribs && domNode.attribs.href) {
           const href = domNode.attribs.href;
           if (href.includes("youtube.com/embed") || href.includes("youtu.be") || href.includes("youtube.com/watch")) {
@@ -161,7 +169,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
             </a>
           );
         }
-        // กรณี 3: Text Link ใน <p> (แก้ปัญหาลิงก์ดิบ)
         if (domNode.name === "p" && domNode.children && domNode.children.length === 1 && domNode.children[0].type === "text") {
             const text = domNode.children[0].data.trim();
             if (text.startsWith("http") && (text.includes("youtube.com/watch") || text.includes("youtu.be"))) {
@@ -396,14 +403,29 @@ export const CafeDetail = ({ onTriggerToast }) => {
 
           <div className="flex flex-col">
             <div className="mb-6">
+              {/* ✅ ส่วนหัวข้อร้าน + วันที่ (ย้ายมาไว้ข้างล่างแล้ว) */}
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
                 {cafe.name}
               </h1>
-              <div className="flex items-center text-gray-500 text-sm">
-                <IconMapPin size={16} className="mr-1" />{" "}
-                {cafe.location_text || "ไม่ระบุสถานที่"}
+              
+              {/* ✅ Layout: พิกัด + วันที่ (Option A) */}
+              <div className="flex flex-wrap items-center gap-3 text-gray-500 text-sm">
+                 <div className="flex items-center">
+                    <IconMapPin size={16} className="mr-1" />{" "}
+                    {cafe.location_text || "ไม่ระบุสถานที่"}
+                 </div>
+                 
+                 {/* เส้นคั่นเล็กๆ (แสดงเฉพาะจอใหญ่) */}
+                 <div className="hidden md:block w-1 h-1 rounded-full bg-gray-300"></div>
+
+                 {/* วันที่ */}
+                 <div className="flex items-center text-gray-400 text-xs">
+                    <IconClock size={12} className="mr-1" />
+                    อัปเดต {formatDate(cafe.updated_at || cafe.created_at)}
+                 </div>
               </div>
             </div>
+
             <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
               <button
                 onClick={() => setActiveTab("general")}
