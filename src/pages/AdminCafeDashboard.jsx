@@ -23,7 +23,7 @@ export const AdminCafeDashboard = () => {
     const { data, error } = await supabase
       .from('cafes')
       .select('*')
-      .order('id', { ascending: false });
+      .order('updated_at', { ascending: false }); // ✅ ปรับ: เรียงตามวันที่อัปเดตล่าสุด จะได้เห็นตัวที่เพิ่งแก้ก่อน
       
     if (error) console.error(error);
     else setCafes(data || []);
@@ -128,7 +128,7 @@ export const AdminCafeDashboard = () => {
                   <th className="p-4 font-bold w-[80px]">รูปปก</th>
                   <th className="p-4 font-bold">ชื่อร้าน / สถานที่</th>
                   <th className="p-4 font-bold w-[120px] text-center">สถานะ</th>
-                  <th className="p-4 font-bold w-[120px] text-center">วันที่ลง</th>
+                  <th className="p-4 font-bold w-[140px] text-center">แก้ไขล่าสุด</th>
                   <th className="p-4 font-bold w-[180px] text-center">จัดการ</th>
                 </tr>
               </thead>
@@ -162,9 +162,21 @@ export const AdminCafeDashboard = () => {
                             </span>
                          )}
                       </td>
-                      <td className="p-4 text-center text-sm text-gray-500">
-                         {formatDate(item.created_at)}
+                      
+                      {/* ✅ แก้ไข: แสดงวันที่แบบ Option B (2 บรรทัด) */}
+                      <td className="p-4 text-center">
+                         <div className="flex flex-col items-center">
+                            {/* บรรทัด 1: วันที่อัปเดตล่าสุด (เด่น) */}
+                            <span className="text-sm font-bold text-gray-700">
+                                {formatDate(item.updated_at || item.created_at)}
+                            </span>
+                            {/* บรรทัด 2: วันที่สร้าง (รอง) */}
+                            <span className="text-[10px] text-gray-400 mt-0.5">
+                                สร้าง: {formatDate(item.created_at)}
+                            </span>
+                         </div>
                       </td>
+
                       <td className="p-4">
                         <div className="flex items-center justify-center gap-2">
                            <button 
