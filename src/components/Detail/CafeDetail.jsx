@@ -15,6 +15,9 @@ import {
 } from "../icons/Icons";
 import { SafeImage, NotFound } from "../ui/UIComponents";
 
+// ✅ 1. เพิ่ม Import ตัวแปลง HTML
+import parse, { domToReact } from "html-react-parser";
+
 export const CafeDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -122,6 +125,62 @@ export const CafeDetail = ({ onTriggerToast }) => {
     return [];
   };
   const facilities = getFacilities();
+
+  // ✅ 2. เพิ่มฟังก์ชัน renderRichText (Logic แปลง YouTube และ HTML)
+  const renderRichText = (htmlContent) => {
+    return parse(htmlContent || "", {
+      replace: (domNode) => {
+        // กรณี 1: iframe
+        if (domNode.name === "iframe" && domNode.attribs) {
+          return (
+            <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
+              <iframe {...domNode.attribs} className="w-full h-full" allowFullScreen></iframe>
+            </div>
+          );
+        }
+        // กรณี 2: Link <a>
+        if (domNode.name === "a" && domNode.attribs && domNode.attribs.href) {
+          const href = domNode.attribs.href;
+          if (href.includes("youtube.com/embed") || href.includes("youtu.be") || href.includes("youtube.com/watch")) {
+            let videoId = "";
+            if (href.includes("/embed/")) videoId = href.split("/embed/")[1]?.split("?")[0];
+            else if (href.includes("v=")) videoId = href.split("v=")[1]?.split("&")[0];
+            else if (href.includes("youtu.be/")) videoId = href.split("youtu.be/")[1]?.split("?")[0];
+
+            if (videoId) {
+              return (
+                <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
+                  <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen frameBorder="0"></iframe>
+                </div>
+              );
+            }
+          }
+          return (
+            <a {...domNode.attribs} target="_blank" rel="noopener noreferrer" className="text-[#FF6B00] hover:underline break-words font-bold">
+              {domToReact(domNode.children)}
+            </a>
+          );
+        }
+        // กรณี 3: Text Link ใน <p> (แก้ปัญหาลิงก์ดิบ)
+        if (domNode.name === "p" && domNode.children && domNode.children.length === 1 && domNode.children[0].type === "text") {
+            const text = domNode.children[0].data.trim();
+            if (text.startsWith("http") && (text.includes("youtube.com/watch") || text.includes("youtu.be"))) {
+                let videoId = "";
+                if (text.includes("v=")) videoId = text.split("v=")[1]?.split("&")[0];
+                else if (text.includes("youtu.be/")) videoId = text.split("youtu.be/")[1]?.split("?")[0];
+
+                if (videoId) {
+                    return (
+                        <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
+                            <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen frameBorder="0"></iframe>
+                        </div>
+                    );
+                }
+            }
+        }
+      },
+    });
+  };
 
   if (loading)
     return (
@@ -488,12 +547,11 @@ export const CafeDetail = ({ onTriggerToast }) => {
                 ? "📝 รายละเอียดและบรรยากาศร้าน"
                 : "🏢 รายละเอียดพื้นที่และกฎระเบียบ"}
             </h2>
+            {/* ✅ 3. ใช้ renderRichText ในจุดนี้ โดยคง Class เดิมไว้ครบถ้วน */}
             <div className="prose prose-lg text-gray-600 leading-relaxed whitespace-pre-line mb-8">
               {activeTab === "venue"
-                ? cafe.organizer_description ||
-                  cafe.description ||
-                  "ยังไม่มีรายละเอียดเพิ่มเติม"
-                : cafe.description || "ยังไม่มีรายละเอียดเพิ่มเติม"}
+                ? (cafe.organizer_description || cafe.description ? renderRichText(cafe.organizer_description || cafe.description) : "ยังไม่มีรายละเอียดเพิ่มเติม")
+                : (cafe.description ? renderRichText(cafe.description) : "ยังไม่มีรายละเอียดเพิ่มเติม")}
             </div>
           </div>
         </div>

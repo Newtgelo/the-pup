@@ -2,19 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 
+// ✅ 1. Import Rich Text & SweetAlert2
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
+import Swal from "sweetalert2";
+
 export const AdminCreateCafe = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [isAuth, setIsAuth] = useState(false);
 
+  // Config Toolbar
+  const modules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ["bold", "italic", "underline", "strike"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["link", "image", "video"],
+      [{ color: [] }, { background: [] }],
+      ["clean"],
+    ],
+  };
+
   const [formData, setFormData] = useState({
     name: '', location_text: '', map_link: '', image_url: '',
     gallery_image_1: '', gallery_image_2: '', gallery_image_3: '',
-  gallery_image_4: '', gallery_image_5: '', gallery_image_6: '',
-  gallery_image_7: '', gallery_image_8: '', gallery_image_9: '',
-    open_time: '', price_range: '', phone: '', description: '',
-    capacity: '', area_type: '', facilities: '', organizer_description: '',
-    status: 'draft' // ✅ Default เป็น draft ก่อน
+    gallery_image_4: '', gallery_image_5: '', gallery_image_6: '',
+    gallery_image_7: '', gallery_image_8: '', gallery_image_9: '',
+    open_time: '', price_range: '', phone: '', 
+    description: '', // Rich Text 1
+    capacity: '', area_type: '', facilities: '', 
+    organizer_description: '', // Rich Text 2
+    status: 'draft' 
   });
 
   useEffect(() => {
@@ -25,11 +44,26 @@ export const AdminCreateCafe = () => {
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
+  // ✅ Handle Rich Text 1 (Customer Description)
+  const handleDescriptionChange = (value) => {
+    setFormData({ ...formData, description: value });
+  };
+
+  // ✅ Handle Rich Text 2 (Organizer Description)
+  const handleOrganizerDescriptionChange = (value) => {
+    setFormData({ ...formData, organizer_description: value });
+  };
+
   // ฟังก์ชันบันทึกหลัก
   const handleSave = async (statusType, isPreview = false) => {
+    // Validation เบื้องต้น
+    if (!formData.name || !formData.location_text || !formData.image_url) {
+        Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลที่จำเป็น (*) ให้ครบถ้วน", "warning");
+        return;
+    }
+
     setLoading(true);
     
-    // เตรียมข้อมูลที่จะบันทึก พร้อมระบุ status
     const dataToSave = { ...formData, status: statusType };
     
     // Insert ลง DB
@@ -38,15 +72,23 @@ export const AdminCreateCafe = () => {
     setLoading(false);
 
     if (error) {
-        alert("Error: " + error.message);
+        Swal.fire("Error", error.message, "error");
     } else {
         if (isPreview) {
-            // ✅ ถ้ากด Preview: เปิดแท็บใหม่ไปดูหน้าจริง + ย้ายหน้า Admin ไปหน้า Edit
+            // ✅ ถ้ากด Preview: เปิดหน้าจริงดู + เด้งไปหน้า Edit Cafe
             window.open(`/cafe/${data.id}`, '_blank');
             navigate(`/admin/edit-cafe/${data.id}`); 
         } else {
-            // ✅ ถ้ากดบันทึกปกติ: กลับไปหน้ารายการ
-            navigate('/admin/cafes');
+            // ✅ ถ้ากดบันทึก/เผยแพร่: Popup Success -> กลับหน้ารวม
+            Swal.fire({
+                title: "Success",
+                text: statusType === 'published' ? "เผยแพร่คาเฟ่เรียบร้อย" : "บันทึกร่างเรียบร้อย",
+                icon: "success",
+                confirmButtonText: "OK",
+                confirmButtonColor: "#FF6B00",
+            }).then(() => {
+                navigate('/admin/cafes');
+            });
         }
     }
   };
@@ -63,11 +105,6 @@ export const AdminCreateCafe = () => {
         </div>
 
         <div className="p-8 space-y-10">
-            {/* --- (ส่วน Form Input เหมือนเดิมเป๊ะ ไม่ต้องแก้ครับ) --- */}
-            {/* ผมขอละไว้ใน Code block นี้นะครับ ให้พี่ใช้ Form Input ชุดเดิมจากไฟล์ที่แล้วได้เลย */}
-            {/* หรือถ้าจะก๊อปปี้ใหม่ทั้งหมด บอกผมได้ครับ เดี๋ยวผมแปะตัวเต็มให้ */}
-            
-            {/* ... ใส่ Code Form Input Zone 1-4 ตรงนี้ ... */}
             
              {/* ---------------- ZONE 1: ข้อมูลทั่วไป ---------------- */}
             <section>
@@ -97,25 +134,26 @@ export const AdminCreateCafe = () => {
 
             {/* ---------------- ZONE 2: Gallery ---------------- */}
             <section>
-    <div className="flex items-center gap-2 mb-4">
-        <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold">2</span>
-        <h2 className="text-lg font-bold text-gray-900">อัลบั้มรูปภาพเพิ่มเติม (Gallery)</h2>
-    </div>
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-purple-50/50 p-6 rounded-xl border border-purple-100">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-            <div key={num}>
-                <label className="block text-xs font-bold text-gray-500 mb-1">รูปเพิ่มเติมที่ {num}</label>
-                <input 
-                    name={`gallery_image_${num}`} 
-                    value={formData[`gallery_image_${num}`]} 
-                    onChange={handleChange} 
-                    className="w-full border rounded-lg p-2 text-sm bg-white" 
-                    placeholder={`URL รูปเพิ่มเติมที่ ${num}`} 
-                />
-            </div>
-        ))}
-    </div>
-</section>
+                <div className="flex items-center gap-2 mb-4">
+                    <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold">2</span>
+                    <h2 className="text-lg font-bold text-gray-900">อัลบั้มรูปภาพเพิ่มเติม (Gallery)</h2>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-purple-50/50 p-6 rounded-xl border border-purple-100">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                        <div key={num}>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">รูปเพิ่มเติมที่ {num}</label>
+                            <input 
+                                name={`gallery_image_${num}`} 
+                                value={formData[`gallery_image_${num}`]} 
+                                onChange={handleChange} 
+                                className="w-full border rounded-lg p-2 text-sm bg-white" 
+                                placeholder={`URL รูปเพิ่มเติมที่ ${num}`} 
+                            />
+                        </div>
+                    ))}
+                </div>
+            </section>
+
             {/* ---------------- ZONE 3: ข้อมูลฝั่งลูกค้า ---------------- */}
             <section>
                 <div className="flex items-center gap-2 mb-4">
@@ -137,9 +175,20 @@ export const AdminCreateCafe = () => {
                             <input name="phone" onChange={handleChange} className="w-full border rounded-lg p-3 bg-white" placeholder="089-xxx-xxxx" />
                         </div>
                     </div>
+                    
+                    {/* ✅ เปลี่ยน Textarea เป็น Rich Text (description) */}
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">รายละเอียดร้าน / บรรยากาศ</label>
-                        <textarea name="description" onChange={handleChange} className="w-full border rounded-lg p-3 min-h-[100px] bg-white" placeholder="บรรยากาศร้านเป็นยังไง..." />
+                        <label className="block text-sm font-bold text-gray-700 mb-1">รายละเอียดร้าน / บรรยากาศ (Rich Text)</label>
+                        <div className="bg-white">
+                            <ReactQuill 
+                                theme="snow"
+                                value={formData.description} 
+                                onChange={handleDescriptionChange}
+                                modules={modules}
+                                className="h-64 mb-12"
+                                placeholder="บรรยากาศร้านเป็นยังไง..."
+                            />
+                        </div>
                     </div>
                 </div>
             </section>
@@ -165,16 +214,27 @@ export const AdminCreateCafe = () => {
                         <label className="block text-sm font-bold text-gray-700 mb-1">สิ่งอำนวยความสะดวก (คั่นด้วยคอมม่า)</label>
                         <input name="facilities" onChange={handleChange} className="w-full border rounded-lg p-3 bg-white" placeholder="เช่น ที่จอดรถ, Wifi, Pet Friendly, อาหารคาวหวาน" />
                     </div>
+
+                    {/* ✅ เปลี่ยน Textarea เป็น Rich Text (organizer_description) */}
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">กฎระเบียบ / รายละเอียดพื้นที่</label>
-                        <textarea name="organizer_description" onChange={handleChange} className="w-full border rounded-lg p-3 min-h-[100px] bg-white" placeholder="กฎการใช้เสียง การจอง..." />
+                        <label className="block text-sm font-bold text-gray-700 mb-1">กฎระเบียบ / รายละเอียดพื้นที่ (Rich Text)</label>
+                        <div className="bg-white">
+                            <ReactQuill 
+                                theme="snow"
+                                value={formData.organizer_description} 
+                                onChange={handleOrganizerDescriptionChange}
+                                modules={modules}
+                                className="h-64 mb-12"
+                                placeholder="กฎการใช้เสียง การจอง..."
+                            />
+                        </div>
                     </div>
                 </div>
             </section>
 
 
             {/* ✅ ACTION BUTTONS ZONE */}
-            <div className="pt-6 flex flex-col md:flex-row gap-3 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+            <div className="pt-6 flex flex-col md:flex-row gap-3 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
                 {/* ปุ่มยกเลิก */}
                 <button type="button" onClick={() => navigate('/admin/cafes')} className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">
                     ยกเลิก
