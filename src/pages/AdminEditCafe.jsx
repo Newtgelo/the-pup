@@ -121,12 +121,15 @@ export const AdminEditCafe = () => {
             window.open(`/cafe/${id}`, '_blank');
         } else {
             // บันทึกเสร็จ -> กลับหน้ารวม
+            // เช็คหน่อยว่าเป็นการ Published ครั้งแรก หรือ Update
+            const actionText = statusType === 'published' ? "ออนไลน์เรียบร้อย" : "บันทึกร่างเรียบร้อย";
+            
             Swal.fire({
                 title: "Success",
-                text: "บันทึกการแก้ไขเรียบร้อย",
+                text: actionText,
                 icon: "success",
                 confirmButtonText: "OK",
-                confirmButtonColor: "#FF6B00",
+                confirmButtonColor: statusType === 'published' ? "#10B981" : "#6B7280", // เขียว หรือ เทา
             }).then(() => {
                 navigate('/admin/cafes');
             });
@@ -140,7 +143,7 @@ export const AdminEditCafe = () => {
         <div className="bg-white border-b border-gray-100 p-8 pb-4 flex justify-between items-center">
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">✏️ แก้ไขคาเฟ่/สถานที่</h1>
-                <p className="text-sm text-gray-500 mt-1">ID: {id} • สถานะปัจจุบัน: <span className={`font-bold ${formData.status === 'published' ? 'text-green-600' : 'text-gray-500'}`}>{formData.status === 'published' ? 'เผยแพร่แล้ว' : 'แบบร่าง'}</span></p>
+                <p className="text-sm text-gray-500 mt-1">ID: {id} • แก้ไขล่าสุด: {new Date().toLocaleDateString('th-TH')}</p>
             </div>
             <button onClick={() => navigate('/admin/cafes')} className="text-gray-500 hover:text-orange-500 font-bold">กลับหน้ารวม</button>
         </div>
@@ -257,40 +260,83 @@ export const AdminEditCafe = () => {
                 </div>
             </section>
 
-            {/* ✅ ACTION BUTTONS ZONE (เพิ่มปุ่ม Preview และแยก Draft/Publish) */}
-            <div className="pt-6 flex flex-col md:flex-row gap-3 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
-                <button type="button" onClick={() => navigate('/admin/cafes')} className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">
+            {/* ✅ ACTION BUTTONS ZONE (INTELLIGENT UI) */}
+            <div className="pt-6 flex flex-col md:flex-row items-center gap-4 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+                
+                {/* 1. ปุ่มยกเลิก (ซ้ายสุด) */}
+                <button type="button" onClick={() => navigate('/admin/cafes')} className="text-gray-500 hover:text-gray-700 font-bold px-4">
                     ยกเลิก
                 </button>
 
-                <div className="flex-1"></div>
+                {/* 2. Status Badge (แจ้งสถานะ) */}
+                <div className="flex-1 flex items-center gap-2">
+                    {formData.status === 'published' ? (
+                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200 flex items-center gap-1">
+                            🟢 ออนไลน์ (Published)
+                        </span>
+                    ) : (
+                        <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold border border-gray-200 flex items-center gap-1">
+                            ⚪ แบบร่าง (Draft)
+                        </span>
+                    )}
+                </div>
 
-                <button 
-                    type="button" 
-                    onClick={() => handleUpdate('draft', false)} 
-                    disabled={loading}
-                    className="px-6 py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-900 shadow-md"
-                >
-                    💾 บันทึกร่าง
-                </button>
+                {/* 3. ปุ่มกลุ่มขวา (Actions) */}
+                <div className="flex items-center gap-3">
+                    
+                    {/* ปุ่ม Preview (แสดงตลอด) */}
+                    <button 
+                        type="button" 
+                        onClick={() => handleUpdate(formData.status, true)} 
+                        disabled={loading}
+                        className="px-5 py-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl font-bold hover:bg-blue-100 transition"
+                    >
+                        👁️ ดูตัวอย่าง
+                    </button>
 
-                <button 
-                    type="button" 
-                    onClick={() => handleUpdate(formData.status, true)} // status เดิม แต่ดูตัวอย่าง
-                    disabled={loading}
-                    className="px-6 py-3 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl font-bold hover:bg-blue-100 shadow-sm"
-                >
-                    👁️ ดูตัวอย่าง
-                </button>
-
-                <button 
-                    type="button" 
-                    onClick={() => handleUpdate('published', false)} 
-                    disabled={loading}
-                    className="px-8 py-3 bg-[#FF6B00] text-white rounded-xl font-bold hover:bg-[#e65000] shadow-lg"
-                >
-                    🚀 เผยแพร่
-                </button>
+                    {/* แยกกรณีตาม Status */}
+                    {formData.status === 'published' ? (
+                        // ✅ กรณี: Published แล้ว (ปุ่มหลักเป็นสีเขียว "อัปเดต")
+                        <>
+                            <button 
+                                type="button" 
+                                onClick={() => handleUpdate('draft', false)} 
+                                disabled={loading}
+                                className="px-5 py-2.5 text-red-500 border border-transparent hover:bg-red-50 rounded-xl font-bold transition text-sm"
+                            >
+                                🚫 เปลี่ยนเป็นแบบร่าง
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={() => handleUpdate('published', false)} 
+                                disabled={loading}
+                                className="px-6 py-2.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center gap-2"
+                            >
+                                ✅ บันทึกการแก้ไข
+                            </button>
+                        </>
+                    ) : (
+                        // ⚪ กรณี: Draft อยู่ (ปุ่มหลักเป็นสีส้ม "เผยแพร่")
+                        <>
+                            <button 
+                                type="button" 
+                                onClick={() => handleUpdate('draft', false)} 
+                                disabled={loading}
+                                className="px-5 py-2.5 bg-white border-2 border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 hover:border-gray-300 transition shadow-sm"
+                            >
+                                💾 บันทึกแบบร่าง
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={() => handleUpdate('published', false)} 
+                                disabled={loading}
+                                className="px-6 py-2.5 bg-[#FF6B00] text-white rounded-xl font-bold hover:bg-[#e65000] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center gap-2"
+                            >
+                                🚀 เผยแพร่ทันที
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
         </div>

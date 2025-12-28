@@ -238,44 +238,55 @@ export const AdminCreateCafe = () => {
             </section>
 
 
-            {/* ✅ ACTION BUTTONS ZONE */}
-            <div className="pt-6 flex flex-col md:flex-row gap-3 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
-                {/* ปุ่มยกเลิก */}
-                <button type="button" onClick={() => navigate('/admin/cafes')} className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">
+            {/* ✅ ACTION BUTTONS ZONE (IMPROVED UI) */}
+            <div className="pt-6 flex flex-col md:flex-row items-center gap-4 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+                
+                {/* 1. ปุ่มยกเลิก (ซ้ายสุด) */}
+                <button type="button" onClick={() => navigate('/admin/cafes')} className="text-gray-500 hover:text-gray-700 font-bold px-4">
                     ยกเลิก
                 </button>
 
-                <div className="flex-1"></div> {/* Spacer ดันปุ่มขวา */}
+                <div className="flex-1 flex items-center gap-2">
+                    {/* Status Badge (บอกสถานะปัจจุบัน) */}
+                    <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold border border-blue-100 flex items-center gap-1">
+                        ✨ New Entry
+                    </span>
+                    <span className="text-xs text-gray-400 hidden md:inline">กรอกข้อมูลและกดบันทึกเพื่อสร้าง</span>
+                </div>
 
-                {/* ปุ่มบันทึกร่าง */}
-                <button 
-                    type="button" 
-                    onClick={() => handleSave('draft', false)} 
-                    disabled={loading}
-                    className="px-6 py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-900 shadow-md"
-                >
-                    💾 บันทึกร่าง
-                </button>
+                {/* 2. ปุ่มกลุ่มขวา (Action) */}
+                <div className="flex items-center gap-3">
+                    
+                    {/* ปุ่มบันทึกร่าง (Ghost Button - ลดความเด่น) */}
+                    <button 
+                        type="button" 
+                        onClick={() => handleSave('draft', false)} 
+                        disabled={loading}
+                        className="px-5 py-2.5 bg-white border-2 border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 transition shadow-sm"
+                    >
+                        💾 บันทึกแบบร่าง
+                    </button>
 
-                {/* ปุ่ม Preview */}
-                <button 
-                    type="button" 
-                    onClick={() => handleSave('draft', true)} 
-                    disabled={loading}
-                    className="px-6 py-3 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl font-bold hover:bg-blue-100 shadow-sm"
-                >
-                    👁️ ดูตัวอย่าง
-                </button>
+                    {/* ปุ่ม Preview (Secondary) */}
+                    <button 
+                        type="button" 
+                        onClick={() => handleSave('draft', true)} 
+                        disabled={loading}
+                        className="px-5 py-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl font-bold hover:bg-blue-100 transition"
+                    >
+                        👁️ ดูตัวอย่าง
+                    </button>
 
-                {/* ปุ่มเผยแพร่ */}
-                <button 
-                    type="button" 
-                    onClick={() => handleSave('published', false)} 
-                    disabled={loading}
-                    className="px-8 py-3 bg-[#FF6B00] text-white rounded-xl font-bold hover:bg-[#e65000] shadow-lg"
-                >
-                    🚀 เผยแพร่ทันที
-                </button>
+                    {/* ปุ่มเผยแพร่ (Primary - เด่นสุด) */}
+                    <button 
+                        type="button" 
+                        onClick={() => handleSave('published', false)} 
+                        disabled={loading}
+                        className="px-6 py-2.5 bg-[#FF6B00] text-white rounded-xl font-bold hover:bg-[#e65000] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center gap-2"
+                    >
+                        🚀 เผยแพร่ทันที
+                    </button>
+                </div>
             </div>
 
         </div>
