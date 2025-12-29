@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { AdminSidebar } from './AdminSidebar';
 
 export const AdminLayout = () => {
+  // ✅ สร้าง State เก็บสถานะ: true = กางออก, false = พับเก็บ
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar (Fixed width) */}
-      <AdminSidebar />
+      {/* Sidebar: ส่ง state ไปให้มันรู้ตัวว่าต้องยืดหรือหด */}
+      <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-      {/* Content Area (Dynamic) */}
-      {/* ml-64 คือเว้นซ้ายไว้เท่าความกว้าง Sidebar */}
-      <div className="flex-1 ml-64">
+      {/* Content Area: ปรับ margin-left ตามสถานะ Sidebar */}
+      {/* transition-all duration-300 ช่วยให้ตอนยืดหดดูลื่นไหล (Animation) */}
+      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'}`}>
         <div className="p-8">
-           {/* Outlet คือจุดที่หน้า AdminEventDashboard, CreateEvent ฯลฯ จะมาโผล่ตรงนี้ */}
            <Outlet />
         </div>
       </div>
