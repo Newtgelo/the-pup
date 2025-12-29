@@ -6,6 +6,7 @@ import {
   IconShare, IconChevronLeft, IconClock,
 } from "../icons/Icons"; 
 import { SafeImage, NotFound } from "../ui/UIComponents";
+import { Helmet } from "react-helmet-async";
 
 export const NewsDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
@@ -32,7 +33,13 @@ export const NewsDetail = ({ onTriggerToast }) => {
         setNews(null);
       } else {
         setNews(data);
-        const { data: others } = await supabase.from("news").select("*").neq("id", id).limit(3);
+        const { data: others } = await supabase
+          .from("news")
+          .select("*")
+          .neq("id", id)
+          .order('date', { ascending: false })
+          .limit(3);
+        
         if (others) setOtherNews(others);
       }
       setLoading(false);
@@ -56,8 +63,27 @@ export const NewsDetail = ({ onTriggerToast }) => {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลดข่าว...</div>;
   if (!news) return <NotFound title="ไม่พบข่าวดังกล่าว" onBack={() => navigate("/")} />;
 
+  const metaDescription = news.content 
+      ? news.content.replace(/<[^>]*>?/gm, '').substring(0, 150) + "..."
+      : `อ่านข่าว ${news.title} อัปเดตล่าสุดวงการ K-Pop ที่ The Popup Plan`;
+
   return (
     <>
+      <Helmet>
+        <title>{`${news.title} | The Popup Plan`}</title>
+        <meta name="description" content={metaDescription} />
+        <meta property="og:type" content="article" />
+        <meta property="og:url" content={window.location.href} />
+        <meta property="og:title" content={news.title} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:image" content={news.image_url} />
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content={window.location.href} />
+        <meta property="twitter:title" content={news.title} />
+        <meta property="twitter:description" content={metaDescription} />
+        <meta property="twitter:image" content={news.image_url} />
+      </Helmet>
+
       <div className="md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none">
         <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
         <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconShare size={20} /></button>
@@ -77,7 +103,18 @@ export const NewsDetail = ({ onTriggerToast }) => {
             <span className="bg-[#FF6B00] text-white px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">{news.category}</span>
             <span className="text-gray-500 flex items-center gap-1"><IconClock size={14} /> {news.date}</span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight mb-4">{news.title}</h1>
+          
+          {/* ✅ แก้ไขรอบสุดท้าย: จูนระยะบรรทัดละเอียด
+              - leading-tight : ชิดมาก (ระวังทับกัน)
+              - leading-snug : ชิดพอดีๆ
+              - leading-normal : ปกติ (มาตรฐาน)
+              - leading-relaxed : ห่างนิดหน่อย (อ่านสบาย)
+              - leading-loose : ห่างมาก (กว้างสุดๆ)
+              - py-2: เพิ่มพื้นที่บนล่าง กันสระโดนตัด
+          */}
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-snug md:leading-snug lg:leading-snug py-2 mb-4">
+            {news.title}
+          </h1>
         </div>
 
         {news.image_url && (
@@ -86,7 +123,6 @@ export const NewsDetail = ({ onTriggerToast }) => {
           </div>
         )}
 
-        {/* ✅ ใช้ Class และ Logic ชุดเดียวกับ EventDetail เป๊ะๆ (เปลี่ยนแค่ content) */}
         <div className="max-w-3xl mx-auto mb-10 prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line 
               [&>p]:mb-4 
               [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-3
@@ -97,7 +133,6 @@ export const NewsDetail = ({ onTriggerToast }) => {
         >
           {parse(news.content || "", {
             replace: (domNode) => {
-              // แปลง iframe (วิดีโอที่ Embed มา)
               if (domNode.name === "iframe" && domNode.attribs) {
                 return (
                   <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
@@ -105,7 +140,6 @@ export const NewsDetail = ({ onTriggerToast }) => {
                   </div>
                 );
               }
-              // แปลง Link YouTube ให้เป็นจอวิดีโอ
               if (domNode.name === "a" && domNode.attribs && domNode.attribs.href) {
                 const href = domNode.attribs.href;
                 if (href.includes("youtube.com/embed") || href.includes("youtu.be") || href.includes("youtube.com/watch")) {
@@ -122,7 +156,6 @@ export const NewsDetail = ({ onTriggerToast }) => {
                     );
                   }
                 }
-                // ลิงก์ธรรมดา ให้เป็นสีส้ม + เปิด tab ใหม่
                 return (
                   <a {...domNode.attribs} target="_blank" rel="noopener noreferrer" className="text-[#FF6B00] hover:underline break-words font-bold">
                     {domToReact(domNode.children)}
@@ -143,8 +176,8 @@ export const NewsDetail = ({ onTriggerToast }) => {
         <hr className="border-gray-200 mb-12" />
 
         <div className="bg-gray-50 rounded-2xl p-6 md:p-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">ข่าวสารอื่นๆ ที่น่าสนใจ</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">ข่าวล่าสุดที่น่าสนใจ</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {otherNews.map((n) => (
               <div key={n.id} onClick={() => { navigate(`/news/${n.id}`); window.scrollTo(0, 0); }} className="cursor-pointer group">
                 <div className="aspect-video rounded-xl overflow-hidden bg-gray-200 mb-3">
