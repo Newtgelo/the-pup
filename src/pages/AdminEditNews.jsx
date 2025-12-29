@@ -3,8 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { supabase } from '../supabase';
-
-// ✅ Import SweetAlert2
 import Swal from "sweetalert2";
 
 export const AdminEditNews = () => {
@@ -19,11 +17,14 @@ export const AdminEditNews = () => {
   const [imageUrl, setImageUrl] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
+  
+  // ✅ เพิ่ม State สำหรับ Status และ CreatedAt
+  const [status, setStatus] = useState('draft'); 
+  const [createdAt, setCreatedAt] = useState(null);
 
   // 1. เช็ค Auth และดึงข้อมูลข่าวเก่า
   useEffect(() => {
     const fetchData = async () => {
-      // เช็ค Login
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate('/admin/login');
@@ -31,7 +32,6 @@ export const AdminEditNews = () => {
       }
       setIsAuthChecking(false);
 
-      // ดึงข้อมูลข่าวตาม ID
       const { data, error } = await supabase.from('news').select('*').eq('id', id).single();
       if (error) {
         Swal.fire("Error", "ไม่พบข้อมูลข่าว", "error");
@@ -42,6 +42,10 @@ export const AdminEditNews = () => {
         setImageUrl(data.image_url || '');
         setContent(data.content || '');
         setTags(data.tags || '');
+        
+        // ✅ ดึง Status (ถ้าไม่มีค่าจาก DB ให้ถือว่าเป็น published ของเก่า)
+        setStatus(data.status || 'published');
+        setCreatedAt(data.created_at);
       }
     };
 
@@ -58,8 +62,8 @@ export const AdminEditNews = () => {
     ],
   };
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
+  // ✅ ฟังก์ชันอัปเดต (รองรับการเปลี่ยน Status)
+  const handleUpdate = async (statusType, isPreview = false) => {
     if (!title || !content) {
         Swal.fire("แจ้งเตือน", "กรุณาใส่หัวข้อและเนื้อหาข่าว", "warning");
         return;
@@ -67,30 +71,41 @@ export const AdminEditNews = () => {
 
     setLoading(true);
     
-    // อัปเดตข้อมูลลง Database
-    const { error } = await supabase.from('news').update({
+    const dataToUpdate = {
         title,
         category,
         image_url: imageUrl,
         content,
         tags,
-    }).eq('id', id);
+        status: statusType, // อัปเดตสถานะตามปุ่มที่กด
+        updated_at: new Date().toISOString(), // อัปเดตเวลาแก้ไขล่าสุด
+    };
+
+    const { error } = await supabase.from('news').update(dataToUpdate).eq('id', id);
 
     setLoading(false);
 
     if (error) {
         Swal.fire("Error", error.message, "error");
     } else {
-        // ✅ Popup Success -> กด OK -> ไปหน้าจัดการข่าวสาร (/admin/news)
-        Swal.fire({
-            title: "Success",
-            text: "แก้ไขข่าวเรียบร้อย",
-            icon: "success",
-            confirmButtonText: "OK",
-            confirmButtonColor: "#FF6B00",
-        }).then(() => {
-            navigate('/admin/news'); 
-        });
+        if (isPreview) {
+            // ✅ ถ้ากดดูตัวอย่าง ให้เปิดหน้า News Detail แท็บใหม่
+            window.open(`/news/${id}`, '_blank');
+            // และอัปเดต State ในหน้านี้ให้ตรงกัน (เผื่อมีการเปลี่ยนสถานะ)
+            setStatus(statusType);
+        } else {
+            // ✅ ถ้ากดบันทึกปกติ
+            const actionText = statusType === 'published' ? "อัปเดตข้อมูลเรียบร้อย" : "บันทึกร่างเรียบร้อย";
+            Swal.fire({
+                title: "Success",
+                text: actionText,
+                icon: "success",
+                confirmButtonText: "OK",
+                confirmButtonColor: statusType === 'published' ? "#10B981" : "#6B7280",
+            }).then(() => {
+                navigate('/admin/news'); 
+            });
+        }
     }
   };
 
@@ -98,13 +113,15 @@ export const AdminEditNews = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8">
-        <div className="flex justify-between items-center mb-6 border-b pb-4">
+      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
+        
+        {/* Header */}
+        <div className="bg-white border-b border-gray-100 p-8 pb-4">
              <h1 className="text-3xl font-bold text-gray-900">✏️ แก้ไขข่าว (Admin)</h1>
-             <button onClick={() => navigate('/admin/news')} className="text-gray-500 hover:text-orange-500 font-bold">Cancel</button>
+             <p className="text-sm text-gray-500 mt-1">ID: {id} • แก้ไขล่าสุด: {new Date().toLocaleDateString('th-TH')}</p>
         </div>
         
-        <form onSubmit={handleUpdate} className="space-y-6">
+        <div className="p-8 space-y-6">
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">หัวข้อข่าว</label>
                 <input type="text" className="w-full border border-gray-300 rounded-lg p-3" value={title} onChange={e => setTitle(e.target.value)} />
@@ -138,10 +155,85 @@ export const AdminEditNews = () => {
                  <input type="text" className="w-full border border-gray-300 rounded-lg p-3" value={tags} onChange={e => setTags(e.target.value)} />
             </div>
 
-            <button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition disabled:bg-gray-400">
-                {loading ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
-            </button>
-        </form>
+            {/* ✅ ACTION BUTTONS ZONE (Sticky Footer เหมือน Cafe) */}
+            <div className="pt-6 flex flex-col md:flex-row items-center gap-4 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
+                
+                {/* 1. ปุ่มยกเลิก */}
+                <button type="button" onClick={() => navigate('/admin/news')} className="text-gray-500 hover:text-gray-700 font-bold px-4">
+                    ยกเลิก
+                </button>
+
+                {/* 2. Status Badge (โชว์ตรงกลาง-ซ้าย เหมือน Cafe) */}
+                <div className="flex-1 flex items-center gap-2">
+                    {status === 'published' ? (
+                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200 flex items-center gap-1">
+                            🟢 ออนไลน์ (Published)
+                        </span>
+                    ) : (
+                        <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold border border-gray-200 flex items-center gap-1">
+                            ⚪ แบบร่าง (Draft)
+                        </span>
+                    )}
+                </div>
+
+                {/* 3. ปุ่ม Action ขวาสุด */}
+                <div className="flex items-center gap-3">
+                    
+                    {/* ปุ่ม Preview */}
+                    <button 
+                        type="button" 
+                        onClick={() => handleUpdate(status, true)} 
+                        disabled={loading}
+                        className="px-5 py-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl font-bold hover:bg-blue-100 transition"
+                    >
+                        👁️ ดูตัวอย่าง
+                    </button>
+
+                    {status === 'published' ? (
+                        // ✅ ถ้า Published อยู่ -> โชว์ปุ่ม "Unpublish" และ "Update"
+                        <>
+                            <button 
+                                type="button" 
+                                onClick={() => handleUpdate('draft', false)} 
+                                disabled={loading}
+                                className="px-5 py-2.5 text-red-500 border border-transparent hover:bg-red-50 rounded-xl font-bold transition text-sm whitespace-nowrap"
+                            >
+                                🚫 เปลี่ยนเป็นแบบร่าง
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={() => handleUpdate('published', false)} 
+                                disabled={loading}
+                                className="px-6 py-2.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center gap-2"
+                            >
+                                ✅ บันทึกการแก้ไข
+                            </button>
+                        </>
+                    ) : (
+                        // ⚪ ถ้า Draft อยู่ -> โชว์ปุ่ม "Save Draft" และ "Publish"
+                        <>
+                            <button 
+                                type="button" 
+                                onClick={() => handleUpdate('draft', false)} 
+                                disabled={loading}
+                                className="px-5 py-2.5 bg-white border-2 border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 hover:border-gray-300 transition shadow-sm"
+                            >
+                                💾 บันทึกแบบร่าง
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={() => handleUpdate('published', false)} 
+                                disabled={loading}
+                                className="px-6 py-2.5 bg-[#FF6B00] text-white rounded-xl font-bold hover:bg-[#e65000] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center gap-2"
+                            >
+                                🚀 เผยแพร่ทันที
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+
+        </div>
       </div>
     </div>
   );

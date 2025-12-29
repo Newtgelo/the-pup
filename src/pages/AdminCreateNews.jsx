@@ -23,7 +23,7 @@ export const AdminCreateNews = () => {
     checkUser();
   }, [navigate]);
 
-  // State ข้อมูลฟอร์ม
+  // State ข้อมูลฟอร์ม (คงเดิม)
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('K-pop');
   const [imageUrl, setImageUrl] = useState('');
@@ -40,8 +40,9 @@ export const AdminCreateNews = () => {
     ],
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
+  // ✅ ฟังก์ชันบันทึกแบบใหม่ (รับ statusType)
+  const handleSave = async (statusType) => {
+    // Validation
     if (!title || !content) {
         Swal.fire("แจ้งเตือน", "กรุณาใส่หัวข้อและเนื้อหาข่าว", "warning");
         return;
@@ -49,30 +50,38 @@ export const AdminCreateNews = () => {
 
     setLoading(true);
     
-    // บันทึกลง Database
-    const { error } = await supabase.from('news').insert({
+    // ✅ เตรียมข้อมูล (Auto Date + Status)
+    const now = new Date();
+    const dataToSave = {
         title,
         category,
         image_url: imageUrl,
         content,
         tags,
-        date: new Date().toISOString().split('T')[0],
-    });
+        status: statusType, // 'draft' หรือ 'published'
+        created_at: now.toISOString(), // เวลาปัจจุบันเป๊ะๆ
+        updated_at: now.toISOString(),
+        date: now.toISOString().split('T')[0], // รองรับ field เก่า
+    };
+
+    // บันทึกลง Database
+    const { error } = await supabase.from('news').insert(dataToSave);
 
     setLoading(false);
 
     if (error) {
         Swal.fire("Error", error.message, "error");
     } else {
-        // ✅ Popup Success -> กด OK -> ไปหน้าจัดการข่าวสาร (/admin/news)
+        // แจ้งเตือนตามสถานะ
+        const actionText = statusType === 'published' ? "เผยแพร่ข่าวเรียบร้อย" : "บันทึกร่างเรียบร้อย";
+        
         Swal.fire({
             title: "Success",
-            text: "บันทึกข่าวเรียบร้อย",
+            text: actionText,
             icon: "success",
             confirmButtonText: "OK",
-            confirmButtonColor: "#FF6B00",
+            confirmButtonColor: statusType === 'published' ? "#FF6B00" : "#6B7280",
         }).then(() => {
-            // 🚀 แก้ตรงนี้ครับ!
             navigate('/admin/news'); 
         });
     }
@@ -85,11 +94,11 @@ export const AdminCreateNews = () => {
       <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8">
         <div className="flex justify-between items-center mb-6 border-b pb-4">
              <h1 className="text-3xl font-bold text-gray-900">📝 เขียนข่าวใหม่ (Admin)</h1>
-             {/* ปุ่ม Cancel ก็แก้ให้กลับไปหน้าจัดการข่าวสารด้วยเหมือนกัน เพื่อความเนียน */}
              <button onClick={() => navigate('/admin/news')} className="text-gray-500 hover:text-orange-500 font-bold">Cancel</button>
         </div>
         
-        <form onSubmit={handleSave} className="space-y-6">
+        {/* เปลี่ยนจาก form onSubmit เป็น div ธรรมดา เพราะเราคุมปุ่มเองแล้ว */}
+        <div className="space-y-6">
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">หัวข้อข่าว</label>
                 <input type="text" className="w-full border border-gray-300 rounded-lg p-3" placeholder="ใส่หัวข้อข่าว..." value={title} onChange={e => setTitle(e.target.value)} />
@@ -123,10 +132,39 @@ export const AdminCreateNews = () => {
                  <input type="text" className="w-full border border-gray-300 rounded-lg p-3" placeholder="เช่น NewJeans, Comeback" value={tags} onChange={e => setTags(e.target.value)} />
             </div>
 
-            <button type="submit" disabled={loading} className="w-full bg-[#FF6B00] hover:bg-[#E65000] text-white font-bold py-4 rounded-xl shadow-lg transition disabled:bg-gray-400">
-                {loading ? 'กำลังบันทึก...' : 'บันทึกข่าว'}
-            </button>
-        </form>
+            {/* ✅ Action Buttons Zone (เหมือนหน้า Cafe) */}
+            <div className="pt-6 flex flex-col md:flex-row gap-3 border-t border-gray-100 mt-8">
+                <button 
+                    type="button" 
+                    onClick={() => navigate('/admin/news')} 
+                    className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition"
+                >
+                    ยกเลิก
+                </button>
+
+                <div className="flex-1"></div> {/* Spacer ดันปุ่มขวา */}
+
+                {/* ปุ่มบันทึกร่าง */}
+                <button 
+                    type="button" 
+                    onClick={() => handleSave('draft')} 
+                    disabled={loading}
+                    className="px-6 py-3 bg-white border-2 border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50 hover:border-gray-300 transition shadow-sm"
+                >
+                    💾 บันทึกร่าง
+                </button>
+
+                {/* ปุ่มเผยแพร่ */}
+                <button 
+                    type="button" 
+                    onClick={() => handleSave('published')} 
+                    disabled={loading}
+                    className="px-8 py-3 bg-[#FF6B00] text-white rounded-xl font-bold hover:bg-[#e65000] shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition flex items-center gap-2"
+                >
+                    🚀 เผยแพร่ทันที
+                </button>
+            </div>
+        </div>
       </div>
     </div>
   );
