@@ -5,9 +5,10 @@ import {
   IconShare, IconX, IconMaximize, IconCalendar, IconMapPin, IconChevronLeft, IconTicket,
 } from "../icons/Icons";
 import { SafeImage, NotFound } from "../ui/UIComponents";
-
-// ✅ 1. Import domToReact เพิ่มด้วย (เอาไว้จัดการ Link ธรรมดา)
 import parse, { domToReact } from "html-react-parser";
+
+// ✅ 1. Import Helmet
+import { Helmet } from "react-helmet-async";
 
 export const EventDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
@@ -73,8 +74,33 @@ export const EventDetail = ({ onTriggerToast }) => {
     ? new Date(event.date).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })
     : "วันงานแสดง";
 
+  // ✅ Helper: สร้าง Description แบบสั้นๆ สำหรับ SEO (ตัด HTML tags ออก)
+  const metaDescription = event.description 
+      ? event.description.replace(/<[^>]*>?/gm, '').substring(0, 150) + "..."
+      : `ดูรายละเอียดงาน ${event.title} วันที่ ${formattedDate} สถานที่ ${event.location} ได้ที่ The Popup Plan`;
+
   return (
     <>
+      {/* ✅ 2. ส่วน SEO: เปลี่ยน Title และ Meta Tags */}
+      <Helmet>
+        <title>{`${event.title} | The Popup Plan`}</title>
+        <meta name="description" content={metaDescription} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={window.location.href} />
+        <meta property="og:title" content={event.title} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:image" content={event.image_url} />
+
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content={window.location.href} />
+        <meta property="twitter:title" content={event.title} />
+        <meta property="twitter:description" content={metaDescription} />
+        <meta property="twitter:image" content={event.image_url} />
+      </Helmet>
+
       {isLightboxOpen && (
         <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setIsLightboxOpen(false)}>
           <button onClick={() => setIsLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-[#FF6B00] transition"><IconX size={32} /></button>
@@ -82,6 +108,7 @@ export const EventDetail = ({ onTriggerToast }) => {
         </div>
       )}
 
+      {/* ... (ส่วน UI ด้านล่างเหมือนเดิม 100% ไม่แตะต้อง) ... */}
       <div className="md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none">
         <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
         <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconShare size={20} /></button>
@@ -151,7 +178,6 @@ export const EventDetail = ({ onTriggerToast }) => {
           <div className="md:col-span-7 lg:col-span-8">
             <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-900 border-l-4 border-[#FF6B00] pl-4">รายละเอียดงาน</h2>
             
-            {/* ✅ ใส่สูตรแปลง (replace logic) เพื่อให้ YouTube และ iframe แสดงผลได้ */}
             <div className="prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line 
               [&>p]:mb-4 
               [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-3
@@ -162,7 +188,6 @@ export const EventDetail = ({ onTriggerToast }) => {
             >
               {parse(event.description || "", {
                 replace: (domNode) => {
-                  // แปลง iframe (วิดีโอที่ Embed มา)
                   if (domNode.name === "iframe" && domNode.attribs) {
                     return (
                       <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
@@ -170,7 +195,6 @@ export const EventDetail = ({ onTriggerToast }) => {
                       </div>
                     );
                   }
-                  // แปลง Link YouTube ให้เป็นจอวิดีโอ
                   if (domNode.name === "a" && domNode.attribs && domNode.attribs.href) {
                     const href = domNode.attribs.href;
                     if (href.includes("youtube.com/embed") || href.includes("youtu.be") || href.includes("youtube.com/watch")) {
@@ -187,7 +211,6 @@ export const EventDetail = ({ onTriggerToast }) => {
                         );
                       }
                     }
-                    // ลิงก์ธรรมดา ให้เป็นสีส้ม + เปิด tab ใหม่
                     return (
                       <a {...domNode.attribs} target="_blank" rel="noopener noreferrer" className="text-[#FF6B00] hover:underline break-words font-bold">
                         {domToReact(domNode.children)}

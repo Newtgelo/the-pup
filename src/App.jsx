@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
+// ✅ 1. Import Helmet สำหรับจัดการ SEO
+import { Helmet } from 'react-helmet-async';
+
 // Import Icons
 import { IconSearch, IconX, IconLogo } from "./components/icons/Icons";
 
@@ -29,7 +32,6 @@ import { AdminCafeDashboard } from "./pages/AdminCafeDashboard";
 import { AdminCreateCafe } from "./pages/AdminCreateCafe";
 import { AdminEditCafe } from "./pages/AdminEditCafe";
 
-// ✅ เพิ่ม Import หน้า Settings
 import { AdminSettings } from "./pages/AdminSettings";
 
 import {
@@ -77,8 +79,35 @@ export default function App() {
 
   const isAdminPage = location.pathname.startsWith("/admin");
 
+  // ✅ 2. กำหนดค่า Default SEO (เอาไว้ใช้กรณีหน้าที่ไม่ได้ตั้งค่าเฉพาะเจาะจง)
+  const defaultTitle = "The Popup Plan | Minimalist K-Pop Hub";
+  const defaultDesc = "รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว ค้นหาคาเฟ่ โปรเจกต์วันเกิด และคอนเสิร์ตศิลปินคนโปรดได้ง่ายๆ";
+  const defaultImage = "https://images.unsplash.com/photo-1619229667009-e7e51684e8e6?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NjB8fGNvbmNlcnR8ZW58MHx8MHx8fDA%3D";
+  const siteUrl = "https://the-popup-plan.vercel.app/";
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
+      
+      {/* ✅ 3. ฝัง Helmet ไว้ตรงนี้เพื่อให้ทำงานทั่วทั้งเว็บ */}
+      <Helmet>
+        <title>{defaultTitle}</title>
+        <meta name="description" content={defaultDesc} />
+
+        {/* Facebook / Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={siteUrl} />
+        <meta property="og:title" content={defaultTitle} />
+        <meta property="og:description" content={defaultDesc} />
+        <meta property="og:image" content={defaultImage} />
+
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content={siteUrl} />
+        <meta property="twitter:title" content={defaultTitle} />
+        <meta property="twitter:description" content={defaultDesc} />
+        <meta property="twitter:image" content={defaultImage} />
+      </Helmet>
+
       <RouteLoader />
       <ScrollToTop />
 
@@ -193,7 +222,6 @@ export default function App() {
         <Route element={<AdminLayout />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
 
-          {/* ✅ เพิ่ม Route Settings ตรงนี้ครับ */}
           <Route path="/admin/settings" element={<AdminSettings />} />
 
           <Route path="/admin/news" element={<AdminNewsDashboard />} />
