@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'; // ✅ เพิ่ม useEffect, useState
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 
@@ -8,16 +8,16 @@ const IconChevronLeft = ({ className }) => (
 
 export const AdminSidebar = ({ isOpen, setIsOpen }) => {
   const navigate = useNavigate();
-  const [userEmail, setUserEmail] = useState("Loading..."); // ✅ State เก็บอีเมล
+  const [userEmail, setUserEmail] = useState("Loading...");
+  const [fullName, setFullName] = useState(""); // ✅ เพิ่ม State เก็บชื่อจริง
 
-  // ✅ ดึงข้อมูล User เมื่อโหลด Component
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && user.email) {
-        setUserEmail(user.email);
-      } else {
-        setUserEmail("Unknown");
+      if (user) {
+        setUserEmail(user.email || "Unknown");
+        // ✅ ดึงชื่อจาก Metadata มาโชว์ (ถ้าตั้งค่าไว้)
+        setFullName(user.user_metadata?.full_name || "");
       }
     };
     getUser();
@@ -106,20 +106,24 @@ export const AdminSidebar = ({ isOpen, setIsOpen }) => {
         ))}
       </nav>
 
-      {/* ✅ User Profile & Logout Area */}
+      {/* User Profile & Logout Area */}
       <div className="border-t border-gray-100 bg-white p-3 flex flex-col gap-2">
         
-        {/* User Info (Avatar + Email) */}
-        <div className={`flex items-center gap-3 p-2 rounded-xl bg-gray-50 border border-gray-100 ${!isOpen ? 'justify-center bg-transparent border-0 p-0' : ''}`}>
-           {/* Avatar: ใช้อักษรตัวแรกของ Email */}
-           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0" title={userEmail}>
+        {/* ✅ ทำให้กดคลิกไปหน้า Settings ได้ */}
+        <div 
+           onClick={() => navigate('/admin/settings')}
+           className={`flex items-center gap-3 p-2 rounded-xl bg-gray-50 border border-gray-100 transition cursor-pointer hover:bg-gray-100 hover:border-gray-300 group ${!isOpen ? 'justify-center bg-transparent border-0 p-0' : ''}`}
+           title="ตั้งค่าบัญชี"
+        >
+           {/* Avatar */}
+           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0 group-hover:scale-105 transition">
               {userEmail.charAt(0).toUpperCase()}
            </div>
 
-           {/* Text Detail (ซ่อนเมื่อพับ) */}
+           {/* Text Detail */}
            <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'w-auto opacity-100' : 'w-0 opacity-0 hidden'}`}>
-              <p className="text-xs font-bold text-gray-700 truncate max-w-[120px]" title={userEmail}>
-                {userEmail}
+              <p className="text-xs font-bold text-gray-700 truncate max-w-[120px]">
+                {fullName || userEmail} {/* ✅ โชว์ชื่อก่อน ถ้าไม่มีค่อยโชว์เมล */}
               </p>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
