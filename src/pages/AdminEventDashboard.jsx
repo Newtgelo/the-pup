@@ -57,12 +57,20 @@ export const AdminEventDashboard = () => {
     return sortConfig.direction === 'asc' ? <span className="text-[#FF6B00] ml-1">↑</span> : <span className="text-[#FF6B00] ml-1">↓</span>;
   };
 
-  // Logic การกรอง + เรียงลำดับ
+  // ✅ Logic การกรอง + เรียงลำดับ (เพิ่ม ID Search Logic)
   const processedEvents = [...events]
     .filter((e) => {
-        // 1. Search
-        const matchesSearch = e.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              (e.location && e.location.toLowerCase().includes(searchTerm.toLowerCase()));
+        const lowerTerm = searchTerm.toLowerCase().trim();
+        
+        // 1. กรอง Search (ฉลาดขึ้น รองรับ EV+ID)
+        let idToSearch = lowerTerm;
+        if (lowerTerm.startsWith('ev')) {
+            idToSearch = lowerTerm.replace('ev', '');
+        }
+
+        const matchesSearch = e.title.toLowerCase().includes(lowerTerm) ||
+                              (e.location && e.location.toLowerCase().includes(lowerTerm)) ||
+                              (idToSearch !== '' && e.id.toString().includes(idToSearch));
         
         // 2. Status
         const currentStatus = e.status || 'published';
@@ -96,7 +104,7 @@ export const AdminEventDashboard = () => {
 
   // Helper แปลงวันที่
   const formatDate = (dateString, isShort = false) => {
-    if (!dateString) return null; // เปลี่ยน return เป็น null เพื่อเช็คได้ง่ายขึ้น
+    if (!dateString) return null; 
     const d = new Date(dateString);
     if (isNaN(d.getTime())) return dateString;
     
@@ -110,11 +118,9 @@ export const AdminEventDashboard = () => {
     const start = formatDate(event.date, true);
     const end = formatDate(event.end_date, true);
 
-    // ถ้าไม่มีวันจบ หรือ วันจบตรงกับวันเริ่ม -> แสดงแค่วันเริ่ม
     if (!end || start === end) {
         return start || "-";
     }
-    // ถ้ามีวันจบ -> แสดงแบบช่วง Start - End
     return (
         <span>
             {start} - {end}
@@ -174,7 +180,7 @@ export const AdminEventDashboard = () => {
                 <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
                 <input
                     type="text"
-                    placeholder="ค้นหาชื่องาน..."
+                    placeholder="ค้นหาชื่องาน หรือ รหัส (เช่น EV15)..."
                     className="w-full pl-10 border rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-[#FF6B00] border-gray-200 text-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -188,11 +194,12 @@ export const AdminEventDashboard = () => {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-sm">
                   
+                  {/* ✅ เปลี่ยนหัวตาราง */}
                   <th 
-                    className="p-4 font-bold w-[60px] cursor-pointer hover:bg-gray-100 transition select-none"
+                    className="p-4 font-bold w-[90px] cursor-pointer hover:bg-gray-100 transition select-none"
                     onClick={() => requestSort('id')}
                   >
-                    ID {getSortIcon('id')}
+                    ID (EV) {getSortIcon('id')}
                   </th>
 
                   <th className="p-4 font-bold w-[80px]">รูป</th>
@@ -232,7 +239,8 @@ export const AdminEventDashboard = () => {
                   processedEvents.map((event) => (
                     <tr key={event.id} className="hover:bg-gray-50 transition group">
                       
-                      <td className="p-4 text-gray-400 text-sm font-medium">#{event.id}</td>
+                      {/* ✅ แสดง ID เป็น EV + ตัวเลข */}
+                      <td className="p-4 text-gray-400 text-sm font-medium font-mono">EV{event.id}</td>
 
                       <td className="p-4">
                         <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex-shrink-0">
@@ -252,7 +260,7 @@ export const AdminEventDashboard = () => {
                         </p>
                       </td>
 
-                      {/* ✅ 4. วันจัดงาน (โชว์แบบช่วงเวลา) */}
+                      {/* ✅ 4. วันจัดงาน */}
                       <td className="p-4">
                         <p className="text-[#FF6B00] font-bold text-sm whitespace-nowrap">
                           {renderEventDate(event)}

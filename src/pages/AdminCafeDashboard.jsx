@@ -10,7 +10,7 @@ export const AdminCafeDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all"); // 'all', 'published', 'draft'
 
-  // ✅ เพิ่ม State สำหรับการเรียงลำดับ (Default: แก้ไขล่าสุด - มากไปน้อย)
+  // State สำหรับการเรียงลำดับ
   const [sortConfig, setSortConfig] = useState({ key: 'updated_at', direction: 'desc' });
 
   useEffect(() => {
@@ -25,7 +25,6 @@ export const AdminCafeDashboard = () => {
     const { data, error } = await supabase
       .from('cafes')
       .select('*');
-      // ไม่ต้อง order ที่นี่แล้ว เดี๋ยวไป order ฝั่ง Client แทน (เพราะข้อมูลไม่เยอะ)
       
     if (error) console.error(error);
     else setCafes(data || []);
@@ -43,7 +42,6 @@ export const AdminCafeDashboard = () => {
     }
   };
 
-  // ✅ ฟังก์ชันสำหรับกดเปลี่ยนการเรียง
   const requestSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -52,33 +50,42 @@ export const AdminCafeDashboard = () => {
     setSortConfig({ key, direction });
   };
 
-  // ✅ Logic การกรอง + การเรียงข้อมูล
+  // ✅ Logic การกรอง + การเรียงข้อมูล (เพิ่ม Search ID)
   const processedCafes = [...cafes]
     .filter(c => {
-        // 1. กรองตาม Search
-        const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                              (c.location_text && c.location_text.toLowerCase().includes(searchTerm.toLowerCase()));
+        const lowerTerm = searchTerm.toLowerCase().trim();
+
+        // 1. กรองตาม Search (รองรับ CF+ID)
+        let idToSearch = lowerTerm;
+        if (lowerTerm.startsWith('cf')) {
+            idToSearch = lowerTerm.replace('cf', '');
+        }
+
+        const matchesSearch = c.name.toLowerCase().includes(lowerTerm) || 
+                              (c.location_text && c.location_text.toLowerCase().includes(lowerTerm)) ||
+                              (idToSearch !== '' && c.id.toString().includes(idToSearch));
         
         // 2. กรองตาม Status Tab
         const matchesStatus = filterStatus === 'all' || c.status === filterStatus;
         return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
-        // 3. เรียงลำดับ (Sorting)
         const { key, direction } = sortConfig;
         
         let aValue = a[key];
         let bValue = b[key];
 
-        // กรณีพิเศษ: ถ้าเรียงวันที่ ให้ใช้วันที่แก้ไขล่าสุด (ถ้าไม่มีเอาวันที่สร้าง)
         if (key === 'updated_at') {
             aValue = new Date(a.updated_at || a.created_at).getTime();
             bValue = new Date(b.updated_at || b.created_at).getTime();
         } 
-        // กรณีพิเศษ: เรียงชื่อ (String)
         else if (typeof aValue === 'string') {
             aValue = aValue.toLowerCase();
             bValue = bValue.toLowerCase();
+        }
+        else if (key === 'status') {
+             aValue = a.status || 'published';
+             bValue = b.status || 'published';
         }
 
         if (aValue < bValue) return direction === 'asc' ? -1 : 1;
@@ -86,9 +93,8 @@ export const AdminCafeDashboard = () => {
         return 0;
     });
 
-  // Helper สำหรับแสดงลูกศร Sort
   const getSortIcon = (name) => {
-    if (sortConfig.key !== name) return <span className="text-gray-300 ml-1">⇅</span>; // ยังไม่เลือก
+    if (sortConfig.key !== name) return <span className="text-gray-300 ml-1">⇅</span>; 
     return sortConfig.direction === 'asc' ? <span className="text-[#FF6B00] ml-1">↑</span> : <span className="text-[#FF6B00] ml-1">↓</span>;
   };
 
@@ -146,7 +152,7 @@ export const AdminCafeDashboard = () => {
                 <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
                 <input 
                     type="text" 
-                    placeholder="ค้นหาชื่อคาเฟ่..." 
+                    placeholder="ค้นหาชื่อคาเฟ่ หรือ รหัส (เช่น CF23)..." 
                     className="w-full pl-10 border rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-[#FF6B00] border-gray-200 text-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -159,9 +165,17 @@ export const AdminCafeDashboard = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-sm">
+                  
+                  {/* ✅ เปลี่ยนหัวตาราง: เพิ่ม ID */}
+                  <th 
+                    className="p-4 font-bold w-[90px] cursor-pointer hover:bg-gray-100 transition select-none"
+                    onClick={() => requestSort('id')}
+                  >
+                    ID (CF) {getSortIcon('id')}
+                  </th>
+
                   <th className="p-4 font-bold w-[80px]">รูปปก</th>
                   
-                  {/* ✅ ทำให้หัวตารางคลิกได้ */}
                   <th 
                     className="p-4 font-bold cursor-pointer hover:bg-gray-100 transition select-none"
                     onClick={() => requestSort('name')}
@@ -188,12 +202,16 @@ export const AdminCafeDashboard = () => {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {loading ? (
-                  <tr><td colSpan="5" className="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr>
+                  <tr><td colSpan="6" className="p-8 text-center text-gray-400">กำลังโหลดข้อมูล...</td></tr>
                 ) : processedCafes.length === 0 ? (
-                  <tr><td colSpan="5" className="p-8 text-center text-gray-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>
+                  <tr><td colSpan="6" className="p-8 text-center text-gray-400">ไม่พบข้อมูลตามเงื่อนไข</td></tr>
                 ) : (
                   processedCafes.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition">
+                      
+                      {/* ✅ แสดง ID เป็น CF + ตัวเลข */}
+                      <td className="p-4 text-gray-400 text-sm font-medium font-mono">CF{item.id}</td>
+
                       <td className="p-4">
                          <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden border border-gray-200">
                              <SafeImage src={item.image_url} className="w-full h-full object-cover" />

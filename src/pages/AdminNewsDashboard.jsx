@@ -43,7 +43,6 @@ export const AdminNewsDashboard = () => {
     }
   };
 
-  // ฟังก์ชันกดเปลี่ยนการเรียง (Sorting)
   const requestSort = (key) => {
     let direction = 'asc';
     if (sortConfig.key === key && sortConfig.direction === 'asc') {
@@ -57,12 +56,21 @@ export const AdminNewsDashboard = () => {
     return sortConfig.direction === 'asc' ? <span className="text-[#FF6B00] ml-1">↑</span> : <span className="text-[#FF6B00] ml-1">↓</span>;
   };
 
-  // Logic การกรอง + เรียงลำดับ
+  // ✅ Logic การกรอง + เรียงลำดับ (เพิ่ม ID Search Logic)
   const processedNews = [...newsList]
     .filter(n => {
-        // 1. กรอง Search
-        const matchesSearch = n.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                              (n.category && n.category.toLowerCase().includes(searchTerm.toLowerCase()));
+        const lowerTerm = searchTerm.toLowerCase().trim();
+        
+        // 1. กรอง Search (ฉลาดขึ้น)
+        // ถ้าพิมพ์ "ne15" -> ตัด "ne" ออกเหลือ "15" แล้วไปเทียบกับ ID
+        let idToSearch = lowerTerm;
+        if (lowerTerm.startsWith('ne')) {
+            idToSearch = lowerTerm.replace('ne', '');
+        }
+
+        const matchesSearch = n.title.toLowerCase().includes(lowerTerm) || 
+                              (n.category && n.category.toLowerCase().includes(lowerTerm)) ||
+                              (idToSearch !== '' && n.id.toString().includes(idToSearch)); // ค้นหา ID แบบมีหรือไม่มี NE ก็ได้
         
         // 2. กรอง Status
         const currentStatus = n.status || 'published';
@@ -71,14 +79,11 @@ export const AdminNewsDashboard = () => {
         return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
-        // 3. เรียงลำดับ
         const { key, direction } = sortConfig;
         let aValue = a[key];
         let bValue = b[key];
 
-        // กรณีพิเศษ: วันที่ (ให้เช็ค created_at ก่อน ถ้าไม่มีให้ไปดู date ของเก่า)
         if (key === 'updated_at') {
-            // วันที่แก้ไข ใช้ updated_at ถ้าไม่มีใช้ created_at หรือ date
             aValue = new Date(a.updated_at || a.created_at || a.date).getTime();
             bValue = new Date(b.updated_at || b.created_at || b.date).getTime();
         } 
@@ -96,16 +101,11 @@ export const AdminNewsDashboard = () => {
         return 0;
     });
 
-  // Helper แปลงวันที่ (รองรับทั้ง Timestamp และ Text Date แบบเก่า)
   const formatDate = (dateString) => {
     if (!dateString) return "-";
-    // ถ้าเป็น timestamp จะแปลงได้เลย แต่ถ้าเป็น text date เก่าๆ อาจจะต้องเช็คหน่อย
     const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString; // ถ้าแปลงไม่ได้ ให้โชว์ text เดิมไปเลย
-    
-    return d.toLocaleDateString('th-TH', {
-        day: 'numeric', month: 'short', year: '2-digit'
-    });
+    if (isNaN(d.getTime())) return dateString;
+    return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
   };
 
   const allCount = newsList.length;
@@ -156,7 +156,7 @@ export const AdminNewsDashboard = () => {
                 <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
                 <input 
                     type="text" 
-                    placeholder="ค้นหาชื่อข่าว..." 
+                    placeholder="ค้นหาชื่อ หรือ รหัส (เช่น NE15)..."  
                     className="w-full pl-10 border rounded-lg p-2.5 outline-none focus:ring-1 focus:ring-[#FF6B00] border-gray-200 text-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -170,12 +170,12 @@ export const AdminNewsDashboard = () => {
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-sm">
                   
-                  {/* ✅ 1. แยก ID ออกมาเป็นคอลัมน์แรก */}
+                  {/* ✅ เปลี่ยนหัวตารางให้ชัดเจน */}
                   <th 
-                    className="p-4 font-bold w-[60px] cursor-pointer hover:bg-gray-100 transition select-none"
+                    className="p-4 font-bold w-[90px] cursor-pointer hover:bg-gray-100 transition select-none"
                     onClick={() => requestSort('id')}
                   >
-                    ID {getSortIcon('id')}
+                    ID (NE) {getSortIcon('id')}
                   </th>
 
                   <th className="p-4 font-bold w-[80px]">รูปปก</th>
@@ -215,8 +215,10 @@ export const AdminNewsDashboard = () => {
                   processedNews.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition group">
                       
-                      {/* ✅ แสดง ID ในช่องแรก */}
-                      <td className="p-4 text-gray-400 text-sm font-medium">#{item.id}</td>
+                      {/* ✅ แสดง ID เป็น NE + ตัวเลข */}
+                      <td className="p-4 text-gray-400 text-sm font-medium font-mono">
+                          NE{item.id}
+                      </td>
 
                       <td className="p-4">
                          <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden border border-gray-200 flex-shrink-0">
@@ -246,7 +248,6 @@ export const AdminNewsDashboard = () => {
                          )}
                       </td>
 
-                      {/* ✅ 2. แก้วันที่: ถ้าไม่มี created_at ให้ใช้ date (ของเก่า) */}
                       <td className="p-4 text-center">
                          <div className="flex flex-col items-center">
                             <span className="text-sm font-bold text-gray-700">
