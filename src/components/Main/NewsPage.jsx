@@ -15,12 +15,18 @@ export const NewsPage = () => {
   const itemsPerPage = 12;
 
   useEffect(() => {
-    supabase.from("news").select("*").order("id", { ascending: false }).then(({ data }) => {
-      const newsData = data || [];
-      setNews(newsData);
-      setFilteredNews(newsData);
-      setLoading(false);
-    });
+    // ✅ แก้ตรงนี้: เพิ่ม .eq('status', 'published') เพื่อกรองข่าวที่เป็น Draft ออก
+    supabase
+      .from("news")
+      .select("*")
+      .eq("status", "published") 
+      .order("id", { ascending: false })
+      .then(({ data }) => {
+        const newsData = data || [];
+        setNews(newsData);
+        setFilteredNews(newsData);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
