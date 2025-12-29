@@ -82,7 +82,7 @@ export default function App() {
   // ✅ 2. กำหนดค่า Default SEO (เอาไว้ใช้กรณีหน้าที่ไม่ได้ตั้งค่าเฉพาะเจาะจง)
   const defaultTitle = "The Popup Plan | Minimalist K-Pop Hub";
   const defaultDesc = "รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว ค้นหาคาเฟ่ โปรเจกต์วันเกิด และคอนเสิร์ตศิลปินคนโปรดได้ง่ายๆ";
-  const defaultImage = "https://images.unsplash.com/photo-1619229667009-e7e51684e8e6?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NjB8fGNvbmNlcnR8ZW58MHx8MHx8fDA%3D";
+  const defaultImage = "https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=1200&auto=format&fit=crop";
   const siteUrl = "https://the-popup-plan.vercel.app/";
 
   return (
