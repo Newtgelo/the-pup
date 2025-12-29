@@ -112,7 +112,7 @@ export const NewsDetail = ({ onTriggerToast }) => {
               - leading-loose : ห่างมาก (กว้างสุดๆ)
               - py-2: เพิ่มพื้นที่บนล่าง กันสระโดนตัด
           */}
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-snug md:leading-snug lg:leading-snug py-2 mb-4">
+          <h1 className="text-2xl md:text-4xl lg:text-4xl font-extrabold text-gray-900 leading-snug md:leading-snug lg:leading-snug py-2 mb-4"> 
             {news.title}
           </h1>
         </div>
