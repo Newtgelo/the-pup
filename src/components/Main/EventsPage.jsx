@@ -18,7 +18,14 @@ export const EventsPage = () => {
     const today = new Date().toISOString().split("T")[0];
     const fetchEvents = async () => {
       setLoading(true);
-      const { data } = await supabase.from("events").select("*").gte("date", today).order("date", { ascending: true });
+      // ✅ แก้ตรงนี้: เพิ่ม .eq('status', 'published') เพื่อกรองเอาเฉพาะงานที่เผยแพร่แล้ว
+      const { data } = await supabase
+        .from("events")
+        .select("*")
+        .eq('status', 'published') // <--- บรรทัดสำคัญที่เพิ่มเข้ามา
+        .gte("date", today)
+        .order("date", { ascending: true });
+        
       if (data) { setEvents(data); setFilteredEvents(data); }
       setLoading(false);
     };

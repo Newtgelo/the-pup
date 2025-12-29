@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { supabase } from "../../supabase"; // 👈 ถอย 2 ขั้นเพื่อหา supabase
-import { IconChevronRight, IconSort, IconFilter } from "../icons/Icons"; // 👈 ถอย 1 ขั้นเพื่อหา icons
+import { supabase } from "../../supabase"; 
+import { IconChevronRight, IconSort, IconFilter } from "../icons/Icons"; 
 import {
   ScrollableRow,
   EmptyState,
@@ -28,22 +28,25 @@ export const HomePage = () => {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+
+      // ✅ 1. กรอง News เฉพาะ Published
       const { data: news } = await supabase
         .from("news")
         .select("*")
+        .eq('status', 'published') // <-- เพิ่มตรงนี้
         .limit(10)
         .order("id", { ascending: false });
       if (news) setNewsList(news);
 
-            // ✅ สูตร: ตัดรอบวันใหม่ตอน "ตี 4" (04:00 น.)
       const d = new Date();
-      d.setHours(d.getHours() - 4); // ถอยเวลาไป 4 ชม. (ถ้าตอนนี้ตี 3 จะถือว่าเป็นเมื่อวาน)
-
+      d.setHours(d.getHours() - 4); 
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
+      // ✅ 2. กรอง Events เฉพาะ Published
       const { data: events } = await supabase
         .from("events")
         .select("*")
+        .eq('status', 'published') // <-- เพิ่มตรงนี้
         .or(`end_date.gte.${today},and(end_date.is.null,date.gte.${today})`)
         .order("date", { ascending: true })
         .limit(20);
@@ -53,12 +56,14 @@ export const HomePage = () => {
         setFilteredHomeEvents(events);
       }
 
+      // ✅ 3. Cafe มี .eq('status', 'published') อยู่แล้ว (ไม่ต้องแก้)
       const { data: cafes } = await supabase
         .from("cafes")
         .select("*")
         .eq("status", "published")
         .limit(8);
       if (cafes) setCafeList(cafes);
+      
       setIsLoading(false);
     };
     fetchData();
