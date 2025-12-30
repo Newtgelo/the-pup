@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { SafeImage } from '../components/ui/UIComponents';
+import Swal from 'sweetalert2'; // ✅ Import SweetAlert2
 
 export const AdminCafeDashboard = () => {
   const navigate = useNavigate();
   const [cafes, setCafes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all"); // 'all', 'published', 'draft'
+  const [filterStatus, setFilterStatus] = useState("all"); 
 
   // State สำหรับการเรียงลำดับ
   const [sortConfig, setSortConfig] = useState({ key: 'updated_at', direction: 'desc' });
@@ -31,15 +32,33 @@ export const AdminCafeDashboard = () => {
     setLoading(false);
   };
 
+  // ✅ ฟังก์ชันลบแบบ SweetAlert2
   const handleDelete = async (id) => {
-    if (window.confirm("ยืนยันที่จะลบคาเฟ่นี้?")) {
-      const { error } = await supabase.from('cafes').delete().eq('id', id);
-      if (!error) {
-        setCafes(cafes.filter(c => c.id !== id));
-      } else {
-        alert(error.message);
+    Swal.fire({
+      title: 'ยืนยันการลบ?',
+      text: "คุณต้องการลบคาเฟ่/สถานที่นี้ใช่ไหม? ข้อมูลจะหายไปถาวร",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'ลบเลย!',
+      cancelButtonText: 'ยกเลิก'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        const { error } = await supabase.from('cafes').delete().eq('id', id);
+        
+        if (!error) {
+          setCafes(cafes.filter(c => c.id !== id));
+          Swal.fire(
+            'ลบเรียบร้อย!',
+            'ข้อมูลถูกลบออกจากระบบแล้ว',
+            'success'
+          );
+        } else {
+          Swal.fire('Error', error.message, 'error');
+        }
       }
-    }
+    });
   };
 
   const requestSort = (key) => {
@@ -50,7 +69,12 @@ export const AdminCafeDashboard = () => {
     setSortConfig({ key, direction });
   };
 
-  // ✅ Logic การกรอง + การเรียงข้อมูล (เพิ่ม Search ID)
+  const getSortIcon = (name) => {
+    if (sortConfig.key !== name) return <span className="text-gray-300 ml-1">⇅</span>; 
+    return sortConfig.direction === 'asc' ? <span className="text-[#FF6B00] ml-1">↑</span> : <span className="text-[#FF6B00] ml-1">↓</span>;
+  };
+
+  // ✅ Logic การกรอง + การเรียงข้อมูล
   const processedCafes = [...cafes]
     .filter(c => {
         const lowerTerm = searchTerm.toLowerCase().trim();
@@ -92,11 +116,6 @@ export const AdminCafeDashboard = () => {
         if (aValue > bValue) return direction === 'asc' ? 1 : -1;
         return 0;
     });
-
-  const getSortIcon = (name) => {
-    if (sortConfig.key !== name) return <span className="text-gray-300 ml-1">⇅</span>; 
-    return sortConfig.direction === 'asc' ? <span className="text-[#FF6B00] ml-1">↑</span> : <span className="text-[#FF6B00] ml-1">↓</span>;
-  };
 
   const allCount = cafes.length;
   const publishedCount = cafes.filter(c => c.status === 'published').length;
@@ -165,38 +184,11 @@ export const AdminCafeDashboard = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-sm">
-                  
-                  {/* ✅ เปลี่ยนหัวตาราง: เพิ่ม ID */}
-                  <th 
-                    className="p-4 font-bold w-[90px] cursor-pointer hover:bg-gray-100 transition select-none"
-                    onClick={() => requestSort('id')}
-                  >
-                    ID (CF) {getSortIcon('id')}
-                  </th>
-
+                  <th className="p-4 font-bold w-[90px] cursor-pointer hover:bg-gray-100 transition select-none" onClick={() => requestSort('id')}>ID (CF) {getSortIcon('id')}</th>
                   <th className="p-4 font-bold w-[80px]">รูปปก</th>
-                  
-                  <th 
-                    className="p-4 font-bold cursor-pointer hover:bg-gray-100 transition select-none"
-                    onClick={() => requestSort('name')}
-                  >
-                    ชื่อร้าน / สถานที่ {getSortIcon('name')}
-                  </th>
-                  
-                  <th 
-                    className="p-4 font-bold w-[120px] text-center cursor-pointer hover:bg-gray-100 transition select-none"
-                    onClick={() => requestSort('status')}
-                  >
-                    สถานะ {getSortIcon('status')}
-                  </th>
-                  
-                  <th 
-                    className="p-4 font-bold w-[140px] text-center cursor-pointer hover:bg-gray-100 transition select-none"
-                    onClick={() => requestSort('updated_at')}
-                  >
-                    แก้ไขล่าสุด {getSortIcon('updated_at')}
-                  </th>
-                  
+                  <th className="p-4 font-bold cursor-pointer hover:bg-gray-100 transition select-none" onClick={() => requestSort('name')}>ชื่อร้าน / สถานที่ {getSortIcon('name')}</th>
+                  <th className="p-4 font-bold w-[120px] text-center cursor-pointer hover:bg-gray-100 transition select-none" onClick={() => requestSort('status')}>สถานะ {getSortIcon('status')}</th>
+                  <th className="p-4 font-bold w-[140px] text-center cursor-pointer hover:bg-gray-100 transition select-none" onClick={() => requestSort('updated_at')}>แก้ไขล่าสุด {getSortIcon('updated_at')}</th>
                   <th className="p-4 font-bold w-[180px] text-center">จัดการ</th>
                 </tr>
               </thead>
@@ -209,7 +201,6 @@ export const AdminCafeDashboard = () => {
                   processedCafes.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition">
                       
-                      {/* ✅ แสดง ID เป็น CF + ตัวเลข */}
                       <td className="p-4 text-gray-400 text-sm font-medium font-mono">CF{item.id}</td>
 
                       <td className="p-4">
@@ -246,25 +237,11 @@ export const AdminCafeDashboard = () => {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center justify-center gap-2">
-                           <button 
-                                onClick={() => window.open(`/cafe/${item.id}`, '_blank')} 
-                                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#FF6B00] hover:bg-orange-50 transition"
-                                title="ดูตัวอย่าง"
-                           >
-                                👁️
-                           </button>
-                           <button 
-                                onClick={() => navigate(`/admin/edit-cafe/${item.id}`)} 
-                                className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition"
-                           >
-                                แก้ไข
-                           </button>
-                           <button 
-                                onClick={() => handleDelete(item.id)} 
-                                className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition"
-                           >
-                                ลบ
-                           </button>
+                           <button onClick={() => window.open(`/cafe/${item.id}`, '_blank')} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#FF6B00] hover:bg-orange-50 transition" title="ดูตัวอย่าง">👁️</button>
+                           <button onClick={() => navigate(`/admin/edit-cafe/${item.id}`)} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition">แก้ไข</button>
+                           
+                           {/* ✅ ปุ่มลบใหม่ */}
+                           <button onClick={() => handleDelete(item.id)} className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition">ลบ</button>
                         </div>
                       </td>
                     </tr>

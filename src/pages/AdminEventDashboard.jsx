@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import { SafeImage } from "../components/ui/UIComponents";
+import Swal from 'sweetalert2'; // ✅ Import SweetAlert2
 
 export const AdminEventDashboard = () => {
   const navigate = useNavigate();
@@ -31,15 +32,33 @@ export const AdminEventDashboard = () => {
     setLoading(false);
   };
 
+  // ✅ ฟังก์ชันลบแบบใหม่ (SweetAlert2)
   const handleDelete = async (id) => {
-    if (window.confirm("ยืนยันที่จะลบอีเวนต์นี้?")) {
-      const { error } = await supabase.from("events").delete().eq("id", id);
-      if (!error) {
-        setEvents(events.filter((e) => e.id !== id));
-      } else {
-        alert(error.message);
+    Swal.fire({
+      title: 'ยืนยันการลบ?',
+      text: "คุณต้องการลบอีเวนต์นี้ใช่ไหม? ข้อมูลจะหายไปถาวร",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'ลบเลย!',
+      cancelButtonText: 'ยกเลิก'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        const { error } = await supabase.from("events").delete().eq("id", id);
+        
+        if (!error) {
+          setEvents(events.filter((e) => e.id !== id));
+          Swal.fire(
+            'ลบเรียบร้อย!',
+            'อีเวนต์ถูกลบออกจากระบบแล้ว',
+            'success'
+          );
+        } else {
+          Swal.fire('Error', error.message, 'error');
+        }
       }
-    }
+    });
   };
 
   const requestSort = (key) => {
@@ -273,6 +292,8 @@ export const AdminEventDashboard = () => {
                             <div className="flex items-center justify-center gap-2">
                             <button onClick={() => window.open(`/event/${event.id}`, "_blank")} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#FF6B00] hover:bg-orange-50 transition" title="ดูหน้าเว็บจริง">👁️</button>
                             <button onClick={() => navigate(`/admin/edit-event/${event.id}`)} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition">แก้ไข</button>
+                            
+                            {/* ✅ เรียกใช้ handleDelete ใหม่ */}
                             <button onClick={() => handleDelete(event.id)} className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition">ลบ</button>
                             </div>
                         </td>

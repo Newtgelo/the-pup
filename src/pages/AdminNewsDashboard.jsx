@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { SafeImage } from '../components/ui/UIComponents';
+import Swal from 'sweetalert2'; // ✅ Import SweetAlert2
 
 export const AdminNewsDashboard = () => {
   const navigate = useNavigate();
@@ -22,7 +23,6 @@ export const AdminNewsDashboard = () => {
 
   const fetchNews = async () => {
     setLoading(true);
-    // ดึงข้อมูลข่าวทั้งหมด
     const { data, error } = await supabase
       .from('news')
       .select('*');
@@ -32,15 +32,40 @@ export const AdminNewsDashboard = () => {
     setLoading(false);
   };
 
+  // ✅ ฟังก์ชันลบแบบมี SweetAlert
   const handleDelete = async (id) => {
-    if (window.confirm("ยืนยันที่จะลบข่าวนี้?")) {
-      const { error } = await supabase.from('news').delete().eq('id', id);
-      if (!error) {
-        setNewsList(newsList.filter(n => n.id !== id));
-      } else {
-        alert(error.message);
+    Swal.fire({
+      title: 'ยืนยันการลบ?',
+      text: "คุณต้องการลบข่าวนี้ใช่ไหม? การกระทำนี้ไม่สามารถกู้คืนได้",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33', // สีแดงสำหรับปุ่มลบ
+      cancelButtonColor: '#3085d6', // สีฟ้าสำหรับปุ่มยกเลิก
+      confirmButtonText: 'ลบเลย!',
+      cancelButtonText: 'ยกเลิก'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        // ถ้ากดยืนยัน -> ลบข้อมูล
+        const { error } = await supabase.from('news').delete().eq('id', id);
+        
+        if (!error) {
+          // ลบสำเร็จ -> อัปเดตหน้าจอ + แจ้งเตือน
+          setNewsList(newsList.filter(n => n.id !== id));
+          Swal.fire(
+            'ลบเรียบร้อย!',
+            'ข่าวถูกลบออกจากระบบแล้ว',
+            'success'
+          );
+        } else {
+          // ลบไม่สำเร็จ
+          Swal.fire(
+            'เกิดข้อผิดพลาด!',
+            error.message,
+            'error'
+          );
+        }
       }
-    }
+    });
   };
 
   const requestSort = (key) => {
@@ -56,13 +81,9 @@ export const AdminNewsDashboard = () => {
     return sortConfig.direction === 'asc' ? <span className="text-[#FF6B00] ml-1">↑</span> : <span className="text-[#FF6B00] ml-1">↓</span>;
   };
 
-  // ✅ Logic การกรอง + เรียงลำดับ (เพิ่ม ID Search Logic)
   const processedNews = [...newsList]
     .filter(n => {
         const lowerTerm = searchTerm.toLowerCase().trim();
-        
-        // 1. กรอง Search (ฉลาดขึ้น)
-        // ถ้าพิมพ์ "ne15" -> ตัด "ne" ออกเหลือ "15" แล้วไปเทียบกับ ID
         let idToSearch = lowerTerm;
         if (lowerTerm.startsWith('ne')) {
             idToSearch = lowerTerm.replace('ne', '');
@@ -70,9 +91,8 @@ export const AdminNewsDashboard = () => {
 
         const matchesSearch = n.title.toLowerCase().includes(lowerTerm) || 
                               (n.category && n.category.toLowerCase().includes(lowerTerm)) ||
-                              (idToSearch !== '' && n.id.toString().includes(idToSearch)); // ค้นหา ID แบบมีหรือไม่มี NE ก็ได้
+                              (idToSearch !== '' && n.id.toString().includes(idToSearch));
         
-        // 2. กรอง Status
         const currentStatus = n.status || 'published';
         const matchesStatus = filterStatus === 'all' || currentStatus === filterStatus;
 
@@ -169,40 +189,12 @@ export const AdminNewsDashboard = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-500 text-sm">
-                  
-                  {/* ✅ เปลี่ยนหัวตารางให้ชัดเจน */}
-                  <th 
-                    className="p-4 font-bold w-[90px] cursor-pointer hover:bg-gray-100 transition select-none"
-                    onClick={() => requestSort('id')}
-                  >
-                    ID (NE) {getSortIcon('id')}
-                  </th>
-
+                  <th className="p-4 font-bold w-[90px] cursor-pointer hover:bg-gray-100 transition select-none" onClick={() => requestSort('id')}>ID (NE) {getSortIcon('id')}</th>
                   <th className="p-4 font-bold w-[80px]">รูปปก</th>
-                  
-                  <th 
-                    className="p-4 font-bold cursor-pointer hover:bg-gray-100 transition select-none"
-                    onClick={() => requestSort('title')}
-                  >
-                    หัวข้อข่าว {getSortIcon('title')}
-                  </th>
-
+                  <th className="p-4 font-bold cursor-pointer hover:bg-gray-100 transition select-none" onClick={() => requestSort('title')}>หัวข้อข่าว {getSortIcon('title')}</th>
                   <th className="p-4 font-bold w-[120px]">หมวดหมู่</th>
-
-                  <th 
-                    className="p-4 font-bold w-[120px] text-center cursor-pointer hover:bg-gray-100 transition select-none"
-                    onClick={() => requestSort('status')}
-                  >
-                    สถานะ {getSortIcon('status')}
-                  </th>
-
-                  <th 
-                    className="p-4 font-bold w-[140px] text-center cursor-pointer hover:bg-gray-100 transition select-none"
-                    onClick={() => requestSort('updated_at')}
-                  >
-                    แก้ไขล่าสุด {getSortIcon('updated_at')}
-                  </th>
-
+                  <th className="p-4 font-bold w-[120px] text-center cursor-pointer hover:bg-gray-100 transition select-none" onClick={() => requestSort('status')}>สถานะ {getSortIcon('status')}</th>
+                  <th className="p-4 font-bold w-[140px] text-center cursor-pointer hover:bg-gray-100 transition select-none" onClick={() => requestSort('updated_at')}>แก้ไขล่าสุด {getSortIcon('updated_at')}</th>
                   <th className="p-4 font-bold w-[180px] text-center">จัดการ</th>
                 </tr>
               </thead>
@@ -214,72 +206,19 @@ export const AdminNewsDashboard = () => {
                 ) : (
                   processedNews.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition group">
-                      
-                      {/* ✅ แสดง ID เป็น NE + ตัวเลข */}
-                      <td className="p-4 text-gray-400 text-sm font-medium font-mono">
-                          NE{item.id}
-                      </td>
-
-                      <td className="p-4">
-                         <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden border border-gray-200 flex-shrink-0">
-                             <SafeImage src={item.image_url} className="w-full h-full object-cover" />
-                         </div>
-                      </td>
-                      
-                      <td className="p-4">
-                         <p className="font-bold text-gray-900 line-clamp-2">{item.title}</p>
-                      </td>
-
-                      <td className="p-4">
-                        <span className="px-2 py-1 rounded-md bg-orange-50 text-[#FF6B00] text-xs font-bold border border-orange-100 inline-block">
-                            {item.category || "General"}
-                        </span>
-                      </td>
-
-                      <td className="p-4 text-center">
-                         {(item.status || 'published') === 'published' ? (
-                            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold inline-block border border-green-200">
-                                Published
-                            </span>
-                         ) : (
-                            <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold inline-block border border-gray-200">
-                                Draft
-                            </span>
-                         )}
-                      </td>
-
-                      <td className="p-4 text-center">
-                         <div className="flex flex-col items-center">
-                            <span className="text-sm font-bold text-gray-700">
-                                {formatDate(item.updated_at || item.created_at || item.date)}
-                            </span>
-                            <span className="text-[10px] text-gray-400 mt-0.5">
-                                สร้าง: {formatDate(item.created_at || item.date)}
-                            </span>
-                         </div>
-                      </td>
-
+                      <td className="p-4 text-gray-400 text-sm font-medium font-mono">NE{item.id}</td>
+                      <td className="p-4"><div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden border border-gray-200 flex-shrink-0"><SafeImage src={item.image_url} className="w-full h-full object-cover" /></div></td>
+                      <td className="p-4"><p className="font-bold text-gray-900 line-clamp-2">{item.title}</p></td>
+                      <td className="p-4"><span className="px-2 py-1 rounded-md bg-orange-50 text-[#FF6B00] text-xs font-bold border border-orange-100 inline-block">{item.category || "General"}</span></td>
+                      <td className="p-4 text-center">{(item.status || 'published') === 'published' ? (<span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold inline-block border border-green-200">Published</span>) : (<span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold inline-block border border-gray-200">Draft</span>)}</td>
+                      <td className="p-4 text-center"><div className="flex flex-col items-center"><span className="text-sm font-bold text-gray-700">{formatDate(item.updated_at || item.created_at || item.date)}</span><span className="text-[10px] text-gray-400 mt-0.5">สร้าง: {formatDate(item.created_at || item.date)}</span></div></td>
                       <td className="p-4">
                         <div className="flex items-center justify-center gap-2">
-                           <button 
-                              onClick={() => window.open(`/news/${item.id}`, '_blank')}
-                              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#FF6B00] hover:bg-orange-50 transition"
-                              title="ดูหน้าเว็บจริง"
-                           >
-                              👁️
-                           </button>
-                           <button 
-                              onClick={() => navigate(`/admin/edit-news/${item.id}`)}
-                              className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition"
-                           >
-                              แก้ไข
-                           </button>
-                           <button 
-                              onClick={() => handleDelete(item.id)}
-                              className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition"
-                           >
-                              ลบ
-                           </button>
+                           <button onClick={() => window.open(`/news/${item.id}`, '_blank')} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#FF6B00] hover:bg-orange-50 transition" title="ดูหน้าเว็บจริง">👁️</button>
+                           <button onClick={() => navigate(`/admin/edit-news/${item.id}`)} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition">แก้ไข</button>
+                           
+                           {/* ✅ ปุ่มลบ เรียกใช้ handleDelete ใหม่ */}
+                           <button onClick={() => handleDelete(item.id)} className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition">ลบ</button>
                         </div>
                       </td>
                     </tr>
@@ -288,12 +227,8 @@ export const AdminNewsDashboard = () => {
               </tbody>
             </table>
           </div>
-          
-          <div className="p-4 border-t border-gray-100 bg-gray-50 text-right text-xs text-gray-400">
-              แสดง {processedNews.length} จากทั้งหมด {allCount} ข่าว
-          </div>
+          <div className="p-4 border-t border-gray-100 bg-gray-50 text-right text-xs text-gray-400">แสดง {processedNews.length} จากทั้งหมด {allCount} ข่าว</div>
         </div>
-        
       </div>
     </div>
   );
