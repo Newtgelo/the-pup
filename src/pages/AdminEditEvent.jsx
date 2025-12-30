@@ -7,12 +7,20 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import Swal from "sweetalert2";
 
+// ✅ 1. เพิ่มรายการ Tag แนะนำ
+const COMMON_TAGS = [
+  "Concert", "Fan Meeting", "Exhibition",
+  "Pop-up Store", "Workshop", "Fan Event",
+  "Ticket", "Sold Out", "Free Entry",
+  "Bangkok", "Impact Arena", "Thunder Dome", "UOB Live"
+];
+
 export const AdminEditEvent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
-  // ✅ เพิ่ม State เก็บ Status และ CreatedAt (เพื่อโชว์ใน Header)
+  // State เก็บ Status และ CreatedAt
   const [status, setStatus] = useState('draft'); 
   const [updatedAt, setUpdatedAt] = useState(null);
 
@@ -29,7 +37,8 @@ export const AdminEditEvent = () => {
 
   const [formData, setFormData] = useState({ 
     title: '', date: '', end_date: '', date_display: '', time: '', location: '', 
-    category: 'Pop-up', image_url: '', link: '', 
+    category: 'Concert', // ✅ แก้ค่าเริ่มต้นให้ตรงกัน
+    image_url: '', link: '', 
     description: '', ticket_price: '', tags: ''
   });
 
@@ -46,7 +55,6 @@ export const AdminEditEvent = () => {
       if (error) {
           Swal.fire("Error", "ไม่พบข้อมูลอีเวนต์", "error");
       } else if (data) {
-          // ✅ ดึง Status และ UpdatedAt มาเก็บไว้
           setStatus(data.status || 'published');
           setUpdatedAt(data.updated_at || data.created_at);
 
@@ -57,7 +65,7 @@ export const AdminEditEvent = () => {
               date_display: data.date_display || '',
               time: data.time || '',
               location: data.location || '',
-              category: data.category || 'Pop-up',
+              category: data.category || 'Concert',
               image_url: data.image_url || '',
               link: data.link || '',
               description: data.description || '', 
@@ -76,9 +84,21 @@ export const AdminEditEvent = () => {
     setFormData((prev) => ({ ...prev, description: value }));
   };
 
-  // ✅ ฟังก์ชันอัปเดตแบบใหม่ (รับ statusType และ isPreview)
+  // ✅ 2. ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ
+  const handleAddTag = (tagToAdd) => {
+    const currentTags = formData.tags || "";
+    if (!currentTags) {
+        setFormData({ ...formData, tags: tagToAdd });
+    } else {
+        const tagArray = currentTags.split(',').map(t => t.trim());
+        if (!tagArray.includes(tagToAdd)) {
+            setFormData({ ...formData, tags: `${currentTags}, ${tagToAdd}` });
+        }
+    }
+  };
+
+  // ✅ ฟังก์ชันอัปเดต
   const handleUpdate = async (statusType, isPreview = false) => {
-    // Validation ขั้นต่ำ
     if (!formData.title || !formData.date) {
         Swal.fire("แจ้งเตือน", "กรุณากรอก ชื่องาน และ วันเริ่ม", "warning");
         return;
@@ -86,13 +106,13 @@ export const AdminEditEvent = () => {
 
     setLoading(true);
 
-    const now = new Date().toISOString(); // เวลาปัจจุบัน
+    const now = new Date().toISOString(); 
 
     const finalData = { 
         ...formData, 
         end_date: formData.end_date || formData.date,
-        status: statusType,  // ✅ อัปเดตสถานะตามปุ่มที่กด
-        updated_at: now      // ✅ อัปเดตเวลาแก้ไขล่าสุดเสมอ
+        status: statusType,  
+        updated_at: now      
     };
 
     const { error } = await supabase.from('events').update(finalData).eq('id', id);
@@ -102,12 +122,10 @@ export const AdminEditEvent = () => {
         Swal.fire("Error", error.message, "error");
     } else {
         if (isPreview) {
-            // ✅ ถ้ากดดูตัวอย่าง -> เปิดหน้าเว็บจริง + อัปเดตสถานะในหน้าจอ
             window.open(`/event/${id}`, '_blank');
             setStatus(statusType);
             setUpdatedAt(now);
         } else {
-            // ✅ ถ้ากดบันทึกปกติ -> แจ้งเตือน + กลับหน้า Dashboard
             const actionText = statusType === 'published' ? "อัปเดตข้อมูลเรียบร้อย" : "บันทึกร่างเรียบร้อย";
             Swal.fire({
                 title: "Success",
@@ -126,7 +144,7 @@ export const AdminEditEvent = () => {
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
         
-        {/* ✅ Header ใหม่: มี Status Badge + วันที่แก้ไข */}
+        {/* Header */}
         <div className="bg-white border-b border-gray-100 p-8 pb-4">
              <div className="flex justify-between items-start">
                  <div>
@@ -148,7 +166,6 @@ export const AdminEditEvent = () => {
              </div>
         </div>
 
-        {/* เปลี่ยน form เป็น div ธรรมดา เพราะเราคุมปุ่มเองด้านล่าง */}
         <div className="p-8 space-y-4">
             <div>
                 <label className="block text-sm font-bold mb-1">ชื่องาน</label>
@@ -184,8 +201,9 @@ export const AdminEditEvent = () => {
                 <div>
                     <label className="block text-sm font-bold mb-1">ประเภท</label>
                     <select name="category" value={formData.category} onChange={handleChange} className="w-full border rounded-lg p-3 bg-white">
-                        <option value="Pop-up">Pop-up Store</option>
+                        {/* ✅ แก้ลำดับ Option ให้ Concert ขึ้นก่อน */}
                         <option value="Concert">Concert</option>
+                        <option value="Pop-up">Pop-up Store</option>
                         <option value="Fan Meeting">Fan Meeting</option>
                         <option value="Fansign">Fansign</option>
                         <option value="Workshop">Workshop</option>
@@ -213,22 +231,46 @@ export const AdminEditEvent = () => {
                 </div>
             </div>
 
-            <div><label className="block text-sm font-bold mb-1">Tags</label><input name="tags" value={formData.tags} onChange={handleChange} className="w-full border rounded-lg p-3"/></div>
+            {/* ✅ 3. ส่วน Tags และ ปุ่มกดอัตโนมัติ */}
+            <div>
+                <label className="block text-sm font-bold mb-1">Tags (คำค้นหา)</label>
+                <input 
+                    name="tags" 
+                    value={formData.tags} 
+                    onChange={handleChange} 
+                    className="w-full border rounded-lg p-3 mb-3" 
+                    placeholder="เช่น Concert, IMPACT Arena"
+                />
 
-            {/* ✅ ACTION BUTTONS ZONE (Sticky Footer) */}
+                {/* Area ปุ่มกด */}
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2 font-bold">เลือก Tag ที่ใช้บ่อย (กดเพื่อเพิ่ม):</p>
+                    <div className="flex flex-wrap gap-2">
+                        {COMMON_TAGS.map((tag) => (
+                            <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleAddTag(tag)}
+                                className="px-3 py-1 bg-white border border-gray-200 text-gray-600 text-xs rounded-full hover:bg-[#FF6B00] hover:text-white hover:border-[#FF6B00] transition active:scale-95"
+                            >
+                                + {tag}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* ACTION BUTTONS ZONE */}
             <div className="pt-6 flex flex-col md:flex-row items-center gap-4 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
                 
-                {/* 1. ปุ่มยกเลิก */}
                 <button type="button" onClick={() => navigate('/admin/events')} className="text-gray-500 hover:text-gray-700 font-bold px-4">
                     ยกเลิก
                 </button>
 
-                <div className="flex-1"></div> {/* Spacer */}
+                <div className="flex-1"></div>
 
-                {/* 2. ปุ่ม Action ขวาสุด */}
                 <div className="flex items-center gap-3">
                     
-                    {/* ปุ่ม Preview */}
                     <button 
                         type="button" 
                         onClick={() => handleUpdate(status, true)} 
@@ -239,7 +281,6 @@ export const AdminEditEvent = () => {
                     </button>
 
                     {status === 'published' ? (
-                        // ✅ ถ้า Published อยู่ -> โชว์ปุ่ม "Unpublish" และ "Update"
                         <>
                             <button 
                                 type="button" 
@@ -259,7 +300,6 @@ export const AdminEditEvent = () => {
                             </button>
                         </>
                     ) : (
-                        // ⚪ ถ้า Draft อยู่ -> โชว์ปุ่ม "Save Draft" และ "Publish"
                         <>
                             <button 
                                 type="button" 

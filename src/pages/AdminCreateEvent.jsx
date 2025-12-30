@@ -9,6 +9,14 @@ import "react-quill-new/dist/quill.snow.css";
 // ✅ Import SweetAlert2
 import Swal from "sweetalert2";
 
+// ✅ 1. ตั้งค่า Tag มาตรฐานสำหรับ Event
+const COMMON_TAGS = [
+  "Concert", "Fan Meeting", "Exhibition",
+  "Pop-up Store", "Workshop", "Fan Event",
+  "Ticket", "Sold Out", "Free Entry",
+  "Bangkok", "Impact Arena", "Thunder Dome", "UOB Live"
+];
+
 export const AdminCreateEvent = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -34,15 +42,28 @@ export const AdminCreateEvent = () => {
 
   const [formData, setFormData] = useState({
     title: '', date: '', end_date: '', date_display: '', time: '', location: '', 
-    category: 'Pop-up', image_url: '', link: '', description: '', ticket_price: '', tags: ''
+    category: 'Concert', image_url: '', link: '', description: '', ticket_price: '', tags: ''
   });
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   const handleDescriptionChange = (value) => setFormData({ ...formData, description: value });
 
-  // ✅ ฟังก์ชันบันทึกแบบใหม่ (รับ statusType)
+  // ✅ 2. ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ
+  const handleAddTag = (tagToAdd) => {
+    const currentTags = formData.tags || "";
+    if (!currentTags) {
+        setFormData({ ...formData, tags: tagToAdd });
+    } else {
+        // เช็คว่ามีอยู่แล้วหรือยัง
+        const tagArray = currentTags.split(',').map(t => t.trim());
+        if (!tagArray.includes(tagToAdd)) {
+            setFormData({ ...formData, tags: `${currentTags}, ${tagToAdd}` });
+        }
+    }
+  };
+
+  // ✅ ฟังก์ชันบันทึก
   const handleSave = async (statusType) => {
-    // Validation (เช็คเฉพาะฟิลด์สำคัญ)
     if (!formData.title || !formData.date || !formData.image_url) {
         Swal.fire("แจ้งเตือน", "กรุณากรอก ชื่องาน, วันเริ่ม และ รูปปก", "warning");
         return;
@@ -50,14 +71,14 @@ export const AdminCreateEvent = () => {
 
     setLoading(true);
 
-    const now = new Date().toISOString(); // เวลาปัจจุบัน
+    const now = new Date().toISOString(); 
 
     const finalData = {
         ...formData,
-        end_date: formData.end_date || formData.date, // Logic เดิมของคุณ (ถ้าไม่มีวันจบ ให้ใช้วันเริ่ม)
-        status: statusType,           // ✅ เพิ่ม: draft หรือ published
-        created_at: now,              // ✅ เพิ่ม: วันที่สร้าง Auto
-        updated_at: now               // ✅ เพิ่ม: วันที่แก้ไข Auto
+        end_date: formData.end_date || formData.date, 
+        status: statusType,           
+        created_at: now,              
+        updated_at: now               
     };
 
     const { error } = await supabase.from('events').insert([finalData]);
@@ -128,8 +149,8 @@ export const AdminCreateEvent = () => {
                 <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">ประเภท *</label>
                     <select name="category" onChange={handleChange} className="w-full border rounded-lg p-3 bg-white">
-                        <option value="Pop-up">Pop-up Store</option>
                         <option value="Concert">Concert</option>
+                        <option value="Pop-up">Pop-up Store</option>
                         <option value="Fan Meeting">Fan Meeting</option>
                         <option value="Fansign">Fansign</option>
                         <option value="Workshop">Workshop</option>
@@ -158,9 +179,36 @@ export const AdminCreateEvent = () => {
                 </div>
             </div>
 
-            <div><label className="block text-sm font-bold text-gray-700 mb-1">Tags (คำค้นหา)</label><input name="tags" onChange={handleChange} className="w-full border rounded-lg p-3" /></div>
+            {/* ✅ 3. ส่วน Tags และ ปุ่มกดอัตโนมัติ */}
+            <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Tags (คำค้นหา)</label>
+                <input 
+                    name="tags" 
+                    value={formData.tags} 
+                    onChange={handleChange} 
+                    className="w-full border rounded-lg p-3 mb-3" 
+                    placeholder="เช่น Concert, IMPACT Arena"
+                />
+
+                {/* Area ปุ่มกด */}
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2 font-bold">เลือก Tag ที่ใช้บ่อย (กดเพื่อเพิ่ม):</p>
+                    <div className="flex flex-wrap gap-2">
+                        {COMMON_TAGS.map((tag) => (
+                            <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleAddTag(tag)}
+                                className="px-3 py-1 bg-white border border-gray-200 text-gray-600 text-xs rounded-full hover:bg-[#FF6B00] hover:text-white hover:border-[#FF6B00] transition active:scale-95"
+                            >
+                                + {tag}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
             
-            {/* ✅ Action Buttons Zone (3 ปุ่ม) */}
+            {/* Action Buttons */}
             <div className="pt-6 flex flex-col md:flex-row gap-3 border-t border-gray-100 mt-8">
                 <button 
                     type="button" 
@@ -170,9 +218,8 @@ export const AdminCreateEvent = () => {
                     ยกเลิก
                 </button>
 
-                <div className="flex-1"></div> {/* Spacer ดันปุ่มขวา */}
+                <div className="flex-1"></div>
 
-                {/* ปุ่มบันทึกร่าง */}
                 <button 
                     type="button" 
                     onClick={() => handleSave('draft')} 
@@ -182,7 +229,6 @@ export const AdminCreateEvent = () => {
                     💾 บันทึกร่าง
                 </button>
 
-                {/* ปุ่มเผยแพร่ */}
                 <button 
                     type="button" 
                     onClick={() => handleSave('published')} 
