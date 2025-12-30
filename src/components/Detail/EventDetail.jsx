@@ -12,9 +12,77 @@ import {
 } from "../icons/Icons";
 import { SafeImage, NotFound } from "../ui/UIComponents";
 import parse, { domToReact } from "html-react-parser";
-
-// ✅ 1. Import Helmet
 import { Helmet } from "react-helmet-async";
+
+// ✅ 1. สร้าง Skeleton Component (โครงกระดูกสำหรับโหลด)
+// เลียนแบบ Layout หน้า Event เป๊ะๆ ทั้ง Mobile และ Desktop
+const EventDetailSkeleton = () => (
+  <div className="max-w-6xl mx-auto px-4 py-8 pb-32 md:pb-8 animate-pulse">
+    {/* Header Buttons Placeholder */}
+    <div className="hidden md:flex justify-between items-center mb-6">
+      <div className="h-10 w-32 bg-gray-200 rounded-full"></div>
+      <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+    </div>
+
+    {/* Hero Section Placeholder */}
+    <div className="relative mb-12 mt-8 md:mt-0">
+      {/* Desktop Skeleton */}
+      <div className="hidden md:flex bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 min-h-[550px]">
+        {/* Image Area */}
+        <div className="w-[45%] bg-gray-200"></div>
+        {/* Info Area */}
+        <div className="flex-1 p-8 lg:p-10 flex flex-col justify-center">
+           <div className="h-6 w-24 bg-gray-200 rounded-lg mb-4"></div>
+           <div className="h-12 w-3/4 bg-gray-200 rounded-lg mb-8"></div>
+           
+           <div className="space-y-6 my-6">
+             {[1, 2, 3].map((i) => (
+               <div key={i} className="flex items-center gap-4">
+                 <div className="w-12 h-12 rounded-full bg-gray-200"></div>
+                 <div className="space-y-2">
+                   <div className="h-5 w-40 bg-gray-200 rounded"></div>
+                   <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                 </div>
+               </div>
+             ))}
+           </div>
+
+           <div className="flex gap-3 mt-auto pt-8 border-t border-dashed border-gray-200">
+             <div className="flex-1 h-14 bg-gray-200 rounded-xl"></div>
+             <div className="flex-1 h-14 bg-gray-200 rounded-xl"></div>
+           </div>
+        </div>
+      </div>
+
+      {/* Mobile Skeleton */}
+      <div className="md:hidden flex flex-col bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+        <div className="h-[450px] bg-gray-200"></div>
+        <div className="p-6 space-y-4">
+          <div className="h-8 w-3/4 bg-gray-200 rounded mb-4"></div>
+          <div className="h-5 w-1/2 bg-gray-200 rounded"></div>
+          <div className="h-5 w-2/3 bg-gray-200 rounded"></div>
+          <div className="h-5 w-1/3 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    </div>
+
+    {/* Content Skeleton */}
+    <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-10">
+      <div className="md:col-span-7 lg:col-span-8">
+        <div className="h-8 w-48 bg-gray-200 rounded mb-6 border-l-4 border-gray-300 pl-4"></div>
+        <div className="space-y-4">
+           <div className="h-4 w-full bg-gray-200 rounded"></div>
+           <div className="h-4 w-full bg-gray-200 rounded"></div>
+           <div className="h-4 w-5/6 bg-gray-200 rounded"></div>
+           <div className="h-4 w-full bg-gray-200 rounded"></div>
+           <div className="h-40 w-full bg-gray-200 rounded my-6"></div>
+           <div className="h-4 w-full bg-gray-200 rounded"></div>
+           <div className="h-4 w-4/5 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export const EventDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
@@ -36,6 +104,9 @@ export const EventDetail = ({ onTriggerToast }) => {
   useEffect(() => {
     const fetchEvent = async () => {
       setLoading(true);
+      // หน่วงเวลาเทียม 0.5 วิ เพื่อให้เห็น Skeleton (ถ้าไม่ชอบลบ setTimeout ออกได้ครับ)
+      // await new Promise(resolve => setTimeout(resolve, 500)); 
+
       const { data, error } = await supabase
         .from("events")
         .select("*")
@@ -48,12 +119,9 @@ export const EventDetail = ({ onTriggerToast }) => {
     fetchEvent();
   }, [id]);
 
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-gray-400">
-        กำลังโหลดอีเวนต์...
-      </div>
-    );
+  // ✅ 2. ใช้ Skeleton Component แทน Loading Text
+  if (loading) return <EventDetailSkeleton />;
+
   if (!event)
     return (
       <NotFound title="ไม่พบกิจกรรมดังกล่าว" onBack={() => navigate("/")} />
@@ -113,14 +181,12 @@ export const EventDetail = ({ onTriggerToast }) => {
       })
     : "วันงานแสดง";
 
-  // ✅ Helper: สร้าง Description แบบสั้นๆ สำหรับ SEO (ตัด HTML tags ออก)
   const metaDescription = event.description
     ? event.description.replace(/<[^>]*>?/gm, "").substring(0, 150) + "..."
     : `ดูรายละเอียดงาน ${event.title} วันที่ ${formattedDate} สถานที่ ${event.location} ได้ที่ The Popup Plan`;
 
   return (
     <>
-      {/* ✅ 2. ส่วน SEO: เปลี่ยน Title และ Meta Tags */}
       <Helmet>
         <title>{`${event.title} | The Popup Plan`}</title>
         <meta name="description" content={metaDescription} />
@@ -221,7 +287,7 @@ export const EventDetail = ({ onTriggerToast }) => {
                 <span className="inline-block px-3 py-1 rounded-lg bg-orange-50 text-[#FF6B00] text-xs font-bold uppercase tracking-wider mb-3 w-fit border border-orange-100">
                   {event.category}
                 </span>
-                <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 leading-tight mb-4">
+                <h1 className="text-3xl lg:text-3xl font-extrabold text-gray-900 leading-tight mb-4">
                   {event.title}
                 </h1>
               </div>
