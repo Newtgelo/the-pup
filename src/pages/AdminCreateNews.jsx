@@ -5,6 +5,14 @@ import 'react-quill-new/dist/quill.snow.css';
 import { supabase } from '../supabase';
 import Swal from "sweetalert2";
 
+// ✅ 1. ตั้งค่า Tag มาตรฐานที่อยากให้ใช้ (เพิ่มลดตรงนี้ได้เลย)
+const COMMON_TAGS = [
+  "K-POP", "T-POP", "J-POP", 
+  "Concert", "Fanmeeting", "Festival",
+  "Comeback", "New Release", "Debut",
+  "Sold Out", "Ticket", "GMM Grammy"
+];
+
 export const AdminCreateNews = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -23,7 +31,7 @@ export const AdminCreateNews = () => {
     checkUser();
   }, [navigate]);
 
-  // State ข้อมูลฟอร์ม (คงเดิม)
+  // State ข้อมูลฟอร์ม
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('K-pop');
   const [imageUrl, setImageUrl] = useState('');
@@ -40,9 +48,21 @@ export const AdminCreateNews = () => {
     ],
   };
 
-  // ✅ ฟังก์ชันบันทึกแบบใหม่ (รับ statusType)
+  // ✅ 2. ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ
+  const handleAddTag = (tagToAdd) => {
+    if (!tags) {
+        // ถ้าช่องว่าง ใส่เลย
+        setTags(tagToAdd);
+    } else {
+        // ถ้ามีของเดิม เช็คก่อนว่าซ้ำไหม
+        const currentTags = tags.split(',').map(t => t.trim());
+        if (!currentTags.includes(tagToAdd)) {
+            setTags(`${tags}, ${tagToAdd}`);
+        }
+    }
+  };
+
   const handleSave = async (statusType) => {
-    // Validation
     if (!title || !content) {
         Swal.fire("แจ้งเตือน", "กรุณาใส่หัวข้อและเนื้อหาข่าว", "warning");
         return;
@@ -50,7 +70,6 @@ export const AdminCreateNews = () => {
 
     setLoading(true);
     
-    // ✅ เตรียมข้อมูล (Auto Date + Status)
     const now = new Date();
     const dataToSave = {
         title,
@@ -58,13 +77,12 @@ export const AdminCreateNews = () => {
         image_url: imageUrl,
         content,
         tags,
-        status: statusType, // 'draft' หรือ 'published'
-        created_at: now.toISOString(), // เวลาปัจจุบันเป๊ะๆ
+        status: statusType, 
+        created_at: now.toISOString(),
         updated_at: now.toISOString(),
-        date: now.toISOString().split('T')[0], // รองรับ field เก่า
+        date: now.toISOString().split('T')[0],
     };
 
-    // บันทึกลง Database
     const { error } = await supabase.from('news').insert(dataToSave);
 
     setLoading(false);
@@ -72,9 +90,7 @@ export const AdminCreateNews = () => {
     if (error) {
         Swal.fire("Error", error.message, "error");
     } else {
-        // แจ้งเตือนตามสถานะ
         const actionText = statusType === 'published' ? "เผยแพร่ข่าวเรียบร้อย" : "บันทึกร่างเรียบร้อย";
-        
         Swal.fire({
             title: "Success",
             text: actionText,
@@ -97,7 +113,6 @@ export const AdminCreateNews = () => {
              <button onClick={() => navigate('/admin/news')} className="text-gray-500 hover:text-orange-500 font-bold">Cancel</button>
         </div>
         
-        {/* เปลี่ยนจาก form onSubmit เป็น div ธรรมดา เพราะเราคุมปุ่มเองแล้ว */}
         <div className="space-y-6">
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">หัวข้อข่าว</label>
@@ -127,12 +142,35 @@ export const AdminCreateNews = () => {
                 </div>
             </div>
 
+            {/* ✅ 3. ส่วน Tags และ ปุ่มกดอัตโนมัติ */}
             <div>
                  <label className="block text-sm font-bold text-gray-700 mb-2">Tags</label>
-                 <input type="text" className="w-full border border-gray-300 rounded-lg p-3" placeholder="เช่น NewJeans, Comeback" value={tags} onChange={e => setTags(e.target.value)} />
+                 <input 
+                    type="text" 
+                    className="w-full border border-gray-300 rounded-lg p-3 mb-3" 
+                    placeholder="เช่น NewJeans, Comeback" 
+                    value={tags} 
+                    onChange={e => setTags(e.target.value)} 
+                 />
+                 
+                 {/* Area ปุ่มกด */}
+                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2 font-bold">เลือก Tag ที่ใช้บ่อย (กดเพื่อเพิ่ม):</p>
+                    <div className="flex flex-wrap gap-2">
+                        {COMMON_TAGS.map((tag) => (
+                            <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleAddTag(tag)}
+                                className="px-3 py-1 bg-white border border-gray-200 text-gray-600 text-xs rounded-full hover:bg-[#FF6B00] hover:text-white hover:border-[#FF6B00] transition active:scale-95"
+                            >
+                                + {tag}
+                            </button>
+                        ))}
+                    </div>
+                 </div>
             </div>
 
-            {/* ✅ Action Buttons Zone (เหมือนหน้า Cafe) */}
             <div className="pt-6 flex flex-col md:flex-row gap-3 border-t border-gray-100 mt-8">
                 <button 
                     type="button" 
@@ -142,9 +180,8 @@ export const AdminCreateNews = () => {
                     ยกเลิก
                 </button>
 
-                <div className="flex-1"></div> {/* Spacer ดันปุ่มขวา */}
+                <div className="flex-1"></div>
 
-                {/* ปุ่มบันทึกร่าง */}
                 <button 
                     type="button" 
                     onClick={() => handleSave('draft')} 
@@ -154,7 +191,6 @@ export const AdminCreateNews = () => {
                     💾 บันทึกร่าง
                 </button>
 
-                {/* ปุ่มเผยแพร่ */}
                 <button 
                     type="button" 
                     onClick={() => handleSave('published')} 

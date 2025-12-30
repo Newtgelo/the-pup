@@ -5,6 +5,14 @@ import 'react-quill-new/dist/quill.snow.css';
 import { supabase } from '../supabase';
 import Swal from "sweetalert2";
 
+// ✅ 1. เพิ่มรายการ Tag แนะนำ
+const COMMON_TAGS = [
+  "K-POP", "T-POP", "J-POP", 
+  "Concert", "Fanmeeting", "Festival",
+  "Comeback", "New Release", "Debut",
+  "Sold Out", "Ticket", "GMM Grammy"
+];
+
 export const AdminEditNews = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -18,7 +26,7 @@ export const AdminEditNews = () => {
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
   
-  // ✅ เพิ่ม State สำหรับ Status และ CreatedAt
+  // State สำหรับ Status และ CreatedAt
   const [status, setStatus] = useState('draft'); 
   const [createdAt, setCreatedAt] = useState(null);
 
@@ -43,7 +51,6 @@ export const AdminEditNews = () => {
         setContent(data.content || '');
         setTags(data.tags || '');
         
-        // ✅ ดึง Status (ถ้าไม่มีค่าจาก DB ให้ถือว่าเป็น published ของเก่า)
         setStatus(data.status || 'published');
         setCreatedAt(data.created_at);
       }
@@ -62,7 +69,18 @@ export const AdminEditNews = () => {
     ],
   };
 
-  // ✅ ฟังก์ชันอัปเดต (รองรับการเปลี่ยน Status)
+  // ✅ 2. ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ (Copy มาจากหน้า Create)
+  const handleAddTag = (tagToAdd) => {
+    if (!tags) {
+        setTags(tagToAdd);
+    } else {
+        const currentTags = tags.split(',').map(t => t.trim());
+        if (!currentTags.includes(tagToAdd)) {
+            setTags(`${tags}, ${tagToAdd}`);
+        }
+    }
+  };
+
   const handleUpdate = async (statusType, isPreview = false) => {
     if (!title || !content) {
         Swal.fire("แจ้งเตือน", "กรุณาใส่หัวข้อและเนื้อหาข่าว", "warning");
@@ -77,8 +95,8 @@ export const AdminEditNews = () => {
         image_url: imageUrl,
         content,
         tags,
-        status: statusType, // อัปเดตสถานะตามปุ่มที่กด
-        updated_at: new Date().toISOString(), // อัปเดตเวลาแก้ไขล่าสุด
+        status: statusType, 
+        updated_at: new Date().toISOString(), 
     };
 
     const { error } = await supabase.from('news').update(dataToUpdate).eq('id', id);
@@ -89,12 +107,9 @@ export const AdminEditNews = () => {
         Swal.fire("Error", error.message, "error");
     } else {
         if (isPreview) {
-            // ✅ ถ้ากดดูตัวอย่าง ให้เปิดหน้า News Detail แท็บใหม่
             window.open(`/news/${id}`, '_blank');
-            // และอัปเดต State ในหน้านี้ให้ตรงกัน (เผื่อมีการเปลี่ยนสถานะ)
             setStatus(statusType);
         } else {
-            // ✅ ถ้ากดบันทึกปกติ
             const actionText = statusType === 'published' ? "อัปเดตข้อมูลเรียบร้อย" : "บันทึกร่างเรียบร้อย";
             Swal.fire({
                 title: "Success",
@@ -150,20 +165,41 @@ export const AdminEditNews = () => {
                 </div>
             </div>
 
+            {/* ✅ 3. ส่วน Tags และ ปุ่มกดอัตโนมัติ */}
             <div>
                  <label className="block text-sm font-bold text-gray-700 mb-2">Tags</label>
-                 <input type="text" className="w-full border border-gray-300 rounded-lg p-3" value={tags} onChange={e => setTags(e.target.value)} />
+                 <input 
+                    type="text" 
+                    className="w-full border border-gray-300 rounded-lg p-3 mb-3" 
+                    value={tags} 
+                    onChange={e => setTags(e.target.value)} 
+                 />
+
+                 {/* Area ปุ่มกด */}
+                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2 font-bold">เลือก Tag ที่ใช้บ่อย (กดเพื่อเพิ่ม):</p>
+                    <div className="flex flex-wrap gap-2">
+                        {COMMON_TAGS.map((tag) => (
+                            <button
+                                key={tag}
+                                type="button"
+                                onClick={() => handleAddTag(tag)}
+                                className="px-3 py-1 bg-white border border-gray-200 text-gray-600 text-xs rounded-full hover:bg-[#FF6B00] hover:text-white hover:border-[#FF6B00] transition active:scale-95"
+                            >
+                                + {tag}
+                            </button>
+                        ))}
+                    </div>
+                 </div>
             </div>
 
-            {/* ✅ ACTION BUTTONS ZONE (Sticky Footer เหมือน Cafe) */}
+            {/* ACTION BUTTONS ZONE */}
             <div className="pt-6 flex flex-col md:flex-row items-center gap-4 sticky bottom-0 bg-white p-4 border-t border-gray-100 -mx-8 -mb-8 px-8 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20">
                 
-                {/* 1. ปุ่มยกเลิก */}
                 <button type="button" onClick={() => navigate('/admin/news')} className="text-gray-500 hover:text-gray-700 font-bold px-4">
                     ยกเลิก
                 </button>
 
-                {/* 2. Status Badge (โชว์ตรงกลาง-ซ้าย เหมือน Cafe) */}
                 <div className="flex-1 flex items-center gap-2">
                     {status === 'published' ? (
                         <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200 flex items-center gap-1">
@@ -176,10 +212,8 @@ export const AdminEditNews = () => {
                     )}
                 </div>
 
-                {/* 3. ปุ่ม Action ขวาสุด */}
                 <div className="flex items-center gap-3">
                     
-                    {/* ปุ่ม Preview */}
                     <button 
                         type="button" 
                         onClick={() => handleUpdate(status, true)} 
@@ -190,7 +224,6 @@ export const AdminEditNews = () => {
                     </button>
 
                     {status === 'published' ? (
-                        // ✅ ถ้า Published อยู่ -> โชว์ปุ่ม "Unpublish" และ "Update"
                         <>
                             <button 
                                 type="button" 
@@ -210,7 +243,6 @@ export const AdminEditNews = () => {
                             </button>
                         </>
                     ) : (
-                        // ⚪ ถ้า Draft อยู่ -> โชว์ปุ่ม "Save Draft" และ "Publish"
                         <>
                             <button 
                                 type="button" 
