@@ -8,6 +8,43 @@ import {
 import { SafeImage, NotFound } from "../ui/UIComponents";
 import { Helmet } from "react-helmet-async";
 
+// ✅ 1. สร้าง Skeleton Component (โครงกระดูกสำหรับโหลด)
+const NewsDetailSkeleton = () => (
+  <div className="max-w-4xl mx-auto px-4 py-8 animate-pulse">
+    {/* Desktop Header Placeholder */}
+    <div className="hidden md:flex justify-between items-center mb-6">
+      <div className="h-10 w-32 bg-gray-200 rounded-full"></div>
+      <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+    </div>
+
+    {/* Title Section Placeholder */}
+    <div className="mb-8 mt-12 md:mt-0">
+      <div className="flex gap-3 mb-4">
+        <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+        <div className="h-6 w-24 bg-gray-200 rounded-full"></div>
+      </div>
+      {/* จำลองหัวข้อข่าว 2 บรรทัด */}
+      <div className="h-8 md:h-10 bg-gray-200 rounded-lg w-full mb-3"></div>
+      <div className="h-8 md:h-10 bg-gray-200 rounded-lg w-2/3"></div>
+    </div>
+
+    {/* Image Placeholder (สัดส่วนเดียวกับรูปจริง) */}
+    <div className="rounded-2xl overflow-hidden mb-10 aspect-video bg-gray-200"></div>
+
+    {/* Content Placeholder (จำลองเนื้อหาข่าว) */}
+    <div className="max-w-3xl mx-auto space-y-4">
+      <div className="h-4 bg-gray-200 rounded w-full"></div>
+      <div className="h-4 bg-gray-200 rounded w-full"></div>
+      <div className="h-4 bg-gray-200 rounded w-11/12"></div>
+      <div className="h-4 bg-gray-200 rounded w-full"></div>
+      <div className="h-4 bg-gray-200 rounded w-4/5"></div>
+      <div className="h-40 bg-gray-200 rounded w-full my-6"></div> {/* จำลองรูปแทรก/วิดีโอ */}
+      <div className="h-4 bg-gray-200 rounded w-full"></div>
+      <div className="h-4 bg-gray-200 rounded w-full"></div>
+    </div>
+  </div>
+);
+
 export const NewsDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -28,6 +65,9 @@ export const NewsDetail = ({ onTriggerToast }) => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      // หน่วงเวลาเทียม 0.5 วิ เพื่อให้เห็น Skeleton สวยๆ (ถ้าไม่ชอบลบ setTimeout ออกได้ครับ)
+      // await new Promise(resolve => setTimeout(resolve, 500)); 
+      
       const { data, error } = await supabase.from("news").select("*").eq("id", id).single();
       if (error) {
         setNews(null);
@@ -60,7 +100,9 @@ export const NewsDetail = ({ onTriggerToast }) => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลดข่าว...</div>;
+  // ✅ 2. เปลี่ยนจาก Text ธรรมดา เป็น Skeleton Component
+  if (loading) return <NewsDetailSkeleton />;
+  
   if (!news) return <NotFound title="ไม่พบข่าวดังกล่าว" onBack={() => navigate("/")} />;
 
   const metaDescription = news.content 
@@ -104,14 +146,6 @@ export const NewsDetail = ({ onTriggerToast }) => {
             <span className="text-gray-500 flex items-center gap-1"><IconClock size={14} /> {news.date}</span>
           </div>
           
-          {/* ✅ แก้ไขรอบสุดท้าย: จูนระยะบรรทัดละเอียด
-              - leading-tight : ชิดมาก (ระวังทับกัน)
-              - leading-snug : ชิดพอดีๆ
-              - leading-normal : ปกติ (มาตรฐาน)
-              - leading-relaxed : ห่างนิดหน่อย (อ่านสบาย)
-              - leading-loose : ห่างมาก (กว้างสุดๆ)
-              - py-2: เพิ่มพื้นที่บนล่าง กันสระโดนตัด
-          */}
           <h1 className="text-2xl md:text-4xl lg:text-4xl font-extrabold text-gray-900 leading-snug md:leading-snug lg:leading-snug py-2 mb-4"> 
             {news.title}
           </h1>
