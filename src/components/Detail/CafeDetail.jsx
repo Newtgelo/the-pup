@@ -18,6 +18,64 @@ import { SafeImage, NotFound } from "../ui/UIComponents";
 // ✅ 1. Import ตัวแปลง HTML
 import parse, { domToReact } from "html-react-parser";
 
+// ✅ 2. สร้าง Skeleton Component (โครงกระดูกสำหรับโหลด)
+const CafeDetailSkeleton = () => (
+  <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 animate-pulse">
+    {/* Header Buttons Placeholder */}
+    <div className="hidden md:flex justify-between items-center mb-6">
+      <div className="h-10 w-32 bg-gray-200 rounded-full"></div>
+      <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 mt-8 md:mt-0">
+      {/* Left: Image Gallery Skeleton */}
+      <div>
+        <div className="rounded-2xl bg-gray-200 h-[300px] md:h-[400px] mb-3"></div>
+        <div className="flex gap-2 overflow-hidden">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="w-20 h-20 rounded-xl bg-gray-200 flex-shrink-0"></div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right: Info Skeleton */}
+      <div className="flex flex-col">
+        <div className="mb-6 space-y-3">
+          <div className="h-10 w-3/4 bg-gray-200 rounded-lg"></div>
+          <div className="flex gap-3">
+             <div className="h-5 w-32 bg-gray-200 rounded"></div>
+             <div className="h-5 w-24 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+
+        {/* Tabs Placeholder */}
+        <div className="flex bg-gray-100 p-1 rounded-xl mb-6 h-12"></div>
+
+        {/* Info Box Placeholder */}
+        <div className="space-y-6">
+            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4 h-40"></div>
+            <div className="hidden md:flex gap-3">
+                <div className="flex-1 h-12 bg-gray-200 rounded-xl"></div>
+                <div className="flex-1 h-12 bg-gray-200 rounded-xl"></div>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Description Skeleton */}
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 border-t border-gray-100 pt-10">
+        <div className="lg:col-span-7 space-y-4">
+            <div className="h-8 w-1/2 bg-gray-200 rounded mb-6"></div>
+            <div className="h-4 w-full bg-gray-200 rounded"></div>
+            <div className="h-4 w-full bg-gray-200 rounded"></div>
+            <div className="h-4 w-5/6 bg-gray-200 rounded"></div>
+            <div className="h-4 w-full bg-gray-200 rounded"></div>
+            <div className="h-4 w-4/5 bg-gray-200 rounded"></div>
+        </div>
+    </div>
+  </div>
+);
+
 export const CafeDetail = ({ onTriggerToast }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -44,6 +102,9 @@ export const CafeDetail = ({ onTriggerToast }) => {
   useEffect(() => {
     const fetchCafe = async () => {
       setLoading(true);
+      // หน่วงเวลาเทียม 0.5 วิ เพื่อให้เห็น Skeleton (ถ้าไม่ชอบลบ setTimeout ออกได้ครับ)
+      // await new Promise(resolve => setTimeout(resolve, 500)); 
+
       const { data, error } = await supabase
         .from("cafes")
         .select("*")
@@ -136,7 +197,7 @@ export const CafeDetail = ({ onTriggerToast }) => {
   };
   const facilities = getFacilities();
 
-  // ✅ 2. ฟังก์ชัน renderRichText
+  // ✅ 3. ฟังก์ชัน renderRichText
   const renderRichText = (htmlContent) => {
     return parse(htmlContent || "", {
       replace: (domNode) => {
@@ -189,12 +250,9 @@ export const CafeDetail = ({ onTriggerToast }) => {
     });
   };
 
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center text-gray-400">
-        กำลังโหลดคาเฟ่...
-      </div>
-    );
+  // ✅ 4. ใช้ Skeleton Component แทน Loading Text
+  if (loading) return <CafeDetailSkeleton />;
+
   if (!cafe)
     return <NotFound title="ไม่พบคาเฟ่ดังกล่าว" onBack={() => navigate("/")} />;
 
