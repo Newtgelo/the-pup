@@ -14,8 +14,7 @@ import { SafeImage, NotFound } from "../ui/UIComponents";
 import parse, { domToReact } from "html-react-parser";
 import { Helmet } from "react-helmet-async";
 
-// ✅ 1. สร้าง Skeleton Component (โครงกระดูกสำหรับโหลด)
-// เลียนแบบ Layout หน้า Event เป๊ะๆ ทั้ง Mobile และ Desktop
+// ✅ Skeleton Component (โครงกระดูกสำหรับโหลด)
 const EventDetailSkeleton = () => (
   <div className="max-w-6xl mx-auto px-4 py-8 pb-32 md:pb-8 animate-pulse">
     {/* Header Buttons Placeholder */}
@@ -104,9 +103,6 @@ export const EventDetail = ({ onTriggerToast }) => {
   useEffect(() => {
     const fetchEvent = async () => {
       setLoading(true);
-      // หน่วงเวลาเทียม 0.5 วิ เพื่อให้เห็น Skeleton (ถ้าไม่ชอบลบ setTimeout ออกได้ครับ)
-      // await new Promise(resolve => setTimeout(resolve, 500)); 
-
       const { data, error } = await supabase
         .from("events")
         .select("*")
@@ -119,7 +115,6 @@ export const EventDetail = ({ onTriggerToast }) => {
     fetchEvent();
   }, [id]);
 
-  // ✅ 2. ใช้ Skeleton Component แทน Loading Text
   if (loading) return <EventDetailSkeleton />;
 
   if (!event)
@@ -226,7 +221,6 @@ export const EventDetail = ({ onTriggerToast }) => {
         </div>
       )}
 
-      {/* ... (ส่วน UI ด้านล่างเหมือนเดิม 100% ไม่แตะต้อง) ... */}
       <div className="md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none">
         <button
           onClick={goBack}
@@ -287,9 +281,11 @@ export const EventDetail = ({ onTriggerToast }) => {
                 <span className="inline-block px-3 py-1 rounded-lg bg-orange-50 text-[#FF6B00] text-xs font-bold uppercase tracking-wider mb-3 w-fit border border-orange-100">
                   {event.category}
                 </span>
+                
                 <h1 className="text-3xl lg:text-3xl font-extrabold text-gray-900 leading-tight mb-4">
                   {event.title}
                 </h1>
+
               </div>
               <div className="space-y-6 my-6">
                 <div className="flex items-start gap-4 group">
@@ -420,8 +416,9 @@ export const EventDetail = ({ onTriggerToast }) => {
               รายละเอียดงาน
             </h2>
 
+            {/* ✅ Fix Overflow: เพิ่ม break-words และ w-full */}
             <div
-              className="prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line 
+              className="prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line break-words w-full
               [&>p]:mb-4 
               [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-3
               [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mt-6 [&>h2]:mb-3
