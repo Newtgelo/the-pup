@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+// ✅ Import Supabase (ถอยหลัง 1 ขั้นพอสำหรับ folder pages)
 import { supabase } from '../supabase';
 
 // ✅ Import Rich Text Editor
@@ -8,6 +9,9 @@ import "react-quill-new/dist/quill.snow.css";
 
 // ✅ Import SweetAlert2
 import Swal from "sweetalert2";
+
+// ✅ Import ImageUploader (เรียกใช้ Component ที่เราสร้างไว้)
+import { ImageUploader } from '../components/ui/ImageUploader';
 
 // ✅ 1. ตั้งค่า Tag มาตรฐานสำหรับ Event
 const COMMON_TAGS = [
@@ -162,7 +166,16 @@ export const AdminCreateEvent = () => {
                 <div><label className="block text-sm font-bold text-gray-700 mb-1">ราคาบัตร</label><input name="ticket_price" onChange={handleChange} className="w-full border rounded-lg p-3" placeholder="เช่น เริ่มต้น 2,500 บาท" /></div>
             </div>
 
-            <div><label className="block text-sm font-bold text-gray-700 mb-1">ลิงก์รูปโปสเตอร์ (URL) *</label><input required name="image_url" onChange={handleChange} className="w-full border rounded-lg p-3" /></div>
+            {/* ✅ 2. เปลี่ยนช่องกรอก URL เป็น ImageUploader */}
+            <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">รูปโปสเตอร์ (URL) *</label>
+                <ImageUploader 
+                    initialImage={formData.image_url}
+                    onImageSelected={(url) => setFormData({ ...formData, image_url: url })}
+                    folder="events" // เก็บในโฟลเดอร์ events
+                />
+            </div>
+            
             <div><label className="block text-sm font-bold text-gray-700 mb-1">ลิงก์จองบัตร</label><input name="link" onChange={handleChange} className="w-full border rounded-lg p-3" /></div>
 
             <div>

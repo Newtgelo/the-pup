@@ -4,8 +4,10 @@ import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { supabase } from '../supabase';
 import Swal from "sweetalert2";
+// ✅ 1. Import Component อัปโหลดรูป
+import { ImageUploader } from '../components/ui/ImageUploader';
 
-// ✅ 1. ตั้งค่า Tag มาตรฐานที่อยากให้ใช้ (เพิ่มลดตรงนี้ได้เลย)
+// ค่าคงที่ Tag (เหมือนเดิม)
 const COMMON_TAGS = [
   "K-POP", "T-POP", "J-POP", 
   "Concert", "Fanmeeting", "Festival",
@@ -18,7 +20,7 @@ export const AdminCreateNews = () => {
   const [loading, setLoading] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
 
-  // ระบบ รปภ. (ตรวจสอบล็อกอิน)
+  // ระบบเช็ค Login
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -31,7 +33,7 @@ export const AdminCreateNews = () => {
     checkUser();
   }, [navigate]);
 
-  // State ข้อมูลฟอร์ม
+  // State
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('K-pop');
   const [imageUrl, setImageUrl] = useState('');
@@ -48,13 +50,10 @@ export const AdminCreateNews = () => {
     ],
   };
 
-  // ✅ 2. ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ
   const handleAddTag = (tagToAdd) => {
     if (!tags) {
-        // ถ้าช่องว่าง ใส่เลย
         setTags(tagToAdd);
     } else {
-        // ถ้ามีของเดิม เช็คก่อนว่าซ้ำไหม
         const currentTags = tags.split(',').map(t => t.trim());
         if (!currentTags.includes(tagToAdd)) {
             setTags(`${tags}, ${tagToAdd}`);
@@ -74,7 +73,7 @@ export const AdminCreateNews = () => {
     const dataToSave = {
         title,
         category,
-        image_url: imageUrl,
+        image_url: imageUrl, // ✅ ส่ง URL ที่ได้จาก ImageUploader
         content,
         tags,
         status: statusType, 
@@ -129,9 +128,15 @@ export const AdminCreateNews = () => {
                         <option value="Others">Others</option>
                     </select>
                 </div>
+                
+                {/* ✅ 2. เปลี่ยนช่องกรอก URL ธรรมดา -> เป็น ImageUploader */}
                 <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">URL รูปปก</label>
-                    <input type="text" className="w-full border border-gray-300 rounded-lg p-3" placeholder="https://..." value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+                    <label className="block text-sm font-bold text-gray-700 mb-2">รูปปกข่าว</label>
+                    <ImageUploader 
+                        initialImage={imageUrl}
+                        onImageSelected={(url) => setImageUrl(url)}
+                        folder="news" // บอกให้เก็บในโฟลเดอร์ news เพื่อความเป็นระเบียบ
+                    />
                 </div>
             </div>
 
@@ -142,7 +147,7 @@ export const AdminCreateNews = () => {
                 </div>
             </div>
 
-            {/* ✅ 3. ส่วน Tags และ ปุ่มกดอัตโนมัติ */}
+            {/* ส่วน Tags */}
             <div>
                  <label className="block text-sm font-bold text-gray-700 mb-2">Tags</label>
                  <input 
@@ -153,7 +158,6 @@ export const AdminCreateNews = () => {
                     onChange={e => setTags(e.target.value)} 
                  />
                  
-                 {/* Area ปุ่มกด */}
                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                     <p className="text-xs text-gray-500 mb-2 font-bold">เลือก Tag ที่ใช้บ่อย (กดเพื่อเพิ่ม):</p>
                     <div className="flex flex-wrap gap-2">

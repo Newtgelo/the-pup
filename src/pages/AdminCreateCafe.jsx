@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 
-// ✅ 1. Import Rich Text & SweetAlert2
+// ✅ 1. Import Rich Text, SweetAlert2, ImageUploader
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import Swal from "sweetalert2";
+import { ImageUploader } from '../components/ui/ImageUploader'; // ✅ เพิ่มตัวนี้
 
 export const AdminCreateCafe = () => {
   const navigate = useNavigate();
@@ -58,7 +59,7 @@ export const AdminCreateCafe = () => {
   const handleSave = async (statusType, isPreview = false) => {
     // Validation เบื้องต้น
     if (!formData.name || !formData.location_text || !formData.image_url) {
-        Swal.fire("แจ้งเตือน", "กรุณากรอกข้อมูลที่จำเป็น (*) ให้ครบถ้วน", "warning");
+        Swal.fire("แจ้งเตือน", "กรุณากรอก ชื่องาน, พิกัด และ รูปปก", "warning");
         return;
     }
 
@@ -68,7 +69,7 @@ export const AdminCreateCafe = () => {
     const dataToSave = { 
         ...formData, 
         status: statusType,
-        created_at: new Date().toISOString() // 🔥 เพิ่มบรรทัดนี้ครับ
+        created_at: new Date().toISOString() 
     };
     
     // Insert ลง DB
@@ -130,9 +131,15 @@ export const AdminCreateCafe = () => {
                         <label className="block text-sm font-bold text-gray-700 mb-1">ลิงก์ Google Maps</label>
                         <input name="map_link" onChange={handleChange} className="w-full border rounded-lg p-3 bg-white" placeholder="https://goo.gl/maps/..." />
                     </div>
+                    
+                    {/* ✅ เปลี่ยน Input URL เป็น ImageUploader */}
                     <div className="md:col-span-2">
-                        <label className="block text-sm font-bold text-gray-700 mb-1">รูปปก (Cover Image URL) *</label>
-                        <input required name="image_url" onChange={handleChange} className="w-full border rounded-lg p-3 bg-white" placeholder="https://..." />
+                        <label className="block text-sm font-bold text-gray-700 mb-1">รูปปก (Cover Image) *</label>
+                        <ImageUploader 
+                            initialImage={formData.image_url}
+                            onImageSelected={(url) => setFormData({ ...formData, image_url: url })}
+                            folder="cafes"
+                        />
                     </div>
                 </div>
             </section>
@@ -143,17 +150,21 @@ export const AdminCreateCafe = () => {
                     <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold">2</span>
                     <h2 className="text-lg font-bold text-gray-900">อัลบั้มรูปภาพเพิ่มเติม (Gallery)</h2>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-purple-50/50 p-6 rounded-xl border border-purple-100">
+                
+                {/* Grid 3 แถว แถวละ 3 รูป */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-purple-50/50 p-6 rounded-xl border border-purple-100">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                        <div key={num}>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">รูปเพิ่มเติมที่ {num}</label>
-                            <input 
-                                name={`gallery_image_${num}`} 
-                                value={formData[`gallery_image_${num}`]} 
-                                onChange={handleChange} 
-                                className="w-full border rounded-lg p-2 text-sm bg-white" 
-                                placeholder={`URL รูปเพิ่มเติมที่ ${num}`} 
-                            />
+                        <div key={num} className="bg-white p-3 rounded-lg border border-purple-100 shadow-sm">
+                            <label className="block text-xs font-bold text-gray-500 mb-2">รูปเพิ่มเติมที่ {num}</label>
+                            {/* ✅ เปลี่ยน Input เป็น ImageUploader (Mini Version) */}
+                            {/* เราใช้ CSS ใน ImageUploader ปรับขนาดอัตโนมัติจาก Container ได้เลย */}
+                            <div className="transform scale-90 origin-top-left w-[110%]">
+                                <ImageUploader 
+                                    initialImage={formData[`gallery_image_${num}`]}
+                                    onImageSelected={(url) => setFormData({ ...formData, [`gallery_image_${num}`]: url })}
+                                    folder="cafes"
+                                />
+                            </div>
                         </div>
                     ))}
                 </div>

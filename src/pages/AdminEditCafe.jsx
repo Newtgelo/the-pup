@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../supabase';
 
-// ✅ Import Rich Text & Popup
+// ✅ Import Rich Text, SweetAlert2, ImageUploader
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import Swal from "sweetalert2";
+import { ImageUploader } from '../components/ui/ImageUploader'; // ✅ เพิ่มตัวนี้
 
 export const AdminEditCafe = () => {
   const { id } = useParams();
@@ -34,7 +35,7 @@ export const AdminEditCafe = () => {
     capacity: '', area_type: '', facilities: '', 
     organizer_description: '', // Rich Text 2
     status: 'draft',
-    created_at: null // ✅ เพิ่ม state สำหรับเก็บวันที่สร้าง (กันเหนียว)
+    created_at: null 
   });
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export const AdminEditCafe = () => {
               facilities: data.facilities || '',
               organizer_description: data.organizer_description || '',
               status: data.status || 'draft',
-              created_at: data.created_at // ✅ เก็บค่าเดิมไว้เช็ค
+              created_at: data.created_at 
           });
       }
   };
@@ -88,7 +89,7 @@ export const AdminEditCafe = () => {
     setFormData(prev => ({ ...prev, organizer_description: value }));
   };
 
-  // ✅ ฟังก์ชันอัปเดต (ปรับปรุง Logic วันที่)
+  // ✅ ฟังก์ชันอัปเดต
   const handleUpdate = async (statusType, isPreview = false) => {
     // Validation
     if (!formData.name || !formData.location_text || !formData.image_url) {
@@ -105,7 +106,7 @@ export const AdminEditCafe = () => {
         updated_at: new Date().toISOString() // ✅ 1. อัปเดตเวลาแก้ไขล่าสุดเสมอ
     };
 
-    // ✅ 2. เช็คว่าถ้าของเดิมไม่มีวันที่สร้าง (null) ให้เติมเข้าไปด้วย (แก้ปัญหาหน้า Dashboard ขึ้นขีด -)
+    // ✅ 2. เช็คว่าถ้าของเดิมไม่มีวันที่สร้าง (null) ให้เติมเข้าไปด้วย
     if (!formData.created_at) {
         dataToSave.created_at = new Date().toISOString();
     }
@@ -117,11 +118,10 @@ export const AdminEditCafe = () => {
         Swal.fire("Error", error.message, "error");
     } else {
         if (isPreview) {
-            // ดูตัวอย่าง (ไม่ต้องเด้งกลับ)
+            // ดูตัวอย่าง
             window.open(`/cafe/${id}`, '_blank');
         } else {
             // บันทึกเสร็จ -> กลับหน้ารวม
-            // เช็คหน่อยว่าเป็นการ Published ครั้งแรก หรือ Update
             const actionText = statusType === 'published' ? "ออนไลน์เรียบร้อย" : "บันทึกร่างเรียบร้อย";
             
             Swal.fire({
@@ -129,7 +129,7 @@ export const AdminEditCafe = () => {
                 text: actionText,
                 icon: "success",
                 confirmButtonText: "OK",
-                confirmButtonColor: statusType === 'published' ? "#10B981" : "#6B7280", // เขียว หรือ เทา
+                confirmButtonColor: statusType === 'published' ? "#10B981" : "#6B7280",
             }).then(() => {
                 navigate('/admin/cafes');
             });
@@ -168,9 +168,15 @@ export const AdminEditCafe = () => {
                         <label className="block text-sm font-bold text-gray-700 mb-1">ลิงก์ Google Maps</label>
                         <input name="map_link" value={formData.map_link} onChange={handleChange} className="w-full border rounded-lg p-3 bg-white" />
                     </div>
+                    
+                    {/* ✅ เปลี่ยน Input URL เป็น ImageUploader */}
                     <div className="md:col-span-2">
-                        <label className="block text-sm font-bold text-gray-700 mb-1">รูปปก (Cover Image URL) *</label>
-                        <input required name="image_url" value={formData.image_url} onChange={handleChange} className="w-full border rounded-lg p-3 bg-white" />
+                        <label className="block text-sm font-bold text-gray-700 mb-1">รูปปก (Cover Image) *</label>
+                        <ImageUploader 
+                            initialImage={formData.image_url} // ✅ ใส่รูปเดิม
+                            onImageSelected={(url) => setFormData({ ...formData, image_url: url })}
+                            folder="cafes"
+                        />
                     </div>
                 </div>
             </section>
@@ -181,16 +187,21 @@ export const AdminEditCafe = () => {
                     <span className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold">2</span>
                     <h2 className="text-lg font-bold text-gray-900">อัลบั้มรูปภาพเพิ่มเติม (Gallery)</h2>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-purple-50/50 p-6 rounded-xl border border-purple-100">
+                
+                {/* Grid 3 แถว แถวละ 3 รูป */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-purple-50/50 p-6 rounded-xl border border-purple-100">
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                        <div key={num}>
-                            <label className="block text-xs font-bold text-gray-500 mb-1">รูปเพิ่มเติมที่ {num}</label>
-                            <input 
-                                name={`gallery_image_${num}`} 
-                                value={formData[`gallery_image_${num}`]} 
-                                onChange={handleChange} 
-                                className="w-full border rounded-lg p-2 text-sm bg-white" 
-                            />
+                        <div key={num} className="bg-white p-3 rounded-lg border border-purple-100 shadow-sm">
+                            <label className="block text-xs font-bold text-gray-500 mb-2">รูปเพิ่มเติมที่ {num}</label>
+                            
+                            {/* ✅ เปลี่ยน Input เป็น ImageUploader (Mini Version) */}
+                            <div className="transform scale-90 origin-top-left w-[110%]">
+                                <ImageUploader 
+                                    initialImage={formData[`gallery_image_${num}`]} // ✅ ใส่รูปเดิมของแต่ละช่อง
+                                    onImageSelected={(url) => setFormData({ ...formData, [`gallery_image_${num}`]: url })}
+                                    folder="cafes"
+                                />
+                            </div>
                         </div>
                     ))}
                 </div>

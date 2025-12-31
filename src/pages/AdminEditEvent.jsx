@@ -7,6 +7,9 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import Swal from "sweetalert2";
 
+// ✅ Import ImageUploader
+import { ImageUploader } from '../components/ui/ImageUploader';
+
 // ✅ 1. เพิ่มรายการ Tag แนะนำ
 const COMMON_TAGS = [
   "Concert", "Fan Meeting", "Exhibition",
@@ -215,7 +218,16 @@ export const AdminEditEvent = () => {
                 <div><label className="block text-sm font-bold mb-1">ราคาบัตร</label><input name="ticket_price" value={formData.ticket_price} onChange={handleChange} className="w-full border rounded-lg p-3"/></div>
             </div>
 
-            <div><label className="block text-sm font-bold mb-1">ลิงก์รูปโปสเตอร์</label><input name="image_url" value={formData.image_url} onChange={handleChange} className="w-full border rounded-lg p-3"/></div>
+            {/* ✅ 2. เปลี่ยนช่องกรอก URL เป็น ImageUploader */}
+            <div>
+                <label className="block text-sm font-bold mb-1">รูปโปสเตอร์</label>
+                <ImageUploader 
+                    initialImage={formData.image_url} // ส่งรูปเก่าเข้าไปแสดง
+                    onImageSelected={(url) => setFormData({ ...formData, image_url: url })}
+                    folder="events"
+                />
+            </div>
+            
             <div><label className="block text-sm font-bold mb-1">ลิงก์จองบัตร</label><input name="link" value={formData.link} onChange={handleChange} className="w-full border rounded-lg p-3"/></div>
             
             <div>

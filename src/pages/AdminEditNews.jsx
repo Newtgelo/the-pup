@@ -4,8 +4,9 @@ import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { supabase } from '../supabase';
 import Swal from "sweetalert2";
+// ✅ 1. Import ImageUploader
+import { ImageUploader } from '../components/ui/ImageUploader';
 
-// ✅ 1. เพิ่มรายการ Tag แนะนำ
 const COMMON_TAGS = [
   "K-POP", "T-POP", "J-POP", 
   "Concert", "Fanmeeting", "Festival",
@@ -69,7 +70,6 @@ export const AdminEditNews = () => {
     ],
   };
 
-  // ✅ 2. ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ (Copy มาจากหน้า Create)
   const handleAddTag = (tagToAdd) => {
     if (!tags) {
         setTags(tagToAdd);
@@ -92,7 +92,7 @@ export const AdminEditNews = () => {
     const dataToUpdate = {
         title,
         category,
-        image_url: imageUrl,
+        image_url: imageUrl, // ✅ ส่ง URL ที่ได้จาก ImageUploader
         content,
         tags,
         status: statusType, 
@@ -152,9 +152,15 @@ export const AdminEditNews = () => {
                         <option value="Others">Others</option>
                     </select>
                 </div>
+
+                {/* ✅ 2. เปลี่ยนช่องกรอก URL เป็น ImageUploader */}
                 <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">URL รูปปก</label>
-                    <input type="text" className="w-full border border-gray-300 rounded-lg p-3" value={imageUrl} onChange={e => setImageUrl(e.target.value)} />
+                    <label className="block text-sm font-bold text-gray-700 mb-2">รูปปกข่าว</label>
+                    <ImageUploader 
+                        initialImage={imageUrl} // ใส่รูปเดิมเข้าไปแสดงก่อน
+                        onImageSelected={(url) => setImageUrl(url)}
+                        folder="news"
+                    />
                 </div>
             </div>
 
@@ -165,7 +171,7 @@ export const AdminEditNews = () => {
                 </div>
             </div>
 
-            {/* ✅ 3. ส่วน Tags และ ปุ่มกดอัตโนมัติ */}
+            {/* ส่วน Tags */}
             <div>
                  <label className="block text-sm font-bold text-gray-700 mb-2">Tags</label>
                  <input 
@@ -175,7 +181,6 @@ export const AdminEditNews = () => {
                     onChange={e => setTags(e.target.value)} 
                  />
 
-                 {/* Area ปุ่มกด */}
                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                     <p className="text-xs text-gray-500 mb-2 font-bold">เลือก Tag ที่ใช้บ่อย (กดเพื่อเพิ่ม):</p>
                     <div className="flex flex-wrap gap-2">
@@ -213,7 +218,6 @@ export const AdminEditNews = () => {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    
                     <button 
                         type="button" 
                         onClick={() => handleUpdate(status, true)} 
