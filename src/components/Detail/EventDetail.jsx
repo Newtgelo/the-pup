@@ -122,15 +122,23 @@ export const EventDetail = ({ onTriggerToast }) => {
       <NotFound title="ไม่พบกิจกรรมดังกล่าว" onBack={() => navigate("/")} />
     );
 
+  // ✅ แก้ไขฟังก์ชันนี้: เปลี่ยน URL ให้เป็นมาตรฐาน Google Maps ที่ถูกต้อง
   const handleMapClick = () => {
-    if (event.lat && event.lng) {
+    // 1. ถ้ามี map_link (ที่ก๊อปวางมา) ให้ใช้ลิงก์นั้นเลย (Priority สูงสุด)
+    if (event.map_link) {
+       window.open(event.map_link, "_blank");
+    }
+    // 2. ถ้าไม่มีลิงก์ แต่มีพิกัด (Lat/Lng) ที่ระบบดูดมาได้
+    else if (event.lat && event.lng) {
       window.open(
-        `https://www.google.com/maps/search/?api=1&query=$${event.lat},${event.lng}`,
+        `https://www.google.com/maps/search/?api=1&query=${event.lat},${event.lng}`,
         "_blank"
       );
-    } else if (event.location) {
+    } 
+    // 3. ถ้าไม่มีพิกัด ให้เอาชื่อสถานที่ไปค้นหาแทน
+    else if (event.location) {
       window.open(
-        `https://www.google.com/maps/search/?api=1&query=$${encodeURIComponent(
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
           event.location
         )}`,
         "_blank"

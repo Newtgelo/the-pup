@@ -35,11 +35,13 @@ export const AdminEditEvent = () => {
     ],
   };
 
+  // ✅ เพิ่ม map_link, lat, lng ใน State
   const [formData, setFormData] = useState({ 
     title: '', date: '', end_date: '', date_display: '', time: '', location: '', 
-    category: 'Concert', // ✅ แก้ค่าเริ่มต้นให้ตรงกัน
+    category: 'Concert', 
     image_url: '', link: '', 
-    description: '', ticket_price: '', tags: ''
+    description: '', ticket_price: '', tags: '',
+    map_link: '', lat: null, lng: null 
   });
 
   useEffect(() => {
@@ -70,7 +72,11 @@ export const AdminEditEvent = () => {
               link: data.link || '',
               description: data.description || '', 
               ticket_price: data.ticket_price || '',
-              tags: data.tags || ''
+              tags: data.tags || '',
+              // ✅ ดึงข้อมูล Map เดิมมาใส่ (ถ้ามี)
+              map_link: data.map_link || '',
+              lat: data.lat || null,
+              lng: data.lng || null
           });
       }
   };
@@ -82,6 +88,28 @@ export const AdminEditEvent = () => {
 
   const handleDescriptionChange = (value) => {
     setFormData((prev) => ({ ...prev, description: value }));
+  };
+
+  // ✅ ฟังก์ชันดูดพิกัดจากลิงก์ Google Maps (เมื่อมีการแก้ไขลิงก์)
+  const handleMapLinkChange = (e) => {
+    const url = e.target.value;
+    let newLat = formData.lat;
+    let newLng = formData.lng;
+
+    const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+    const match = url.match(regex);
+
+    if (match) {
+        newLat = parseFloat(match[1]);
+        newLng = parseFloat(match[2]);
+    }
+
+    setFormData({ 
+        ...formData, 
+        map_link: url, 
+        lat: newLat, 
+        lng: newLng 
+    });
   };
 
   // ✅ 2. ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ
@@ -197,11 +225,29 @@ export const AdminEditEvent = () => {
                 <div><label className="block text-sm font-bold mb-1">สถานที่</label><input required name="location" value={formData.location} onChange={handleChange} className="w-full border rounded-lg p-3"/></div>
             </div>
 
+            {/* ✅ เพิ่มช่อง Google Maps Link (เหมือนหน้า Create) */}
+            <div>
+                <div className="flex justify-between items-center mb-1">
+                    <label className="block text-sm font-bold mb-1">ลิงก์ Google Maps (เพื่อดึงพิกัด)</label>
+                    {formData.lat && (
+                        <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                            📍 พิกัดพร้อม: {formData.lat.toFixed(4)}, {formData.lng.toFixed(4)}
+                        </span>
+                    )}
+                </div>
+                <input 
+                    name="map_link" 
+                    value={formData.map_link} 
+                    onChange={handleMapLinkChange}
+                    className="w-full border rounded-lg p-3 bg-blue-50/50 focus:bg-white transition"
+                    placeholder="วางลิงก์ Google Maps ที่ก๊อปจาก Address Bar ที่นี่..."
+                />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-bold mb-1">ประเภท</label>
                     <select name="category" value={formData.category} onChange={handleChange} className="w-full border rounded-lg p-3 bg-white">
-                        {/* ✅ แก้ลำดับ Option ให้ Concert ขึ้นก่อน */}
                         <option value="Concert">Concert</option>
                         <option value="Pop-up">Pop-up Store</option>
                         <option value="Fan Meeting">Fan Meeting</option>

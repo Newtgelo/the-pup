@@ -40,21 +40,47 @@ export const AdminCreateEvent = () => {
     });
   }, [navigate]);
 
+  // ✅ เพิ่ม map_link, lat, lng ใน State
   const [formData, setFormData] = useState({
     title: '', date: '', end_date: '', date_display: '', time: '', location: '', 
-    category: 'Concert', image_url: '', link: '', description: '', ticket_price: '', tags: ''
+    category: 'Concert', image_url: '', link: '', description: '', ticket_price: '', tags: '',
+    map_link: '', lat: null, lng: null 
   });
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   const handleDescriptionChange = (value) => setFormData({ ...formData, description: value });
 
-  // ✅ 2. ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ
+  // ✅ 2. ฟังก์ชันดูดพิกัดจากลิงก์ Google Maps (เมื่อมีการพิมพ์หรือวางลิงก์)
+  const handleMapLinkChange = (e) => {
+    const url = e.target.value;
+    let newLat = formData.lat;
+    let newLng = formData.lng;
+
+    // พยายามหาแพทเทิร์น @lat,lng (เช่น @13.9115,100.5532)
+    const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+    const match = url.match(regex);
+
+    if (match) {
+        newLat = parseFloat(match[1]);
+        newLng = parseFloat(match[2]);
+        // แจ้งเตือนเล็กๆ (Console) ว่าเจอพิกัดแล้ว
+        console.log("📍 เจอพิกัด:", newLat, newLng);
+    }
+
+    setFormData({ 
+        ...formData, 
+        map_link: url, 
+        lat: newLat, 
+        lng: newLng 
+    });
+  };
+
+  // ✅ 3. ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ
   const handleAddTag = (tagToAdd) => {
     const currentTags = formData.tags || "";
     if (!currentTags) {
         setFormData({ ...formData, tags: tagToAdd });
     } else {
-        // เช็คว่ามีอยู่แล้วหรือยัง
         const tagArray = currentTags.split(',').map(t => t.trim());
         if (!tagArray.includes(tagToAdd)) {
             setFormData({ ...formData, tags: `${currentTags}, ${tagToAdd}` });
@@ -111,7 +137,6 @@ export const AdminCreateEvent = () => {
             <button onClick={() => navigate('/admin/events')} className="text-gray-500 hover:text-orange-500 font-bold">Cancel</button>
         </div>
 
-        {/* เปลี่ยนจาก form เป็น div ธรรมดา เพื่อคุมปุ่มเอง */}
         <div className="space-y-4">
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">ชื่องาน *</label>
@@ -143,6 +168,29 @@ export const AdminCreateEvent = () => {
             <div className="grid grid-cols-2 gap-4">
                 <div><label className="block text-sm font-bold text-gray-700 mb-1">เวลา</label><input name="time" onChange={handleChange} className="w-full border rounded-lg p-3" placeholder="เช่น 18:00 - 21:00 น." /></div>
                 <div><label className="block text-sm font-bold text-gray-700 mb-1">สถานที่ *</label><input required name="location" onChange={handleChange} className="w-full border rounded-lg p-3" placeholder="เช่น IMPACT Arena" /></div>
+            </div>
+
+            {/* ✅ 4. เพิ่มช่อง Google Maps Link (แทรกตรงนี้) */}
+            <div>
+                <div className="flex justify-between items-center mb-1">
+                    <label className="block text-sm font-bold text-gray-700">ลิงก์ Google Maps (เพื่อดึงพิกัด)</label>
+                    {/* แสดงสถานะพิกัดเล็กๆ ถ้าเจอแล้ว */}
+                    {formData.lat && (
+                        <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
+                            📍 พิกัดพร้อม: {formData.lat.toFixed(4)}, {formData.lng.toFixed(4)}
+                        </span>
+                    )}
+                </div>
+                <input 
+                    name="map_link" 
+                    value={formData.map_link}
+                    onChange={handleMapLinkChange} 
+                    className="w-full border rounded-lg p-3 bg-blue-50/50 focus:bg-white transition" 
+                    placeholder="วางลิงก์ Google Maps ที่ก๊อปจาก Address Bar ที่นี่..." 
+                />
+                <p className="text-[10px] text-gray-400 mt-1 ml-1">
+                   *ระบบจะดึงพิกัดจากลิงก์ให้อัตโนมัติ (ต้องมี @lat,long ในลิงก์)
+                </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -179,7 +227,7 @@ export const AdminCreateEvent = () => {
                 </div>
             </div>
 
-            {/* ✅ 3. ส่วน Tags และ ปุ่มกดอัตโนมัติ */}
+            {/* ส่วน Tags */}
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Tags (คำค้นหา)</label>
                 <input 
@@ -190,7 +238,6 @@ export const AdminCreateEvent = () => {
                     placeholder="เช่น Concert, IMPACT Arena"
                 />
 
-                {/* Area ปุ่มกด */}
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                     <p className="text-xs text-gray-500 mb-2 font-bold">เลือก Tag ที่ใช้บ่อย (กดเพื่อเพิ่ม):</p>
                     <div className="flex flex-wrap gap-2">
