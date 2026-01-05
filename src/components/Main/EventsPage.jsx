@@ -68,13 +68,10 @@ const createClusterCustomIcon = (cluster) => {
     });
 };
 
-// ✅ Component ใหม่: แก้ปัญหา Map สีเทา
-// ทำหน้าที่คอย "เขย่า" (invalidateSize) แผนที่เมื่อมีการกดเปิด/ปิด
 const MapResizer = ({ showMapDesktop }) => {
     const map = useMap();
     useEffect(() => {
         if (showMapDesktop) {
-            // รอสักนิดให้ CSS Transition ทำงานเสร็จ แล้วสั่งรีเฟรชขนาด
             setTimeout(() => {
                 map.invalidateSize();
             }, 300);
@@ -128,9 +125,7 @@ const EventsMap = ({ events, hoveredEventId, onMarkerClick, mapRef, setMapBounds
                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             />
 
-            {/* ✅ ใส่ MapResizer เพื่อแก้ map สีเทา */}
             <MapResizer showMapDesktop={showMapDesktop} />
-            
             <MapBoundsReporter setMapBounds={setMapBounds} />
             <MapAutoFit markers={events} searchOnMove={searchOnMove} />
 
@@ -202,11 +197,14 @@ export const EventsPage = () => {
   const [filteredEvents, setFilteredEvents] = useState([]);
 
   const [mobileViewMode, setMobileViewMode] = useState("list");
-  const [showMapDesktop, setShowMapDesktop] = useState(false); // Default false ตามที่ตกลงกัน
+  const [showMapDesktop, setShowMapDesktop] = useState(false);
   const [hoveredEventId, setHoveredEventId] = useState(null);
 
   const [searchOnMove, setSearchOnMove] = useState(true);
   const [mapBounds, setMapBounds] = useState(null);
+  
+  // ✅ เพิ่ม State สำหรับ Loading ของปุ่มใกล้ฉัน
+  const [isLocating, setIsLocating] = useState(false);
 
   const mapRef = useRef();
 
@@ -271,27 +269,61 @@ export const EventsPage = () => {
 
   const eventsWithLocation = filteredEvents.filter(e => e.lat && e.lng);
 
+  // ✅ ฟังก์ชัน handleNearMe ฉบับอัปเกรด (มี Loading + Error Handling)
   const handleNearMe = () => {
-    const map = mapRef.current;
-    if (!map) return;
-    
-    // ถ้าแผนที่ยังไม่เปิด ให้เปิดก่อน
-    if (!showMapDesktop) setShowMapDesktop(true);
+    // 1. เช็คก่อนว่า Browser รองรับไหม
+    if (!navigator.geolocation) {
+        alert("เบราว์เซอร์ของคุณไม่รองรับการระบุตำแหน่ง");
+        return;
+    }
 
-    // รอแป๊บนึงให้แผนที่โหลด แล้วค่อย locate
-    setTimeout(() => {
-        map.locate({ setView: true, maxZoom: 14, enableHighAccuracy: true });
-    }, 100);
+    // 2. เริ่ม Loading
+    setIsLocating(true);
 
-    setTimeframeFilter("today");
-    setMobileViewMode("map");
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            // ✅ กรณีสำเร็จ (Success)
+            const { latitude, longitude } = position.coords;
+            const map = mapRef.current;
+            
+            if (map) {
+                // ถ้าแผนที่ปิดอยู่ ให้เปิดก่อน
+                if (!showMapDesktop) setShowMapDesktop(true);
+
+                // รอจังหวะนิดนึงให้แมพพร้อม แล้วค่อยซูมไป
+                setTimeout(() => {
+                    map.setView([latitude, longitude], 14);
+                    // (Optional) อาจจะใส่ Marker บอกตำแหน่งเราตรงนี้ก็ได้ แต่แค่ซูมไปก็พอแล้ว
+                    L.popup()
+                        .setLatLng([latitude, longitude])
+                        .setContent("📍 คุณอยู่ที่นี่")
+                        .openOn(map);
+                }, showMapDesktop ? 0 : 300);
+            }
+
+            setTimeframeFilter("today");
+            setMobileViewMode("map");
+            setIsLocating(false); // จบ Loading
+        },
+        (error) => {
+            // ❌ กรณีพัง (Error)
+            console.error("Error getting location:", error);
+            let msg = "ไม่สามารถระบุตำแหน่งได้";
+            if (error.code === 1) msg = "กรุณาอนุญาตให้เข้าถึงตำแหน่งเพื่อใช้งานฟีเจอร์นี้ (เปิด GPS)";
+            else if (error.code === 2) msg = "สัญญาณ GPS อ่อน ไม่สามารถค้นหาตำแหน่งได้";
+            else if (error.code === 3) msg = "หมดเวลาในการค้นหาตำแหน่ง (Connection Timeout)";
+            
+            alert(msg);
+            setIsLocating(false); // จบ Loading
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
   };
 
-  // ✅ ฟังก์ชันเคลียร์ตัวกรอง (แก้ปัญหากดแล้วไม่หาย)
   const handleClearFilters = () => {
     setCategoryFilter("ทั้งหมด");
     setTimeframeFilter("all");
-    setSearchOnMove(false); // สำคัญ: ปิดโหมดค้นหาตามแผนที่ด้วย ไม่งั้นมันจะยังกรองตามพื้นที่เดิม
+    setSearchOnMove(false);
   };
 
   const containerPaddingClass = showMapDesktop 
@@ -408,8 +440,7 @@ export const EventsPage = () => {
                                 <p className="text-lg font-medium">
                                     {searchOnMove && showMapDesktop ? "ไม่พบกิจกรรมในบริเวณแผนที่นี้" : "ไม่พบกิจกรรมในช่วงเวลานี้"}
                                 </p>
-                                <p className="text-sm text-gray-400">ลองเปลี่ยนตัวกรอง หรือขยายพื้นที่การค้นหา</p>
-                                {/* ✅ ใช้ handleClearFilters ที่แก้แล้ว */}
+                                <p className="text-sm text-gray-400">ลองเลื่อนแผนที่ไปบริเวณอื่น หรือเปลี่ยนตัวกรอง</p>
                                 <button onClick={handleClearFilters} className="mt-4 text-[#FF6B00] font-bold hover:underline">
                                     ล้างตัวกรองค้นหา
                                 </button>
@@ -443,16 +474,34 @@ export const EventsPage = () => {
             <div className="absolute bottom-10 right-4 z-[1000]">
                 <button 
                     onClick={handleNearMe}
-                    className="bg-white px-4 py-3 rounded-full shadow-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition active:scale-95 hover:text-[#FF6B00] flex items-center gap-2 font-bold"
+                    disabled={isLocating} // ✅ ปิดปุ่มตอนกำลังโหลด (กันกดรัว)
+                    className={`
+                        bg-white px-4 py-3 rounded-full shadow-xl border border-gray-200 text-gray-700 
+                        hover:bg-gray-50 transition active:scale-95 hover:text-[#FF6B00] 
+                        flex items-center gap-2 font-bold
+                        ${isLocating ? 'opacity-70 cursor-wait' : ''}
+                    `}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#FF6B00]" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                    </svg>
-                    ใกล้ฉัน
+                    {isLocating ? (
+                        <>
+                            {/* ✅ วงกลมหมุนๆ (Spinner) */}
+                            <svg className="animate-spin h-5 w-5 text-[#FF6B00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            กำลังค้นหา...
+                        </>
+                    ) : (
+                        <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-[#FF6B00]" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                            </svg>
+                            📍 ใกล้ฉัน วันนี้
+                        </>
+                    )}
                 </button>
             </div>
 
-            {/* ✅ ส่ง showMapDesktop ไปให้ EventsMap เพื่อใช้ในการ Refresh Map */}
             <EventsMap 
                 events={eventsWithLocation} 
                 hoveredEventId={hoveredEventId}

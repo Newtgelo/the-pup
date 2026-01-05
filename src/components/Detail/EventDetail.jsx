@@ -31,25 +31,25 @@ const EventDetailSkeleton = () => (
         <div className="w-[45%] bg-gray-200"></div>
         {/* Info Area */}
         <div className="flex-1 p-8 lg:p-10 flex flex-col justify-center">
-           <div className="h-6 w-24 bg-gray-200 rounded-lg mb-4"></div>
-           <div className="h-12 w-3/4 bg-gray-200 rounded-lg mb-8"></div>
-           
-           <div className="space-y-6 my-6">
-             {[1, 2, 3].map((i) => (
-               <div key={i} className="flex items-center gap-4">
-                 <div className="w-12 h-12 rounded-full bg-gray-200"></div>
-                 <div className="space-y-2">
-                   <div className="h-5 w-40 bg-gray-200 rounded"></div>
-                   <div className="h-4 w-24 bg-gray-200 rounded"></div>
-                 </div>
-               </div>
-             ))}
-           </div>
+          <div className="h-6 w-24 bg-gray-200 rounded-lg mb-4"></div>
+          <div className="h-12 w-3/4 bg-gray-200 rounded-lg mb-8"></div>
 
-           <div className="flex gap-3 mt-auto pt-8 border-t border-dashed border-gray-200">
-             <div className="flex-1 h-14 bg-gray-200 rounded-xl"></div>
-             <div className="flex-1 h-14 bg-gray-200 rounded-xl"></div>
-           </div>
+          <div className="space-y-6 my-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gray-200"></div>
+                <div className="space-y-2">
+                  <div className="h-5 w-40 bg-gray-200 rounded"></div>
+                  <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3 mt-auto pt-8 border-t border-dashed border-gray-200">
+            <div className="flex-1 h-14 bg-gray-200 rounded-xl"></div>
+            <div className="flex-1 h-14 bg-gray-200 rounded-xl"></div>
+          </div>
         </div>
       </div>
 
@@ -70,13 +70,13 @@ const EventDetailSkeleton = () => (
       <div className="md:col-span-7 lg:col-span-8">
         <div className="h-8 w-48 bg-gray-200 rounded mb-6 border-l-4 border-gray-300 pl-4"></div>
         <div className="space-y-4">
-           <div className="h-4 w-full bg-gray-200 rounded"></div>
-           <div className="h-4 w-full bg-gray-200 rounded"></div>
-           <div className="h-4 w-5/6 bg-gray-200 rounded"></div>
-           <div className="h-4 w-full bg-gray-200 rounded"></div>
-           <div className="h-40 w-full bg-gray-200 rounded my-6"></div>
-           <div className="h-4 w-full bg-gray-200 rounded"></div>
-           <div className="h-4 w-4/5 bg-gray-200 rounded"></div>
+          <div className="h-4 w-full bg-gray-200 rounded"></div>
+          <div className="h-4 w-full bg-gray-200 rounded"></div>
+          <div className="h-4 w-5/6 bg-gray-200 rounded"></div>
+          <div className="h-4 w-full bg-gray-200 rounded"></div>
+          <div className="h-40 w-full bg-gray-200 rounded my-6"></div>
+          <div className="h-4 w-full bg-gray-200 rounded"></div>
+          <div className="h-4 w-4/5 bg-gray-200 rounded"></div>
         </div>
       </div>
     </div>
@@ -122,21 +122,15 @@ export const EventDetail = ({ onTriggerToast }) => {
       <NotFound title="ไม่พบกิจกรรมดังกล่าว" onBack={() => navigate("/")} />
     );
 
-  // ✅ แก้ไขฟังก์ชันนี้: เปลี่ยน URL ให้เป็นมาตรฐาน Google Maps ที่ถูกต้อง
   const handleMapClick = () => {
-    // 1. ถ้ามี map_link (ที่ก๊อปวางมา) ให้ใช้ลิงก์นั้นเลย (Priority สูงสุด)
     if (event.map_link) {
-       window.open(event.map_link, "_blank");
-    }
-    // 2. ถ้าไม่มีลิงก์ แต่มีพิกัด (Lat/Lng) ที่ระบบดูดมาได้
-    else if (event.lat && event.lng) {
+      window.open(event.map_link, "_blank");
+    } else if (event.lat && event.lng) {
       window.open(
         `https://www.google.com/maps/search/?api=1&query=${event.lat},${event.lng}`,
         "_blank"
       );
-    } 
-    // 3. ถ้าไม่มีพิกัด ให้เอาชื่อสถานที่ไปค้นหาแทน
-    else if (event.location) {
+    } else if (event.location) {
       window.open(
         `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
           event.location
@@ -289,11 +283,10 @@ export const EventDetail = ({ onTriggerToast }) => {
                 <span className="inline-block px-3 py-1 rounded-lg bg-orange-50 text-[#FF6B00] text-xs font-bold uppercase tracking-wider mb-3 w-fit border border-orange-100">
                   {event.category}
                 </span>
-                
+
                 <h1 className="text-3xl lg:text-3xl font-extrabold text-gray-900 leading-tight mb-4">
                   {event.title}
                 </h1>
-
               </div>
               <div className="space-y-6 my-6">
                 <div className="flex items-start gap-4 group">
@@ -424,7 +417,6 @@ export const EventDetail = ({ onTriggerToast }) => {
               รายละเอียดงาน
             </h2>
 
-            {/* ✅ Fix Overflow: เพิ่ม break-words และ w-full */}
             <div
               className="prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line break-words w-full
               [&>p]:mb-4 
@@ -437,10 +429,12 @@ export const EventDetail = ({ onTriggerToast }) => {
               {parse(event.description || "", {
                 replace: (domNode) => {
                   if (domNode.name === "iframe" && domNode.attribs) {
+                    // ✅ Fix 1: แยก style ออกจาก attributes ของ iframe
+                    const { style, ...iframeAttribs } = domNode.attribs;
                     return (
                       <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
                         <iframe
-                          {...domNode.attribs}
+                          {...iframeAttribs}
                           className="w-full h-full"
                           allowFullScreen
                         ></iframe>
@@ -479,9 +473,12 @@ export const EventDetail = ({ onTriggerToast }) => {
                         );
                       }
                     }
+
+                    // ✅ Fix 2: แยก style ออกจาก attributes ของ <a>
+                    const { style, ...linkAttribs } = domNode.attribs;
                     return (
                       <a
-                        {...domNode.attribs}
+                        {...linkAttribs}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-[#FF6B00] hover:underline break-words font-bold"
