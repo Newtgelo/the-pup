@@ -1,11 +1,13 @@
 /* src/components/Main/MapStyles.css */
 
+/* กล่องครอบหมุด */
 .pill-marker-container {
     position: relative;
     transform: translate(-50%, -50%);
-    transition: z-index 0.2s;
+    /* ไม่ใส่ Transition ตรงนี้ เพราะจะให้ตัวแม่จัดการ */
 }
 
+/* ตัวหมุด (เม็ดยา) */
 .pill-marker {
     display: flex;
     align-items: center;
@@ -18,10 +20,11 @@
     width: max-content;
     max-width: 160px;
     cursor: pointer;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+    /* Animation: ขยายและเปลี่ยนเงา */
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, border-color 0.2s;
 }
 
-/* ✅ แก้ตรงนี้: จัดกรอบรูปให้แน่นหนา */
+/* --- ส่วนแก้รูปภาพให้เต็มวง (Image Fix) --- */
 .pill-image-wrapper {
     width: 28px;
     height: 28px;
@@ -29,24 +32,23 @@
     overflow: hidden;
     flex-shrink: 0;
     margin-right: 6px;
-    background: #f0f0f0; /* สีพื้นหลังเผื่อรูปโหลดไม่ทัน */
+    background: #f0f0f0;
     
-    /* เพิ่มส่วนนี้: จัดกึ่งกลางรูปภาพ */
+    /* จัดกึ่งกลางเป๊ะๆ */
     display: flex;
     align-items: center;
     justify-content: center;
     
-    /* เปลี่ยนจาก border ธรรมดา เป็นเงาด้านในแทน (รูปจะได้ไม่โดนบีบ) */
     border: none;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1); 
 }
 
-/* ✅ แก้ตรงนี้: บังคับรูปขยายเต็มพื้นที่ */
 .pill-image {
+    /* บังคับรูปเต็ม 100% ไม่สนลูกใคร */
     width: 100% !important;
     height: 100% !important;
-    object-fit: cover !important; /* บังคับ crop ให้เต็มวง ไม่ให้มีขอบขาว */
-    display: block; /* ลบช่องว่างด้านล่างของรูป */
+    object-fit: cover !important;
+    display: block;
     min-width: 100%;
     min-height: 100%;
 }
@@ -61,32 +63,28 @@
     font-family: 'Sukhumvit Set', sans-serif;
 }
 
-/* Hover Effect */
-.pill-marker-container:hover {
-    z-index: 9999 !important;
+/* --- INTERACTION (หัวใจสำคัญ) --- */
+
+/* Class แม่ (Leaflet Wrapper) */
+.custom-pill-icon {
+    transition: z-index 0.2s ease;
 }
 
-.pill-marker-container:hover .pill-marker {
-    transform: scale(1.15);
+/* 1. เมาส์ชี้บนแผนที่ (Native Hover) */
+.custom-pill-icon:hover {
+    z-index: 9999 !important; /* ดันขึ้นหน้า */
+}
+.custom-pill-icon:hover .pill-marker {
+    transform: scale(1.15); /* ขยายลูก */
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* ✅ เพิ่มต่อท้ายไฟล์: Class พิเศษสำหรับสั่งเด้งผ่าน JS */
-.pill-marker-container.force-hover {
-    z-index: 9999 !important; /* บังคับให้ลอยมาหน้าสุด ทับทุกหมุด */
+/* 2. สั่งจาก List หรือ JS (Sniper Mode) */
+.custom-pill-icon.force-hover-style {
+    z-index: 99999 !important; /* อยู่บนสุดแบบ Airbnb */
 }
-
-.pill-marker-container.force-hover .pill-marker {
-    transform: scale(1.15); /* ขยายใหญ่ */
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4); /* เงาชัด */
-    border-color: #FF6B00; /* (Optional) เปลี่ยนสีขอบเน้น */
-}
-
-/* ✅ เพิ่มส่วนนี้: สั่งให้กล่อง Leaflet ลอยขึ้นมาเมื่อเอาเมาส์ชี้บนแผนที่ */
-.custom-pill-icon {
-    transition: z-index 0.2s; /* ให้เวลาสลับชั้นเลเยอร์นิดนึงจะได้นุ่ม */
-}
-
-.custom-pill-icon:hover {
-    z-index: 9999 !important; /* บังคับให้อยู่หน้าสุด ทับทุกอย่าง */
+.custom-pill-icon.force-hover-style .pill-marker {
+    transform: scale(1.15);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    border-color: #FF6B00;
 }

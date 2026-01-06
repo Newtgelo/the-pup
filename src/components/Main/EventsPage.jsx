@@ -11,6 +11,7 @@ const isValidCoordinate = (lat, lng) => {
     return validLat && validLng;
 };
 
+// ✅ ต้องมีบรรทัดนี้ครับ! export const EventsPage
 export const EventsPage = () => {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
@@ -33,7 +34,7 @@ export const EventsPage = () => {
 
   const mapRef = useRef();
 
-  // Fetch Data (ทำแค่ครั้งเดียวตอนโหลดหน้า)
+  // Fetch Data
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
     const fetchEvents = async () => {
@@ -51,8 +52,7 @@ export const EventsPage = () => {
     fetchEvents();
   }, []);
 
-  // ✅ แก้ปัญหา Loop: ใช้ useMemo ล็อคผลลัพธ์การกรองไว้
-  // ถ้า mapBounds เปลี่ยน (เลื่อนแมพ) ค่อยคำนวณใหม่ ถ้าแค่ Hover ไม่ต้องคำนวณ!
+  // Filter Logic
   const filteredEvents = useMemo(() => {
     let result = [...events];
 
@@ -81,7 +81,7 @@ export const EventsPage = () => {
       });
     }
 
-    // 3. Filter by Map Bounds (เฉพาะโหมดค้นหาตามแมพ)
+    // 3. Filter by Map Bounds
     if (searchOnMove && mapBounds && (showMapDesktop || mobileViewMode === 'map')) {
         result = result.filter((e) => {
             const lat = parseFloat(e.lat);
@@ -98,7 +98,6 @@ export const EventsPage = () => {
     return result;
   }, [categoryFilter, timeframeFilter, sortOrder, events, searchOnMove, mapBounds, showMapDesktop, mobileViewMode]);
 
-  // แยก Events ที่มีพิกัดออกมา (ลดภาระ Map)
   const eventsWithLocation = useMemo(() => {
       return filteredEvents.filter(e => isValidCoordinate(parseFloat(e.lat), parseFloat(e.lng)));
   }, [filteredEvents]);
@@ -148,8 +147,6 @@ export const EventsPage = () => {
       eventsWithLocation
   };
 
-  // ... (code ส่วนอื่นๆ เหมือนเดิม) ...
-
   return (
     <div className="w-full h-[calc(100dvh-80px)] overflow-hidden">
         <div className="lg:hidden h-full">
@@ -164,8 +161,6 @@ export const EventsPage = () => {
                 {...sharedProps} 
                 showMapDesktop={showMapDesktop} 
                 setShowMapDesktop={setShowMapDesktop} 
-                
-                // ✅ เพิ่มบรรทัดนี้ครับ! ส่ง mobileViewMode ไปให้ Desktop View
                 mobileViewMode={mobileViewMode}
             />
         </div>
