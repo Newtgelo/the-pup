@@ -68,11 +68,13 @@ const MobileEventsView = ({
                     </div>
 
                     {loading ? (
-                        <div className="grid gap-3 grid-cols-2 px-4">
+                        // ✅ แก้จุดที่ 1: เพิ่ม md:grid-cols-3 lg:grid-cols-4 ให้รองรับ Tablet
+                        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 px-4">
                             {[...Array(6)].map((_, i) => <SkeletonEvent key={i} />)}
                         </div>
                     ) : (
-                        <div className="grid gap-3 grid-cols-2 px-4">
+                        // ✅ แก้จุดที่ 2: เพิ่ม md:grid-cols-3 lg:grid-cols-4 ให้รองรับ Tablet
+                        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 px-4">
                             <AnimatePresence mode="popLayout">
                                 {filteredEvents.length > 0 ? (
                                     filteredEvents.map((item) => (
@@ -117,7 +119,8 @@ const MobileEventsView = ({
                         <div className="absolute bottom-6 left-0 right-0 z-[1000] px-4">
                             <div ref={carouselRef} className="flex gap-4 overflow-x-auto pb-4 snap-x scrollbar-hide pt-2">
                                 {filteredEvents.map((item) => (
-                                    <div id={`mobile-card-${item.id}`} key={item.id} className={`min-w-[85vw] snap-center shrink-0 transition-transform duration-300 ${hoveredEventId === item.id ? 'scale-105' : 'scale-100'}`} onClick={() => setHoveredEventId(item.id)}>
+                                    // ✅ แก้จุดที่ 3: เพิ่ม md:min-w-[350px] เพื่อไม่ให้การ์ดใหญ่เกินไปบน iPad
+                                    <div id={`mobile-card-${item.id}`} key={item.id} className={`min-w-[85vw] md:min-w-[350px] snap-center shrink-0 transition-transform duration-300 ${hoveredEventId === item.id ? 'scale-105' : 'scale-100'}`} onClick={() => setHoveredEventId(item.id)}>
                                         <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
                                             <div className="flex h-32">
                                                 <div className="w-32 h-full shrink-0"><img src={item.image_url} className="w-full h-full object-cover" alt="" /></div>

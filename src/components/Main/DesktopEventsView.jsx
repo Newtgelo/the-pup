@@ -40,11 +40,13 @@ const SingleFloatingCard = ({ event, isCenter, onClick, onClose }) => {
             onClick={!isCenter ? onClick : undefined}
             className={`bg-white rounded-2xl shadow-2xl p-2 flex items-center gap-3 border border-gray-100 relative flex-shrink-0 transition-shadow duration-300 ${isCenter ? 'w-[360px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] ring-1 ring-gray-900/5' : 'w-[320px] grayscale-[30%]'}`}
         >
+             {/* รูปภาพ */}
              <div className="w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100 relative">
                 <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
                 {!isCenter && <div className="absolute inset-0 bg-white/20" />}
             </div>
 
+            {/* ข้อมูลตรงกลาง */}
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
                 <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ backgroundColor: `${categoryColors[event.category]}20`, color: categoryColors[event.category] }}>
@@ -68,6 +70,7 @@ const SingleFloatingCard = ({ event, isCenter, onClick, onClose }) => {
                 </p>
             </div>
 
+            {/* ปุ่ม Action ด้านขวา */}
             <div className={`flex flex-col gap-2 items-end pr-1 transition-opacity duration-200 ${isCenter ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <button onClick={() => window.open(`/event/${event.id}`, '_blank')} className="bg-[#FF6B00] text-white text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-[#e65000] transition shadow-sm whitespace-nowrap">
                     ดูรายละเอียด
@@ -98,7 +101,7 @@ const FloatingCarouselCard = ({ currentEvent, prevEvent, nextEvent, onNext, onPr
     if (!currentEvent) return null;
 
     return (
-        // ✅ ปรับ Z-Index เหลือ 20 (เพื่อให้ต่ำกว่า Navbar แต่สูงกว่า Map)
+        // ✅ Z-Index 20: ต่ำกว่า Navbar แต่สูงกว่า Map
         <div className="absolute bottom-8 inset-x-0 mx-auto w-full z-[20] flex justify-center items-center gap-4 pointer-events-none px-4 h-[120px]">
             <div className="pointer-events-auto z-[21]">
                 <button 
@@ -161,11 +164,13 @@ const DesktopEventsView = ({
 }) => {
     
     const hasActiveFilter = categoryFilter !== "ทั้งหมด" || timeframeFilter !== "all" || searchOnMove;
+    
+    // ✅ FIX: ปรับลด Padding ลงในจอ Tablet (px-4) เพื่อให้ Grid 3 คอลัมน์ทำงานได้
     const containerPaddingClass = showMapDesktop 
-        ? "px-6 md:px-8 lg:px-12 lg:pr-10" 
-        : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8";
+        ? "px-4 md:px-6 lg:px-8" 
+        : "max-w-7xl mx-auto px-4 md:px-6 lg:px-8";
+    
     const cardRefs = useRef({});
-
     const [nearbyQueue, setNearbyQueue] = useState([]);
     const [queueIndex, setQueueIndex] = useState(0);
 
@@ -288,12 +293,15 @@ const DesktopEventsView = ({
                             </div>
                         </div>
                     </div>
+                    {/* Grid List */}
                     {loading ? (
-                        <div className={`grid gap-6 ${containerPaddingClass} ${showMapDesktop ? 'grid-cols-2 xl:grid-cols-3' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'}`}>
+                         // ✅ FIX: ใช้ md:grid-cols-3 สำหรับ Tablet และ gap-4 สำหรับจอเล็ก
+                        <div className={`grid w-full ${showMapDesktop ? 'gap-4 grid-cols-2 xl:grid-cols-3' : 'gap-4 md:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'} ${containerPaddingClass}`}>
                             {[...Array(6)].map((_, i) => <SkeletonEvent key={i} />)}
                         </div>
                     ) : (
-                        <div className={`grid gap-6 ${containerPaddingClass} ${showMapDesktop ? 'grid-cols-2 xl:grid-cols-3' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'}`}>
+                         // ✅ FIX: ใช้ md:grid-cols-3 สำหรับ Tablet
+                        <div className={`grid w-full ${showMapDesktop ? 'gap-4 grid-cols-2 xl:grid-cols-3' : 'gap-4 md:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'} ${containerPaddingClass}`}>
                             {filteredEvents.length > 0 ? (
                                 filteredEvents.map((item) => (
                                     <div 
@@ -327,7 +335,7 @@ const DesktopEventsView = ({
             <div className={`lg:w-1/2 h-full bg-white p-6 xl:p-8 relative transition-all duration-300 ease-in-out ${showMapDesktop ? 'block' : 'hidden'}`}>
                 <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-lg border border-gray-200">
                     
-                    {/* ✅ ปรับ Z-Index เหลือ 10 (ต่ำกว่า Navbar แน่นอน) */}
+                    {/* ✅ Z-Index 10: ต่ำกว่า Navbar */}
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[10]">
                         <button onClick={() => setSearchOnMove(!searchOnMove)} className="bg-white px-4 py-2 rounded-full shadow-md border border-gray-200 text-sm font-bold text-gray-700 flex items-center gap-2 hover:bg-gray-50 transition active:scale-95">
                             <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${searchOnMove ? 'bg-[#FF6B00] border-[#FF6B00]' : 'border-gray-400 bg-white'}`}>
@@ -336,7 +344,7 @@ const DesktopEventsView = ({
                             ค้นหาเมื่อเลื่อนแผนที่
                         </button>
                     </div>
-                    {/* ✅ ปรับ Z-Index เหลือ 10 */}
+                    {/* ✅ Z-Index 10 */}
                     <div className="absolute bottom-40 right-4 z-[10]"> 
                         <button onClick={handleNearMe} disabled={isLocating} className={`bg-white px-4 py-3 rounded-full shadow-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition active:scale-95 hover:text-[#FF6B00] flex items-center gap-2 font-bold ${isLocating ? 'opacity-70 cursor-wait' : ''}`}>
                             {isLocating ? <svg className="animate-spin h-5 w-5 text-[#FF6B00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <IconMapPin size={20} />}
