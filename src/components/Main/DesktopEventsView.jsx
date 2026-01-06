@@ -4,7 +4,7 @@ import { SkeletonEvent } from "../ui/UIComponents";
 import { EventCard } from "../ui/CardComponents";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import EventsMap from "./EventsMap";
-import L from 'leaflet'; // ✅ Import Leaflet มาใช้คำนวณ Point
+import L from 'leaflet';
 
 // --- 📐 Helper: คำนวณระยะทาง ---
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
@@ -24,7 +24,7 @@ const categoryColors = {
 };
 
 // --- 📇 Sub-Component: การ์ดเดี่ยวๆ ---
-const SingleFloatingCard = ({ event, isCenter, onClick, onClose, onCenterMap }) => {
+const SingleFloatingCard = ({ event, isCenter, onClick, onClose }) => {
     const cardVariants = {
         center: { scale: 1, opacity: 1, zIndex: 50, y: 0, x: 0 },
         side: { scale: 0.85, opacity: 0.5, zIndex: 10, y: 15, x: 0, cursor: 'pointer' } 
@@ -40,15 +40,32 @@ const SingleFloatingCard = ({ event, isCenter, onClick, onClose, onCenterMap }) 
             onClick={!isCenter ? onClick : undefined}
             className={`bg-white rounded-2xl shadow-2xl p-2 flex items-center gap-3 border border-gray-100 relative flex-shrink-0 transition-shadow duration-300 ${isCenter ? 'w-[360px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] ring-1 ring-gray-900/5' : 'w-[320px] grayscale-[30%]'}`}
         >
+             {/* รูปภาพ */}
              <div className="w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100 relative">
                 <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
                 {!isCenter && <div className="absolute inset-0 bg-white/20" />}
             </div>
 
+            {/* ข้อมูลตรงกลาง */}
             <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full w-fit mb-0.5" style={{ backgroundColor: `${categoryColors[event.category]}20`, color: categoryColors[event.category] }}>
-                    {event.category}
-                </span>
+                
+                {/* ✅ 1. หมวดหมู่ + สถานที่ (ตามที่ขอ) */}
+                <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ backgroundColor: `${categoryColors[event.category]}20`, color: categoryColors[event.category] }}>
+                        {event.category}
+                    </span>
+                    
+                    {/* จุดสีเทา + ชื่อสถานที่ */}
+                    {event.location && (
+                        <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-1 h-1 rounded-full bg-gray-300 shrink-0"></span>
+                            <span className="text-[10px] text-gray-500 font-medium truncate" title={event.location}>
+                                {event.location}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
                 <h3 className="text-sm font-bold text-gray-900 truncate leading-tight" title={event.title}>
                     {event.title}
                 </h3>
@@ -57,13 +74,23 @@ const SingleFloatingCard = ({ event, isCenter, onClick, onClose, onCenterMap }) 
                 </p>
             </div>
 
+            {/* ปุ่ม Action ด้านขวา */}
             <div className={`flex flex-col gap-2 items-end pr-1 transition-opacity duration-200 ${isCenter ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                 <button onClick={() => window.open(`/event/${event.id}`, '_blank')} className="bg-[#FF6B00] text-white text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-[#e65000] transition shadow-sm whitespace-nowrap">
                     ดูรายละเอียด
                 </button>
-                <button onClick={onCenterMap} className="text-gray-400 hover:text-[#FF6B00] transition p-1 hover:bg-orange-50 rounded" title="Show on Map">
+                
+                {/* ✅ 2. ปุ่ม Map Icon -> เปิด Google Maps Tab ใหม่ */}
+                <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${event.lat},${event.lng}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-[#FF6B00] transition p-1 hover:bg-orange-50 rounded flex items-center justify-center" 
+                    title="เปิดใน Google Maps"
+                    onClick={(e) => e.stopPropagation()} // กันไม่ให้ไปกดโดนการ์ด
+                >
                     <IconMapPin size={18} />
-                </button>
+                </a>
             </div>
 
             {isCenter && (
@@ -75,14 +102,13 @@ const SingleFloatingCard = ({ event, isCenter, onClick, onClose, onCenterMap }) 
     );
 }
 
-// --- 🎠 Component: Carousel Container (แก้ปุ่มหาย) ---
+// --- 🎠 Component: Carousel Container ---
 const FloatingCarouselCard = ({ currentEvent, prevEvent, nextEvent, onNext, onPrev, onClose, onCenterMap, hasNext, hasPrev }) => {
     if (!currentEvent) return null;
 
     return (
         <div className="absolute bottom-8 inset-x-0 mx-auto w-full z-[3000] flex justify-center items-center gap-4 pointer-events-none px-4 h-[120px]">
             
-            {/* ✅ ปุ่มซ้าย: แก้ Opacity ให้เห็นจางๆ ตอนกดไม่ได้ จะได้รู้ว่าปุ่มอยู่ตรงนี้ */}
             <div className="pointer-events-auto z-[3001]">
                 <button 
                     onClick={onPrev} 
@@ -93,7 +119,6 @@ const FloatingCarouselCard = ({ currentEvent, prevEvent, nextEvent, onNext, onPr
                 </button>
             </div>
 
-            {/* Layout Group การ์ด */}
             <div className="flex items-center justify-center relative min-w-[360px]">
                 <LayoutGroup>
                     <AnimatePresence mode="popLayout">
@@ -104,7 +129,7 @@ const FloatingCarouselCard = ({ currentEvent, prevEvent, nextEvent, onNext, onPr
                         )}
 
                         <div className="pointer-events-auto z-50 mx-2">
-                            <SingleFloatingCard key={currentEvent.id} event={currentEvent} isCenter={true} onClose={onClose} onCenterMap={onCenterMap} />
+                            <SingleFloatingCard key={currentEvent.id} event={currentEvent} isCenter={true} onClose={onClose} />
                         </div>
 
                         {nextEvent && (
@@ -116,7 +141,6 @@ const FloatingCarouselCard = ({ currentEvent, prevEvent, nextEvent, onNext, onPr
                 </LayoutGroup>
             </div>
 
-            {/* ✅ ปุ่มขวา */}
             <div className="pointer-events-auto z-[3001]">
                 <button 
                     onClick={onNext} 
@@ -198,25 +222,17 @@ const DesktopEventsView = ({
         setHoveredEventId(null);
     };
 
-    // ✅ แก้ปัญหาหมุดตกขอบ + แก้ NaN Error
     const flyToEvent = (event) => {
         const lat = parseFloat(event?.lat);
         const lng = parseFloat(event?.lng);
 
         if (mapRef.current && !isNaN(lat) && !isNaN(lng)) {
             const map = mapRef.current;
-            const targetZoom = 15; // ซูมเข้าไปให้เห็นชัดๆ
-
-            // 1. แปลงพิกัดภูมิศาสตร์ (Lat/Lng) เป็นพิกัด Pixel บนหน้าจอ ณ Zoom Level นั้น
+            const targetZoom = 15; 
             const targetPoint = map.project([lat, lng], targetZoom);
-            
-            // 2. ขยับจุดกึ่งกลางลงมา 150px (เพื่อให้หมุดลอยขึ้นไปข้างบน หนีการ์ด)
-            targetPoint.y += 150; 
-
-            // 3. แปลงกลับเป็น Lat/Lng ใหม่
+            targetPoint.y += 150; // Offset ให้หมุดลอยเหนือการ์ด
             const targetLatLng = map.unproject(targetPoint, targetZoom);
 
-            // 4. บินไปหาจุดใหม่ที่คำนวณแล้ว
             map.flyTo(targetLatLng, targetZoom, { 
                 duration: 1.2, 
                 easeLinearity: 0.25 
@@ -323,7 +339,7 @@ const DesktopEventsView = ({
                                 ค้นหาเมื่อเลื่อนแผนที่
                             </button>
                         </div>
-                        <div className="absolute bottom-40 right-4 z-[1000]"> {/* ดันปุ่มใกล้ฉันขึ้นหนีการ์ด */}
+                        <div className="absolute bottom-40 right-4 z-[1000]"> 
                             <button onClick={handleNearMe} disabled={isLocating} className={`bg-white px-4 py-3 rounded-full shadow-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition active:scale-95 hover:text-[#FF6B00] flex items-center gap-2 font-bold ${isLocating ? 'opacity-70 cursor-wait' : ''}`}>
                                 {isLocating ? <svg className="animate-spin h-5 w-5 text-[#FF6B00]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <IconMapPin size={20} />}
                                 ใกล้ฉัน
