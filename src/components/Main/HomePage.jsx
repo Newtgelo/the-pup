@@ -29,11 +29,11 @@ export const HomePage = () => {
     const fetchData = async () => {
       setIsLoading(true);
 
-      // ✅ 1. กรอง News เฉพาะ Published
+      // ✅ 1. กรอง News (เหมือนเดิม)
       const { data: news } = await supabase
         .from("news")
         .select("*")
-        .eq('status', 'published') // <-- เพิ่มตรงนี้
+        .eq('status', 'published')
         .limit(10)
         .order("id", { ascending: false });
       if (news) setNewsList(news);
@@ -42,11 +42,11 @@ export const HomePage = () => {
       d.setHours(d.getHours() - 4); 
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-      // ✅ 2. กรอง Events เฉพาะ Published
+      // ✅ 2. กรอง Events (เหมือนเดิม)
       const { data: events } = await supabase
         .from("events")
         .select("*")
-        .eq('status', 'published') // <-- เพิ่มตรงนี้
+        .eq('status', 'published')
         .or(`end_date.gte.${today},and(end_date.is.null,date.gte.${today})`)
         .order("date", { ascending: true })
         .limit(20);
@@ -56,13 +56,24 @@ export const HomePage = () => {
         setFilteredHomeEvents(events);
       }
 
-      // ✅ 3. Cafe มี .eq('status', 'published') อยู่แล้ว (ไม่ต้องแก้)
+      // ✅ 3. Cafe: แก้ให้เป็น Random 🎲
+      // 3.1 ดึงมาเยอะหน่อย (เช่น 50 ร้าน) เพื่อให้มี "ตัวเลือก" มาสุ่ม
       const { data: cafes } = await supabase
         .from("cafes")
         .select("*")
         .eq("status", "published")
-        .limit(8);
-      if (cafes) setCafeList(cafes);
+        .limit(50); // <-- เปลี่ยนจาก 8 เป็น 50 (หรือมากกว่านี้ถ้าร้านเยอะ)
+
+      if (cafes) {
+        // 3.2 สุ่มลำดับ (Shuffle)
+        // ใช้เทคนิคง่ายๆ คือ .sort(() => 0.5 - Math.random()) เพื่อสลับตำแหน่ง array
+        const shuffledCafes = cafes.sort(() => 0.5 - Math.random());
+
+        // 3.3 ตัดมาแค่ 8 อันแรกหลังจากสุ่มแล้ว
+        const selectedCafes = shuffledCafes.slice(0, 8);
+        
+        setCafeList(selectedCafes);
+      }
       
       setIsLoading(false);
     };
@@ -347,6 +358,7 @@ export const HomePage = () => {
               แนะนำที่จัด Fancafe
             </h2>
           </div>
+
           <button
             onClick={() => navigate("/cafes")}
             className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1"
