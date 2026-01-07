@@ -8,10 +8,10 @@ import { IconClock, IconCalendar, IconMapPin } from "../icons/Icons";
 export const NewsCard = ({ item, onClick, className = "" }) => (
   <div
     onClick={onClick}
-    className={`bg-white rounded-xl overflow-hidden cursor-pointer flex flex-col group/news ${className}`}
+    className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md cursor-pointer  flex flex-col group/news ${className}`}
   >
     {/* Image Section */}
-    <div className="aspect-[4/3] md:aspect-square bg-gray-100 relative overflow-hidden rounded-xl">
+    <div className="aspect-[4/3] md:aspect-square bg-gray-100 relative overflow-hidden">
       <SafeImage
         src={item.image_url || item.image}
         alt={item.title}
