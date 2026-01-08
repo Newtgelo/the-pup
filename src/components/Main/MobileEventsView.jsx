@@ -1,9 +1,19 @@
-import React, { useRef } from "react";
-import { IconChevronLeft, IconMapPin } from "../icons/Icons";
+import React, { useRef, useState } from "react";
+import { IconChevronLeft, IconMapPin, IconX } from "../icons/Icons";
 import { SkeletonEvent } from "../ui/UIComponents";
 import { EventCard } from "../ui/CardComponents";
 import { motion, AnimatePresence } from "framer-motion";
 import EventsMap from "./EventsMap";
+
+// --- 📐 Helper: คำนวณระยะทาง (Haversine Formula) ---
+const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
 
 const MobileEventsView = ({
     events, loading, filteredEvents,
@@ -14,18 +24,82 @@ const MobileEventsView = ({
     hoveredEventId, setHoveredEventId,
     searchOnMove, setSearchOnMove,
     mapBounds, setMapBounds,
-    mapRef, handleNearMe, isLocating,
+    mapRef, handleNearMe: originalHandleNearMe, isLocating, // rename prop เพื่อใช้ logic ใหม่
     handleClearFilters, navigate, onMarkerClick,
     eventsWithLocation
 }) => {
     
     const carouselRef = useRef(null);
+    const [toastInfo, setToastInfo] = useState(null); // State สำหรับ Popup แจ้งเตือน
 
     const handleMobileMarkerClick = (id) => {
         setHoveredEventId(id);
         if (mobileViewMode === 'map' && carouselRef.current) {
             const cardElement = document.getElementById(`mobile-card-${id}`);
             if (cardElement) cardElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    };
+
+    // --- 🧠 Smart Near Me Logic ---
+    const handleSmartNearMe = () => {
+        // 1. เรียกใช้ฟังก์ชันหาพิกัดเดิม (เพื่อให้ Map บินไปหา User)
+        originalHandleNearMe();
+
+        // 2. ใช้ geolocation API เช็คระยะห่างเอง เพื่อแสดง Popup
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const userLat = position.coords.latitude;
+                const userLng = position.coords.longitude;
+
+                // หา Event ที่ใกล้ที่สุดในรายการที่ Filter มาแล้ว
+                let minDistance = Infinity;
+                filteredEvents.forEach(evt => {
+                    if (evt.lat && evt.lng) {
+                        const dist = getDistanceFromLatLonInKm(userLat, userLng, parseFloat(evt.lat), parseFloat(evt.lng));
+                        if (dist < minDistance) minDistance = dist;
+                    }
+                });
+
+                // 3. Logic การแสดงผล Popup
+                const SEARCH_RADIUS_KM = 15; // รัศมี 15 กม.
+
+                if (minDistance > SEARCH_RADIUS_KM) {
+                    // ไม่เจองานในรัศมี
+                    if (timeframeFilter !== 'all') {
+                        // Case A: ไม่เจอ เพราะเลือกวัน (เช่น "วันนี้")
+                        setToastInfo({
+                            type: 'filter_limit',
+                            message: `ไม่พบกิจกรรมเร็วๆ นี้ ในบริเวณนี้`,
+                            actionLabel: 'ดูทุกช่วงเวลา',
+                            onAction: () => {
+                                setTimeframeFilter('all');
+                                setToastInfo(null);
+                                // ลองเช็คอีกรอบหลังจากเปลี่ยน Filter (Optional)
+                            }
+                        });
+                    } else {
+                        // Case B: ไม่เจอเลยจริงๆ (บ้านไกล)
+                        setToastInfo({
+                            type: 'no_events',
+                            message: 'ย่านนี้ยังไม่มีกิจกรรมจัดงาน',
+                            actionLabel: '🚀 ไปย่านสยาม (Hub)',
+                            onAction: () => {
+                                // วาร์ปไปสยาม (Siam Paragon coords)
+                                if(mapRef.current) {
+                                    mapRef.current.flyTo([13.7462, 100.5347], 14, { duration: 1.5 });
+                                    setToastInfo(null);
+                                }
+                            }
+                        });
+                    }
+                } else {
+                    // เจองานใกล้ๆ -> ปิด Popup เดิม (ถ้ามี)
+                    setToastInfo(null);
+                }
+
+            }, (error) => {
+                console.error("Error getting location for smart logic", error);
+            });
         }
     };
 
@@ -68,12 +142,10 @@ const MobileEventsView = ({
                     </div>
 
                     {loading ? (
-                        // ✅ แก้จุดที่ 1: เพิ่ม md:grid-cols-3 lg:grid-cols-4 ให้รองรับ Tablet
                         <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 px-4">
                             {[...Array(6)].map((_, i) => <SkeletonEvent key={i} />)}
                         </div>
                     ) : (
-                        // ✅ แก้จุดที่ 2: เพิ่ม md:grid-cols-3 lg:grid-cols-4 ให้รองรับ Tablet
                         <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 px-4">
                             <AnimatePresence mode="popLayout">
                                 {filteredEvents.length > 0 ? (
@@ -95,10 +167,23 @@ const MobileEventsView = ({
                 </div>
             </div>
 
+            {/* ปุ่ม "แสดงแผนที่" (เฉพาะหน้า List) */}
+            {mobileViewMode === 'list' && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[50]">
+                    <button 
+                        onClick={() => setMobileViewMode('map')} 
+                        className="flex items-center gap-2 bg-[#222] text-white px-6 py-3 rounded-full shadow-2xl font-bold transition transform hover:scale-105 active:scale-95 border border-white/20"
+                    >
+                        <IconMapPin size={18} /> แผนที่
+                    </button>
+                </div>
+            )}
+
             {/* Map View */}
             {mobileViewMode === 'map' && (
                 <div className="fixed inset-0 z-[2000] bg-white">
                     <div className="w-full h-full relative">
+                        {/* Search on Move */}
                         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000]">
                             <button onClick={() => setSearchOnMove(!searchOnMove)} className="bg-white px-4 py-2 rounded-full shadow-md border border-gray-200 text-sm font-bold text-gray-700 flex items-center gap-2 hover:bg-gray-50 active:scale-95">
                                 <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${searchOnMove ? 'bg-[#FF6B00] border-[#FF6B00]' : 'border-gray-400 bg-white'}`}>
@@ -107,20 +192,61 @@ const MobileEventsView = ({
                                 ค้นหาเมื่อเลื่อนแผนที่
                             </button>
                         </div>
-                        <div className="absolute right-4 bottom-56 z-[1000]">
-                            <button onClick={handleNearMe} disabled={isLocating} className={`bg-white px-4 py-3 rounded-full shadow-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition active:scale-95 hover:text-[#FF6B00] flex items-center gap-2 font-bold ${isLocating ? 'opacity-70 cursor-wait' : ''}`}>
-                                {isLocating ? "..." : "📍 ใกล้ฉัน"}
+
+                        {/* Button Group (ขวาล่าง) - bottom-48 (192px) */}
+                        <div className="absolute right-4 bottom-48 md:bottom-32 z-[1000] flex flex-col gap-3 items-end">
+                            {/* Smart Near Me Button */}
+                            <button onClick={handleSmartNearMe} disabled={isLocating} className={`w-12 h-12 rounded-full bg-white shadow-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition active:scale-95 hover:text-[#FF6B00] flex items-center justify-center ${isLocating ? 'opacity-70 cursor-wait' : ''}`}>
+                                {isLocating ? <span className="animate-spin">...</span> : <IconMapPin size={24} />}
+                            </button>
+                            
+                            <button onClick={() => setMobileViewMode('list')} className="h-12 w-12 rounded-full bg-[#222] text-white shadow-2xl flex items-center justify-center transition transform hover:scale-105 active:scale-95 border border-white/20">
+                                <span className="text-2xl">📄</span> 
                             </button>
                         </div>
+
+                        {/* 🔥 Toast Notification (Popup) */}
+                        <AnimatePresence>
+                            {toastInfo && (
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                                    className="absolute bottom-28 md:bottom-24 left-4 right-4 z-[1001] bg-[#1a1a1a] text-white p-4 rounded-xl shadow-2xl flex items-center justify-between gap-3 border border-white/10"
+                                >
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-white/90">{toastInfo.message}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button 
+                                            onClick={toastInfo.onAction}
+                                            className="bg-[#FF6B00] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-[#e65000] active:scale-95 transition whitespace-nowrap"
+                                        >
+                                            {toastInfo.actionLabel}
+                                        </button>
+                                        <button 
+                                            onClick={() => setToastInfo(null)}
+                                            className="text-white/40 hover:text-white p-1"
+                                        >
+                                            <IconX size={16} />
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         <EventsMap events={eventsWithLocation} hoveredEventId={hoveredEventId} onMarkerClick={handleMobileMarkerClick} mapRef={mapRef} setMapBounds={setMapBounds} searchOnMove={searchOnMove} showMapDesktop={false} mobileViewMode={mobileViewMode} />
 
                         {/* Carousel */}
-                        <div className="absolute bottom-6 left-0 right-0 z-[1000] px-4">
-                            <div ref={carouselRef} className="flex gap-4 overflow-x-auto pb-4 snap-x scrollbar-hide pt-2">
+                        <div className="absolute bottom-6 left-0 right-0 z-[1000] px-4 pointer-events-none">
+                            <div ref={carouselRef} className="flex gap-4 overflow-x-auto pb-4 snap-x scrollbar-hide pt-10 pointer-events-auto items-end">
                                 {filteredEvents.map((item) => (
-                                    // ✅ แก้จุดที่ 3: เพิ่ม md:min-w-[350px] เพื่อไม่ให้การ์ดใหญ่เกินไปบน iPad
-                                    <div id={`mobile-card-${item.id}`} key={item.id} className={`min-w-[85vw] md:min-w-[350px] snap-center shrink-0 transition-transform duration-300 ${hoveredEventId === item.id ? 'scale-105' : 'scale-100'}`} onClick={() => setHoveredEventId(item.id)}>
+                                    <div 
+                                        id={`mobile-card-${item.id}`} 
+                                        key={item.id} 
+                                        className={`min-w-[85vw] md:min-w-[350px] snap-center shrink-0 transition-transform duration-300 ${hoveredEventId === item.id ? 'scale-105' : 'scale-100'}`} 
+                                        onClick={() => setHoveredEventId(item.id)}
+                                    >
                                         <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
                                             <div className="flex h-32">
                                                 <div className="w-32 h-full shrink-0"><img src={item.image_url} className="w-full h-full object-cover" alt="" /></div>
@@ -143,12 +269,6 @@ const MobileEventsView = ({
                     </div>
                 </div>
             )}
-
-            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[2000]">
-                <button onClick={() => setMobileViewMode(mobileViewMode === 'list' ? 'map' : 'list')} className="flex items-center gap-2 bg-[#222] text-white px-6 py-3 rounded-full shadow-2xl font-bold transition transform hover:scale-105 active:scale-95 border border-white/20">
-                    {mobileViewMode === 'list' ? <><IconMapPin size={18} /> แผนที่</> : <>📄 รายการ</>}
-                </button>
-            </div>
         </div>
     );
 };
