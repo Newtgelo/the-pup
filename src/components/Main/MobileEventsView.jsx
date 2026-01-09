@@ -1,13 +1,13 @@
-import React, { useRef, useState } from "react";
-import { IconChevronLeft, IconMapPin, IconX } from "../icons/Icons";
+import React, { useRef, useState, useEffect } from "react";
+import { IconChevronLeft, IconMapPin, IconX } from "../icons/Icons"; 
 import { SkeletonEvent } from "../ui/UIComponents";
 import { EventCard } from "../ui/CardComponents";
 import { motion, AnimatePresence } from "framer-motion";
 import EventsMap from "./EventsMap";
 
-// --- 📐 Helper: คำนวณระยะทาง (Haversine Formula) ---
+// --- 📐 Helper: คำนวณระยะทาง ---
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Radius of the earth in km
+    const R = 6371; 
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
@@ -24,13 +24,13 @@ const MobileEventsView = ({
     hoveredEventId, setHoveredEventId,
     searchOnMove, setSearchOnMove,
     mapBounds, setMapBounds,
-    mapRef, handleNearMe: originalHandleNearMe, isLocating, // rename prop เพื่อใช้ logic ใหม่
+    mapRef, handleNearMe: originalHandleNearMe, isLocating,
     handleClearFilters, navigate, onMarkerClick,
     eventsWithLocation
 }) => {
     
     const carouselRef = useRef(null);
-    const [toastInfo, setToastInfo] = useState(null); // State สำหรับ Popup แจ้งเตือน
+    const [toastInfo, setToastInfo] = useState(null);
 
     const handleMobileMarkerClick = (id) => {
         setHoveredEventId(id);
@@ -40,51 +40,44 @@ const MobileEventsView = ({
         }
     };
 
-    // --- 🧠 Smart Near Me Logic ---
+    // --- 🧠 Logic 1: Smart Near Me (กดปุ่มใกล้ฉัน) ---
     const handleSmartNearMe = () => {
-        // 1. เรียกใช้ฟังก์ชันหาพิกัดเดิม (เพื่อให้ Map บินไปหา User)
-        originalHandleNearMe();
-
-        // 2. ใช้ geolocation API เช็คระยะห่างเอง เพื่อแสดง Popup
+        originalHandleNearMe(); 
+        
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((position) => {
                 const userLat = position.coords.latitude;
                 const userLng = position.coords.longitude;
-
-                // หา Event ที่ใกล้ที่สุดในรายการที่ Filter มาแล้ว
+                
                 let minDistance = Infinity;
-                filteredEvents.forEach(evt => {
+                const eventsToCheck = filteredEvents.length > 0 ? filteredEvents : eventsWithLocation;
+                
+                eventsToCheck.forEach(evt => {
                     if (evt.lat && evt.lng) {
                         const dist = getDistanceFromLatLonInKm(userLat, userLng, parseFloat(evt.lat), parseFloat(evt.lng));
                         if (dist < minDistance) minDistance = dist;
                     }
                 });
 
-                // 3. Logic การแสดงผล Popup
-                const SEARCH_RADIUS_KM = 15; // รัศมี 15 กม.
+                const SEARCH_RADIUS_KM = 15;
 
                 if (minDistance > SEARCH_RADIUS_KM) {
-                    // ไม่เจองานในรัศมี
                     if (timeframeFilter !== 'all') {
-                        // Case A: ไม่เจอ เพราะเลือกวัน (เช่น "วันนี้")
                         setToastInfo({
                             type: 'filter_limit',
-                            message: `ไม่พบกิจกรรมเร็วๆ นี้ ในบริเวณนี้`,
+                            message: `วันนี้แถวนี้เงียบเหงา 🍃`,
                             actionLabel: 'ดูทุกช่วงเวลา',
                             onAction: () => {
                                 setTimeframeFilter('all');
                                 setToastInfo(null);
-                                // ลองเช็คอีกรอบหลังจากเปลี่ยน Filter (Optional)
                             }
                         });
                     } else {
-                        // Case B: ไม่เจอเลยจริงๆ (บ้านไกล)
                         setToastInfo({
                             type: 'no_events',
-                            message: 'ย่านนี้ยังไม่มีกิจกรรมจัดงาน',
-                            actionLabel: '🚀 ไปย่านสยาม (Hub)',
+                            message: 'ย่านนี้ไม่มีจัดงานเลย 😢',
+                            actionLabel: '🚀 วาร์ปไปสยาม',
                             onAction: () => {
-                                // วาร์ปไปสยาม (Siam Paragon coords)
                                 if(mapRef.current) {
                                     mapRef.current.flyTo([13.7462, 100.5347], 14, { duration: 1.5 });
                                     setToastInfo(null);
@@ -93,22 +86,90 @@ const MobileEventsView = ({
                         });
                     }
                 } else {
-                    // เจองานใกล้ๆ -> ปิด Popup เดิม (ถ้ามี)
                     setToastInfo(null);
                 }
-
-            }, (error) => {
-                console.error("Error getting location for smart logic", error);
-            });
+            }, (error) => console.error("Location error:", error));
         }
     };
 
-    return (
-        <div className="w-full h-full relative bg-white overflow-hidden">
+    // --- 🧠 Logic 2: Lost State Detection (หลงทางในแมพ) ---
+    useEffect(() => {
+        if (mobileViewMode === 'map' && mapBounds) {
             
-            {/* List View */}
+            // 1. ถ้ากำลังโหลด -> ไม่ต้องเตือน
+            if (loading) {
+                setToastInfo(null);
+                return;
+            }
+
+            // 2. เช็คว่ามี Event ไหนอยู่ในจอไหม?
+            const hasVisibleEvents = filteredEvents.some(evt => {
+                if (!evt.lat || !evt.lng) return false;
+                return mapBounds.contains([parseFloat(evt.lat), parseFloat(evt.lng)]);
+            });
+
+            if (!hasVisibleEvents) {
+                // ❌ ไม่เจอ Event ในจอ -> เด้ง Toast (ด้านล่าง)
+                
+                setToastInfo({
+                    type: 'lost_map',
+                    message: "ไม่พบกิจกรรมในบริเวณนี้ 🍃",
+                    actionLabel: "กลับไปโซนจัดงาน",
+                    onAction: () => {
+                        if (mapRef.current) {
+                            const sourceEvents = filteredEvents.length > 0 ? filteredEvents : eventsWithLocation;
+                            
+                            // พยายาม Fit Bounds ไปหา Event ที่มีอยู่
+                            if (sourceEvents && sourceEvents.length > 0) {
+                                let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+                                let hasValidCoords = false;
+
+                                sourceEvents.forEach(e => {
+                                    const lat = parseFloat(e.lat);
+                                    const lng = parseFloat(e.lng);
+                                    if (!isNaN(lat) && !isNaN(lng)) {
+                                        if (lat < minLat) minLat = lat;
+                                        if (lat > maxLat) maxLat = lat;
+                                        if (lng < minLng) minLng = lng;
+                                        if (lng > maxLng) maxLng = lng;
+                                        hasValidCoords = true;
+                                    }
+                                });
+
+                                if (hasValidCoords) {
+                                    mapRef.current.fitBounds(
+                                        [[minLat, minLng], [maxLat, maxLng]], 
+                                        { padding: [50, 50], duration: 1.5 }
+                                    );
+                                    setToastInfo(null);
+                                    return;
+                                }
+                            }
+
+                            // 🚑 Fallback: ถ้าไม่มีจริงๆ วาร์ปกลับสยาม
+                            mapRef.current.flyTo([13.7462, 100.5347], 14, { duration: 1.5 });
+                            setToastInfo(null);
+                        }
+                    }
+                });
+
+            } else {
+                // 3. ✅ เจองาน -> ปิดเตือน
+                setToastInfo(prev => prev?.type === 'lost_map' ? null : prev);
+            }
+        }
+    }, [mapBounds, mobileViewMode, filteredEvents, eventsWithLocation, loading]);
+
+
+    return (
+        <div className="w-full h-full relative bg-white overflow-hidden flex flex-col">
+            
+            {/* ---------------------------------------------------------------------------
+               1. LIST VIEW
+               --------------------------------------------------------------------------- */}
             <div className={`flex flex-col h-full transition-all duration-300 ${mobileViewMode === 'map' ? 'hidden' : 'flex'}`}>
                 <div className="flex-1 overflow-y-auto pb-24">
+                    {/* Header List */}
                     <div className="flex justify-between items-center mb-6 pt-6 px-4 bg-white z-30 relative">
                         <div className="flex items-center gap-3">
                             <button onClick={() => navigate("/#events-section")} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition"><IconChevronLeft size={24} className="text-gray-700" /></button>
@@ -119,6 +180,7 @@ const MobileEventsView = ({
                         </div>
                     </div>
 
+                    {/* Filters List */}
                     <div className="sticky top-0 bg-white z-30 py-2 mb-6 border-b border-gray-100 px-4">
                         <div className="flex flex-col gap-4">
                             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -141,6 +203,7 @@ const MobileEventsView = ({
                         </div>
                     </div>
 
+                    {/* Card Grid */}
                     {loading ? (
                         <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 px-4">
                             {[...Array(6)].map((_, i) => <SkeletonEvent key={i} />)}
@@ -167,7 +230,7 @@ const MobileEventsView = ({
                 </div>
             </div>
 
-            {/* ปุ่ม "แสดงแผนที่" (เฉพาะหน้า List) */}
+            {/* ปุ่ม "แผนที่" ลอย (เฉพาะหน้า List) */}
             {mobileViewMode === 'list' && (
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[50]">
                     <button 
@@ -179,40 +242,67 @@ const MobileEventsView = ({
                 </div>
             )}
 
-            {/* Map View */}
+
+            {/* ---------------------------------------------------------------------------
+               2. MAP VIEW
+               --------------------------------------------------------------------------- */}
             {mobileViewMode === 'map' && (
-                <div className="fixed inset-0 z-[2000] bg-white">
-                    <div className="w-full h-full relative">
-                        {/* Search on Move */}
-                        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000]">
-                            <button onClick={() => setSearchOnMove(!searchOnMove)} className="bg-white px-4 py-2 rounded-full shadow-md border border-gray-200 text-sm font-bold text-gray-700 flex items-center gap-2 hover:bg-gray-50 active:scale-95">
-                                <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${searchOnMove ? 'bg-[#FF6B00] border-[#FF6B00]' : 'border-gray-400 bg-white'}`}>
-                                    {searchOnMove && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                </div>
-                                ค้นหาเมื่อเลื่อนแผนที่
+                <div className="fixed inset-0 z-[5000] bg-white flex flex-col">
+                    
+                    {/* Header ส่วนตัวของหน้า Map */}
+                    <div className="bg-white shadow-sm z-[5010] flex-shrink-0">
+                        {/* แถว 1: Back Button & Title */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                            <button onClick={() => setMobileViewMode('list')} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 active:scale-95 transition">
+                                <IconChevronLeft size={22} />
                             </button>
+                            <h1 className="text-lg font-bold text-gray-900">สำรวจ Event ({filteredEvents.length})</h1>
+                            <div className="w-9"></div> 
                         </div>
 
-                        {/* Button Group (ขวาล่าง) - bottom-48 (192px) */}
-                        <div className="absolute right-4 bottom-48 md:bottom-32 z-[1000] flex flex-col gap-3 items-end">
-                            {/* Smart Near Me Button */}
-                            <button onClick={handleSmartNearMe} disabled={isLocating} className={`w-12 h-12 rounded-full bg-white shadow-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition active:scale-95 hover:text-[#FF6B00] flex items-center justify-center ${isLocating ? 'opacity-70 cursor-wait' : ''}`}>
-                                {isLocating ? <span className="animate-spin">...</span> : <IconMapPin size={24} />}
-                            </button>
+                        {/* แถว 2: Filters */}
+                        <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-hide bg-white/95 backdrop-blur-sm">
                             
-                            <button onClick={() => setMobileViewMode('list')} className="h-12 w-12 rounded-full bg-[#222] text-white shadow-2xl flex items-center justify-center transition transform hover:scale-105 active:scale-95 border border-white/20">
-                                <span className="text-2xl">📄</span> 
-                            </button>
-                        </div>
+                            {/* ❌ UI สะอาด: ไม่มี Checkbox */}
+                            
+                            <div className="relative shrink-0">
+                                <select 
+                                    className="appearance-none bg-gray-100 border border-transparent hover:border-gray-300 text-gray-700 text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20"
+                                    value={timeframeFilter} 
+                                    onChange={(e) => setTimeframeFilter(e.target.value)}
+                                >
+                                    <option value="all">📅 ทุกช่วงเวลา</option>
+                                    <option value="today">🔥 วันนี้</option>
+                                    <option value="this_month">เดือนนี้</option>
+                                    <option value="next_month">เดือนหน้า</option>
+                                </select>
+                            </div>
 
-                        {/* 🔥 Toast Notification (Popup) */}
+                            <div className="relative shrink-0">
+                                <select 
+                                    className="appearance-none bg-gray-100 border border-transparent hover:border-gray-300 text-gray-700 text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20"
+                                    value={categoryFilter} 
+                                    onChange={(e) => setCategoryFilter(e.target.value)}
+                                >
+                                    {["ทั้งหมด", "Concert", "Fan Meeting", "Fansign", "Workshop", "Exhibition", "Fan Event", "Pop-up Store", "Others"].map((filter) => (
+                                        <option key={filter} value={filter}>{filter === "ทั้งหมด" ? "🏷️ หมวดหมู่ทั้งหมด" : filter}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* พื้นที่แผนที่ */}
+                    <div className="relative flex-1 w-full h-full">
+                        
+                        {/* ✅ Popup Notification (Toast) กลับมาอยู่ด้านล่าง (bottom-28) */}
                         <AnimatePresence>
                             {toastInfo && (
                                 <motion.div 
-                                    initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                                    initial={{ opacity: 0, y: 50, scale: 0.95 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                                    className="absolute bottom-28 md:bottom-24 left-4 right-4 z-[1001] bg-[#1a1a1a] text-white p-4 rounded-xl shadow-2xl flex items-center justify-between gap-3 border border-white/10"
+                                    exit={{ opacity: 0, y: 50, scale: 0.95 }}
+                                    className="absolute bottom-28 md:bottom-32 left-4 right-4 z-[5030] bg-[#1a1a1a] text-white p-4 rounded-xl shadow-2xl flex items-center justify-between gap-3 border border-white/10"
                                 >
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-medium text-white/90">{toastInfo.message}</p>
@@ -224,21 +314,28 @@ const MobileEventsView = ({
                                         >
                                             {toastInfo.actionLabel}
                                         </button>
-                                        <button 
-                                            onClick={() => setToastInfo(null)}
-                                            className="text-white/40 hover:text-white p-1"
-                                        >
-                                            <IconX size={16} />
-                                        </button>
+                                        <button onClick={() => setToastInfo(null)} className="text-white/40 hover:text-white p-1"><IconX size={16} /></button>
                                     </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
-                        <EventsMap events={eventsWithLocation} hoveredEventId={hoveredEventId} onMarkerClick={handleMobileMarkerClick} mapRef={mapRef} setMapBounds={setMapBounds} searchOnMove={searchOnMove} showMapDesktop={false} mobileViewMode={mobileViewMode} />
+                        {/* ปุ่มควบคุมขวาล่าง */}
+                        <div className="absolute right-4 bottom-48 md:bottom-32 z-[5020] flex flex-col gap-3 items-end pointer-events-auto">
+                            <button onClick={handleSmartNearMe} disabled={isLocating} className={`w-12 h-12 rounded-full bg-white shadow-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition active:scale-95 hover:text-[#FF6B00] flex items-center justify-center ${isLocating ? 'opacity-70 cursor-wait' : ''}`}>
+                                {isLocating ? <span className="animate-spin">...</span> : <IconMapPin size={24} />}
+                            </button>
+                            
+                            <button onClick={() => setMobileViewMode('list')} className="h-12 w-12 rounded-full bg-[#222] text-white shadow-2xl flex items-center justify-center transition transform hover:scale-105 active:scale-95 border border-white/20">
+                                <span className="text-2xl">📄</span> 
+                            </button>
+                        </div>
+
+                        {/* Force searchOnMove={true} */}
+                        <EventsMap events={eventsWithLocation} hoveredEventId={hoveredEventId} onMarkerClick={handleMobileMarkerClick} mapRef={mapRef} setMapBounds={setMapBounds} searchOnMove={true} showMapDesktop={false} mobileViewMode={mobileViewMode} />
 
                         {/* Carousel */}
-                        <div className="absolute bottom-6 left-0 right-0 z-[1000] px-4 pointer-events-none">
+                        <div className="absolute bottom-6 left-0 right-0 z-[5010] px-4 pointer-events-none">
                             <div ref={carouselRef} className="flex gap-4 overflow-x-auto pb-4 snap-x scrollbar-hide pt-10 pointer-events-auto items-end">
                                 {filteredEvents.map((item) => (
                                     <div 
