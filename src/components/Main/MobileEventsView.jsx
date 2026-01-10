@@ -111,27 +111,29 @@ const MobileEventsView = ({
 
             setVisibleEventsCount(visibleEvents.length);
 
-            // ✅ ล้าง Timer เก่าทิ้งก่อนเสมอ (เพื่อเริ่มนับใหม่ถ้ามีการขยับ)
+            // ✅ ล้าง Timer เก่าทิ้งก่อนเสมอ
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
 
             if (visibleEvents.length === 0) {
-                // ❌ ยังไม่โชว์ทันที! รอ 1.5 วินาที (Debounce)
+                // ❌ ลด Delay เหลือ 0.8 วินาที (800ms) ให้รู้สึกเร็วขึ้น
                 toastTimerRef.current = setTimeout(() => {
-                    if (eventsWithLocation && eventsWithLocation.length > 0) {
-                        setToastInfo({
-                            type: 'lost_map',
-                            message: "ไม่พบกิจกรรมในบริเวณนี้ 🍃",
-                            actionLabel: "กลับไปโซนจัดงาน",
-                            onAction: () => {
-                                if (mapRef.current) {
-                                    const sourceEvents = filteredEvents.length > 0 ? filteredEvents : eventsWithLocation;
-                                    
-                                    // ✅ Logic ใหม่: หา Event ที่ "ใกล้จุดกึ่งกลางจอที่สุด" แล้วบินไปหามัน
-                                    // (แก้ปัญหาวาร์ปไปตกกลางทุ่งนาระหว่างจังหวัด)
-                                    const center = mapRef.current.getCenter();
-                                    let nearestEvent = null;
-                                    let minDistance = Infinity;
+                    
+                    // ✅ ปลดล็อค: แสดง Toast เสมอ ถ้าจอว่าง (แม้ว่า eventsWithLocation จะเป็น 0 ก็ตาม)
+                    setToastInfo({
+                        type: 'lost_map',
+                        message: "ไม่พบกิจกรรมในบริเวณนี้ 🍃",
+                        actionLabel: "กลับไปโซนจัดงาน",
+                        onAction: () => {
+                            if (mapRef.current) {
+                                // พยายามหาจาก filteredEvents ก่อน ถ้าไม่มีให้ไป eventsWithLocation
+                                const sourceEvents = filteredEvents.length > 0 ? filteredEvents : eventsWithLocation;
+                                
+                                // หา Event ที่ "ใกล้จุดกึ่งกลางจอที่สุด"
+                                const center = mapRef.current.getCenter();
+                                let nearestEvent = null;
+                                let minDistance = Infinity;
 
+                                if (sourceEvents && sourceEvents.length > 0) {
                                     sourceEvents.forEach(e => {
                                         const lat = parseFloat(e.lat);
                                         const lng = parseFloat(e.lng);
@@ -143,28 +145,27 @@ const MobileEventsView = ({
                                             }
                                         }
                                     });
-
-                                    if (nearestEvent) {
-                                        // บินไปหา Event ที่ใกล้สุด
-                                        mapRef.current.flyTo(nearestEvent, 14, { duration: 1.5 });
-                                        setToastInfo(null);
-                                    } else {
-                                        // Fallback: ถ้าหาไม่เจอจริงๆ ไปสยาม
-                                        mapRef.current.flyTo([13.7462, 100.5347], 14, { duration: 1.5 });
-                                        setToastInfo(null);
-                                    }
                                 }
+
+                                if (nearestEvent) {
+                                    // เจอ: บินไปหา Event ที่ใกล้สุด
+                                    mapRef.current.flyTo(nearestEvent, 14, { duration: 1.5 });
+                                } else {
+                                    // ไม่เจอ (Event = 0): บินไปสยาม (Default Fallback)
+                                    mapRef.current.flyTo([13.7462, 100.5347], 14, { duration: 1.5 });
+                                }
+                                setToastInfo(null);
                             }
-                        });
-                    }
-                }, 1500); // ⏳ รอ 1.5 วินาที
+                        }
+                    });
+
+                }, 800); // ⏳ 800ms (0.8 วินาที) เร็วขึ้น!
             } else {
-                // ✅ ถ้าเจองาน ปิด Toast ทันที (ไม่ต้องรอ)
+                // ✅ ถ้าเจองาน ปิด Toast ทันที
                 setToastInfo(prev => prev?.type === 'lost_map' ? null : prev);
             }
         }
         
-        // Cleanup Timer ตอน component unmount หรือ effect รันใหม่
         return () => {
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
         };
