@@ -10,7 +10,6 @@ import MobileEventCarousel from "./MobileEventCarousel";
 import MobileToast from "./MobileToast";
 
 // --- 📐 Helper Function (ระยะทาง) ---
-// *อนาคตย้ายไป src/utils/mapUtils.js ได้ครับ*
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
     const R = 6371; 
     const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -36,7 +35,11 @@ const MobileEventsView = ({
     
     const carouselRef = useRef(null);
     const [toastInfo, setToastInfo] = useState(null);
+    
+    // ✅ State ใหม่: ใช้เก็บ "การ์ดที่จะโชว์" โดยเฉพาะ (จะได้เรียงลำดับอิสระจาก filteredEvents)
+    const [displayedEvents, setDisplayedEvents] = useState([]);
     const [visibleEventsCount, setVisibleEventsCount] = useState(0);
+    
     const toastTimerRef = useRef(null);
 
     const isFilterActive = timeframeFilter !== 'all' || categoryFilter !== 'ทั้งหมด';
@@ -97,17 +100,50 @@ const MobileEventsView = ({
 
     // --- Effects (Toast & Count Logic) ---
     useEffect(() => {
-        if (mobileViewMode === 'map' && mapBounds) {
-            if (loading) { setToastInfo(null); return; }
+        if (mobileViewMode === 'map') {
+            
+            if (loading) { 
+                setVisibleEventsCount(0); 
+                setDisplayedEvents([]);
+                setToastInfo(null);
+                return; 
+            }
 
-            // 1. นับจำนวนในจอ
+            // -----------------------------------------------------------
+            // 🟥 CASE 1: Map Bounds ยังไม่มา (เพิ่งเปิดแมพ)
+            // -----------------------------------------------------------
+            if (!mapBounds) {
+                // แทนที่จะโชว์ filteredEvents ดิบๆ... เราจะ "เรียงตามระยะทางจากสยาม" ก่อน
+                const defaultCenter = { lat: 13.7462, lng: 100.5347 }; // สยามพารากอน
+                
+                const sortedByDistance = [...filteredEvents].sort((a, b) => {
+                    // ถ้าไม่มีพิกัด ให้ไปอยู่ท้ายๆ
+                    if (!a.lat || !a.lng) return 1;
+                    if (!b.lat || !b.lng) return -1;
+
+                    const distA = getDistanceFromLatLonInKm(defaultCenter.lat, defaultCenter.lng, parseFloat(a.lat), parseFloat(a.lng));
+                    const distB = getDistanceFromLatLonInKm(defaultCenter.lat, defaultCenter.lng, parseFloat(b.lat), parseFloat(b.lng));
+                    
+                    return distA - distB; // น้อยไปมาก (ใกล้สยามขึ้นก่อน)
+                });
+
+                setDisplayedEvents(sortedByDistance);
+                setVisibleEventsCount(sortedByDistance.length);
+                return;
+            }
+
+            // -----------------------------------------------------------
+            // 🟩 CASE 2: Map Bounds มาแล้ว (User เลื่อนแมพ)
+            // -----------------------------------------------------------
             const visibleEvents = filteredEvents.filter(evt => {
                 if (!evt.lat || !evt.lng) return false;
                 return mapBounds.contains([parseFloat(evt.lat), parseFloat(evt.lng)]);
             });
+            
+            setDisplayedEvents(visibleEvents);
             setVisibleEventsCount(visibleEvents.length);
 
-            // 2. Toast Logic
+            // Toast Logic
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
 
             if (visibleEvents.length === 0) {
@@ -137,7 +173,7 @@ const MobileEventsView = ({
                                     });
                                 }
                                 
-                                const target = nearestEvent || [13.7462, 100.5347]; // สยาม Fallback
+                                const target = nearestEvent || [13.7462, 100.5347]; 
                                 mapRef.current.flyTo(target, 14, { duration: 1.5 });
                                 setToastInfo(null);
                             }
@@ -242,12 +278,16 @@ const MobileEventsView = ({
                             <button onClick={() => setMobileViewMode('list')} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 active:scale-95 transition">
                                 <IconChevronLeft size={22} />
                             </button>
-                            <h1 className="text-lg font-bold text-gray-900">สำรวจ Event ({visibleEventsCount})</h1>
+                            
+                            <h1 className="text-lg font-bold text-gray-900">
+                                สำรวจ Event ({visibleEventsCount})
+                            </h1>
+                            
                             {isFilterActive ? (
                                 <button onClick={handleClearFilters} className="text-xs font-bold text-[#FF6B00] whitespace-nowrap">ล้างตัวกรอง</button>
                             ) : (<div className="w-9"></div>)}
                         </div>
-                        {/* Filters Row */}
+                        
                         <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-hide bg-white/95 backdrop-blur-sm">
                             <div className="relative shrink-0">
                                 <select className="appearance-none bg-gray-100 border border-transparent hover:border-gray-300 text-gray-700 text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value)}>
@@ -270,13 +310,11 @@ const MobileEventsView = ({
                     {/* Map Area */}
                     <div className="relative flex-1 w-full h-full">
                         
-                        {/* ✅ 1. Popup Toast (แยกไปแล้ว) */}
                         <MobileToast 
                             toastInfo={toastInfo} 
                             setToastInfo={setToastInfo} 
                         />
 
-                        {/* Controls */}
                         <div className="absolute right-4 bottom-48 md:bottom-32 z-[5020] flex flex-col gap-3 items-end pointer-events-auto">
                             <button onClick={handleSmartNearMe} disabled={isLocating} className={`w-12 h-12 rounded-full bg-white shadow-xl border border-gray-200 text-gray-700 hover:bg-gray-50 transition active:scale-95 hover:text-[#FF6B00] flex items-center justify-center ${isLocating ? 'opacity-70 cursor-wait' : ''}`}>
                                 {isLocating ? <span className="animate-spin">...</span> : <IconMapPin size={24} />}
@@ -286,13 +324,12 @@ const MobileEventsView = ({
                             </button>
                         </div>
 
-                        {/* Map */}
                         <EventsMap events={eventsWithLocation} hoveredEventId={hoveredEventId} onMarkerClick={handleMobileMarkerClick} mapRef={mapRef} setMapBounds={setMapBounds} searchOnMove={true} showMapDesktop={false} mobileViewMode={mobileViewMode} />
 
-                        {/* ✅ 2. Carousel (แยกไปแล้ว - อันนี้พี่จะไปแก้ต่อ) */}
+                        {/* ✅ ใช้ displayedEvents ที่ผ่านการคัดกรองหรือเรียงลำดับแล้ว */}
                         <MobileEventCarousel 
                             visibleEventsCount={visibleEventsCount}
-                            filteredEvents={filteredEvents}
+                            filteredEvents={displayedEvents}
                             hoveredEventId={hoveredEventId}
                             setHoveredEventId={setHoveredEventId}
                             carouselRef={carouselRef}
