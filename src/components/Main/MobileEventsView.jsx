@@ -1,11 +1,16 @@
 import React, { useRef, useState, useEffect } from "react";
-import { IconChevronLeft, IconMapPin, IconX } from "../icons/Icons"; 
+import { IconChevronLeft, IconMapPin } from "../icons/Icons"; 
 import { SkeletonEvent } from "../ui/UIComponents";
 import { EventCard } from "../ui/CardComponents";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import EventsMap from "./EventsMap";
 
-// --- 📐 Helper: คำนวณระยะทาง ---
+// Import Components ที่แยกออกไป
+import MobileEventCarousel from "./MobileEventCarousel";
+import MobileToast from "./MobileToast";
+
+// --- 📐 Helper Function (ระยะทาง) ---
+// *อนาคตย้ายไป src/utils/mapUtils.js ได้ครับ*
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
     const R = 6371; 
     const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -32,12 +37,11 @@ const MobileEventsView = ({
     const carouselRef = useRef(null);
     const [toastInfo, setToastInfo] = useState(null);
     const [visibleEventsCount, setVisibleEventsCount] = useState(0);
-    
-    // ✅ ตัวช่วยจับเวลาสำหรับ Toast (Debounce Timer)
     const toastTimerRef = useRef(null);
 
     const isFilterActive = timeframeFilter !== 'all' || categoryFilter !== 'ทั้งหมด';
 
+    // --- Handlers ---
     const handleMobileMarkerClick = (id) => {
         setHoveredEventId(id);
         if (mobileViewMode === 'map' && carouselRef.current) {
@@ -46,7 +50,6 @@ const MobileEventsView = ({
         }
     };
 
-    // --- 🧠 Logic 1: Smart Near Me ---
     const handleSmartNearMe = () => {
         originalHandleNearMe(); 
         if (navigator.geolocation) {
@@ -55,6 +58,7 @@ const MobileEventsView = ({
                 const userLng = position.coords.longitude;
                 let minDistance = Infinity;
                 const eventsToCheck = filteredEvents.length > 0 ? filteredEvents : eventsWithLocation;
+                
                 eventsToCheck.forEach(evt => {
                     if (evt.lat && evt.lng) {
                         const dist = getDistanceFromLatLonInKm(userLat, userLng, parseFloat(evt.lat), parseFloat(evt.lng));
@@ -69,10 +73,7 @@ const MobileEventsView = ({
                             type: 'filter_limit',
                             message: `วันนี้แถวนี้เงียบเหงา 🍃`,
                             actionLabel: 'ดูทุกช่วงเวลา',
-                            onAction: () => {
-                                setTimeframeFilter('all');
-                                setToastInfo(null);
-                            }
+                            onAction: () => { setTimeframeFilter('all'); setToastInfo(null); }
                         });
                     } else {
                         setToastInfo({
@@ -94,41 +95,30 @@ const MobileEventsView = ({
         }
     };
 
-    // --- 🧠 Logic 2: Real-time Visible Count & Smart Toast ---
+    // --- Effects (Toast & Count Logic) ---
     useEffect(() => {
         if (mobileViewMode === 'map' && mapBounds) {
-            
-            if (loading) {
-                setToastInfo(null);
-                return;
-            }
+            if (loading) { setToastInfo(null); return; }
 
-            // 1. นับจำนวน Event ในจอ
+            // 1. นับจำนวนในจอ
             const visibleEvents = filteredEvents.filter(evt => {
                 if (!evt.lat || !evt.lng) return false;
                 return mapBounds.contains([parseFloat(evt.lat), parseFloat(evt.lng)]);
             });
-
             setVisibleEventsCount(visibleEvents.length);
 
-            // ✅ ล้าง Timer เก่าทิ้งก่อนเสมอ
+            // 2. Toast Logic
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
 
             if (visibleEvents.length === 0) {
-                // ❌ ลด Delay เหลือ 0.8 วินาที (800ms) ให้รู้สึกเร็วขึ้น
                 toastTimerRef.current = setTimeout(() => {
-                    
-                    // ✅ ปลดล็อค: แสดง Toast เสมอ ถ้าจอว่าง (แม้ว่า eventsWithLocation จะเป็น 0 ก็ตาม)
                     setToastInfo({
                         type: 'lost_map',
                         message: "ไม่พบกิจกรรมในบริเวณนี้ 🍃",
                         actionLabel: "กลับไปโซนจัดงาน",
                         onAction: () => {
                             if (mapRef.current) {
-                                // พยายามหาจาก filteredEvents ก่อน ถ้าไม่มีให้ไป eventsWithLocation
                                 const sourceEvents = filteredEvents.length > 0 ? filteredEvents : eventsWithLocation;
-                                
-                                // หา Event ที่ "ใกล้จุดกึ่งกลางจอที่สุด"
                                 const center = mapRef.current.getCenter();
                                 let nearestEvent = null;
                                 let minDistance = Infinity;
@@ -146,38 +136,26 @@ const MobileEventsView = ({
                                         }
                                     });
                                 }
-
-                                if (nearestEvent) {
-                                    // เจอ: บินไปหา Event ที่ใกล้สุด
-                                    mapRef.current.flyTo(nearestEvent, 14, { duration: 1.5 });
-                                } else {
-                                    // ไม่เจอ (Event = 0): บินไปสยาม (Default Fallback)
-                                    mapRef.current.flyTo([13.7462, 100.5347], 14, { duration: 1.5 });
-                                }
+                                
+                                const target = nearestEvent || [13.7462, 100.5347]; // สยาม Fallback
+                                mapRef.current.flyTo(target, 14, { duration: 1.5 });
                                 setToastInfo(null);
                             }
                         }
                     });
-
-                }, 800); // ⏳ 800ms (0.8 วินาที) เร็วขึ้น!
+                }, 800);
             } else {
-                // ✅ ถ้าเจองาน ปิด Toast ทันที
                 setToastInfo(prev => prev?.type === 'lost_map' ? null : prev);
             }
         }
-        
-        return () => {
-            if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-        };
+        return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current); };
     }, [mapBounds, mobileViewMode, filteredEvents, eventsWithLocation, loading]);
 
 
     return (
         <div className="w-full h-full relative bg-white overflow-hidden flex flex-col">
             
-            {/* ---------------------------------------------------------------------------
-               1. LIST VIEW
-               --------------------------------------------------------------------------- */}
+            {/* --- 1. LIST VIEW --- */}
             <div className={`flex flex-col h-full transition-all duration-300 ${mobileViewMode === 'map' ? 'hidden' : 'flex'}`}>
                 <div className="flex-1 overflow-y-auto pb-24">
                     {/* Header List */}
@@ -189,11 +167,8 @@ const MobileEventsView = ({
                                 {!loading && <p className="text-sm text-gray-500">พบ {filteredEvents.length} อีเวนต์</p>}
                             </div>
                         </div>
-                        
                         {isFilterActive && (
-                            <button onClick={handleClearFilters} className="text-xs font-bold text-[#FF6B00] hover:text-[#e65000] bg-orange-50 px-3 py-1.5 rounded-full transition">
-                                ล้างตัวกรอง
-                            </button>
+                            <button onClick={handleClearFilters} className="text-xs font-bold text-[#FF6B00] hover:text-[#e65000] bg-orange-50 px-3 py-1.5 rounded-full transition">ล้างตัวกรอง</button>
                         )}
                     </div>
 
@@ -247,26 +222,21 @@ const MobileEventsView = ({
                 </div>
             </div>
 
-            {/* ปุ่ม "แผนที่" ลอย (เฉพาะหน้า List) */}
+            {/* Float Map Button (List View) */}
             {mobileViewMode === 'list' && (
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[50]">
-                    <button 
-                        onClick={() => setMobileViewMode('map')} 
-                        className="flex items-center gap-2 bg-[#222] text-white px-6 py-3 rounded-full shadow-2xl font-bold transition transform hover:scale-105 active:scale-95 border border-white/20"
-                    >
+                    <button onClick={() => setMobileViewMode('map')} className="flex items-center gap-2 bg-[#222] text-white px-6 py-3 rounded-full shadow-2xl font-bold transition transform hover:scale-105 active:scale-95 border border-white/20">
                         <IconMapPin size={18} /> แผนที่
                     </button>
                 </div>
             )}
 
 
-            {/* ---------------------------------------------------------------------------
-               2. MAP VIEW
-               --------------------------------------------------------------------------- */}
+            {/* --- 2. MAP VIEW --- */}
             {mobileViewMode === 'map' && (
                 <div className="fixed inset-0 z-[5000] bg-white flex flex-col">
                     
-                    {/* Header */}
+                    {/* Header Map */}
                     <div className="bg-white shadow-sm z-[5010] flex-shrink-0">
                         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                             <button onClick={() => setMobileViewMode('list')} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 active:scale-95 transition">
@@ -280,10 +250,7 @@ const MobileEventsView = ({
                         {/* Filters Row */}
                         <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-hide bg-white/95 backdrop-blur-sm">
                             <div className="relative shrink-0">
-                                <select 
-                                    className="appearance-none bg-gray-100 border border-transparent hover:border-gray-300 text-gray-700 text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20"
-                                    value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value)}
-                                >
+                                <select className="appearance-none bg-gray-100 border border-transparent hover:border-gray-300 text-gray-700 text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value)}>
                                     <option value="all">📅 ทุกช่วงเวลา</option>
                                     <option value="today">🔥 วันนี้</option>
                                     <option value="this_month">เดือนนี้</option>
@@ -291,10 +258,7 @@ const MobileEventsView = ({
                                 </select>
                             </div>
                             <div className="relative shrink-0">
-                                <select 
-                                    className="appearance-none bg-gray-100 border border-transparent hover:border-gray-300 text-gray-700 text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20"
-                                    value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}
-                                >
+                                <select className="appearance-none bg-gray-100 border border-transparent hover:border-gray-300 text-gray-700 text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
                                     {["ทั้งหมด", "Concert", "Fan Meeting", "Fansign", "Workshop", "Exhibition", "Fan Event", "Pop-up Store", "Others"].map((filter) => (
                                         <option key={filter} value={filter}>{filter === "ทั้งหมด" ? "🏷️ หมวดหมู่ทั้งหมด" : filter}</option>
                                     ))}
@@ -306,27 +270,11 @@ const MobileEventsView = ({
                     {/* Map Area */}
                     <div className="relative flex-1 w-full h-full">
                         
-                        {/* Popup Notification (Toast) */}
-                        <AnimatePresence>
-                            {toastInfo && (
-                                <motion.div 
-                                    initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                                    className="absolute bottom-28 md:bottom-32 left-4 right-4 z-[5030] bg-[#1a1a1a] text-white p-4 rounded-xl shadow-2xl flex items-center justify-between gap-3 border border-white/10"
-                                >
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-white/90">{toastInfo.message}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <button onClick={toastInfo.onAction} className="bg-[#FF6B00] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-[#e65000] active:scale-95 transition whitespace-nowrap">
-                                            {toastInfo.actionLabel}
-                                        </button>
-                                        <button onClick={() => setToastInfo(null)} className="text-white/40 hover:text-white p-1"><IconX size={16} /></button>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        {/* ✅ 1. Popup Toast (แยกไปแล้ว) */}
+                        <MobileToast 
+                            toastInfo={toastInfo} 
+                            setToastInfo={setToastInfo} 
+                        />
 
                         {/* Controls */}
                         <div className="absolute right-4 bottom-48 md:bottom-32 z-[5020] flex flex-col gap-3 items-end pointer-events-auto">
@@ -338,47 +286,19 @@ const MobileEventsView = ({
                             </button>
                         </div>
 
+                        {/* Map */}
                         <EventsMap events={eventsWithLocation} hoveredEventId={hoveredEventId} onMarkerClick={handleMobileMarkerClick} mapRef={mapRef} setMapBounds={setMapBounds} searchOnMove={true} showMapDesktop={false} mobileViewMode={mobileViewMode} />
 
-                        {/* ✅ Carousel (การ์ดด้านล่าง) - ซ่อนเมื่อไม่เจองาน (visibleEventsCount == 0) */}
-                        <AnimatePresence>
-                            {visibleEventsCount > 0 && (
-                                <motion.div 
-                                    initial={{ opacity: 0, y: 100 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: 100 }}
-                                    transition={{ duration: 0.3 }}
-                                    className="absolute bottom-6 left-0 right-0 z-[5010] px-4 pointer-events-none"
-                                >
-                                    <div ref={carouselRef} className="flex gap-4 overflow-x-auto pb-4 snap-x scrollbar-hide pt-10 pointer-events-auto items-end">
-                                        {filteredEvents.map((item) => (
-                                            <div 
-                                                id={`mobile-card-${item.id}`} 
-                                                key={item.id} 
-                                                className={`min-w-[85vw] md:min-w-[350px] snap-center shrink-0 transition-transform duration-300 ${hoveredEventId === item.id ? 'scale-105' : 'scale-100'}`} 
-                                                onClick={() => setHoveredEventId(item.id)}
-                                            >
-                                                <div className="bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
-                                                    <div className="flex h-32">
-                                                        <div className="w-32 h-full shrink-0"><img src={item.image_url} className="w-full h-full object-cover" alt="" /></div>
-                                                        <div className="flex-1 p-3 flex flex-col justify-between">
-                                                            <div>
-                                                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 mb-1">{item.category}</span>
-                                                                <h3 className="font-bold text-sm text-gray-900 line-clamp-2 leading-tight">{item.title}</h3>
-                                                            </div>
-                                                            <div className="flex justify-between items-end">
-                                                                <p className="text-xs text-gray-500">📅 {item.date_display || item.date}</p>
-                                                                <button onClick={(e) => { e.stopPropagation(); navigate(`/event/${item.id}`); }} className="bg-[#FF6B00] text-white text-[10px] px-2 py-1 rounded-md font-bold">ดูรายละเอียด</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        {/* ✅ 2. Carousel (แยกไปแล้ว - อันนี้พี่จะไปแก้ต่อ) */}
+                        <MobileEventCarousel 
+                            visibleEventsCount={visibleEventsCount}
+                            filteredEvents={filteredEvents}
+                            hoveredEventId={hoveredEventId}
+                            setHoveredEventId={setHoveredEventId}
+                            carouselRef={carouselRef}
+                            navigate={navigate}
+                        />
+
                     </div>
                 </div>
             )}
