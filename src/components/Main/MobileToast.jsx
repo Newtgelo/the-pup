@@ -1,6 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { IconX } from "../icons/Icons"; // ⚠️ เช็ค path ให้ถูกนะครับ
+import { IconX } from "../icons/Icons"; 
 
 const MobileToast = ({ toastInfo, setToastInfo }) => {
     return (
@@ -10,7 +10,8 @@ const MobileToast = ({ toastInfo, setToastInfo }) => {
                     initial={{ opacity: 0, y: 50, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                    className="absolute bottom-28 md:bottom-32 left-4 right-4 z-[5030] bg-[#1a1a1a] text-white p-4 rounded-xl shadow-2xl flex items-center justify-between gap-3 border border-white/10"
+                    // ✅ เพิ่ม 'pointer-events-auto' ตรงนี้
+                    className="absolute bottom-12 md:bottom-32 left-4 right-4 z-[5030] bg-[#1a1a1a] text-white p-4 rounded-xl shadow-2xl flex items-center justify-between gap-3 border border-white/10 pointer-events-auto"
                 >
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white/90">{toastInfo.message}</p>

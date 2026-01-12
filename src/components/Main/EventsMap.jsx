@@ -63,44 +63,52 @@ const MapAutoFit = ({ markers, searchOnMove }) => {
 // --- Main Map Component ---
 const EventsMap = ({ 
     events, hoveredEventId, setHoveredEventId, 
-    onMarkerClick, // ✅ รับฟังก์ชันคลิกมาจาก Parent
+    onMarkerClick, 
     mapRef, setMapBounds, searchOnMove, showMapDesktop, mobileViewMode 
 }) => {
     
-    // 🔥 REF GUARD: กัน Loop เหมือนเดิม
     const activeHoverRef = useRef(null);
     useEffect(() => { activeHoverRef.current = hoveredEventId; }, [hoveredEventId]);
 
-    // 🎯 SNIPER MODE: ยิง Class (Z-Index)
+    // Effect: Highlight Marker
     useEffect(() => {
-        document.querySelectorAll('.custom-pill-icon').forEach(el => {
-            el.classList.remove('force-hover-style'); el.style.zIndex = '';
+        document.querySelectorAll('.pill-marker').forEach(el => {
+            el.style.transform = 'scale(1)';
+            el.classList.remove('active-marker');
         });
         if (hoveredEventId) {
-            const inner = document.getElementById(`marker-${hoveredEventId}`);
-            if (inner) {
-                const parent = inner.closest('.leaflet-marker-icon');
-                if (parent) { parent.classList.add('force-hover-style'); parent.style.zIndex = '99999'; }
+            const container = document.getElementById(`marker-${hoveredEventId}`);
+            if (container) {
+                const pill = container.querySelector('.pill-marker');
+                if (pill) {
+                    pill.style.transform = 'scale(1.2)';
+                    pill.classList.add('active-marker');
+                }
             }
         }
     }, [hoveredEventId]);
 
-    // ✅ MARKERS: เหลือแค่นี้! (ไม่มี Popup แล้ว)
     const markers = useMemo(() => {
         return events.map((event) => (
             <Marker 
                 key={event.id}
                 position={[parseFloat(event.lat), parseFloat(event.lng)]}
                 icon={getPillIcon(event)}
+                zIndexOffset={hoveredEventId === event.id ? 10000 : 0} 
                 eventHandlers={{ 
-                    // 🔥 CLICK: ส่ง ID กลับไปให้ DesktopEventsView จัดการ Card เอง
                     click: () => onMarkerClick(event.id),
                     mouseover: () => {
+                        // ✅ FIX: ถ้าเป็น Mobile (มี mobileViewMode) ให้ปิด Hover ทิ้งไปเลย!
+                        // ป้องกัน Touch แล้วแมพขยับก่อนกด Click
+                        if (mobileViewMode) return; 
+
                         if (activeHoverRef.current === event.id) return;
                         activeHoverRef.current = event.id;
                         if (setHoveredEventId) setHoveredEventId(event.id);
                     },
                     mouseout: () => {
+                        if (mobileViewMode) return; // ✅ FIX: ปิด MouseOut ด้วย
+                        
                         if (activeHoverRef.current === event.id) {
                             activeHoverRef.current = null;
                             if (setHoveredEventId) setHoveredEventId(null);
@@ -109,7 +117,7 @@ const EventsMap = ({
                 }}
             />
         ));
-    }, [events, mobileViewMode, onMarkerClick]); 
+    }, [events, mobileViewMode, onMarkerClick, hoveredEventId, setHoveredEventId]); 
 
     return (
         <MapContainer 
@@ -122,7 +130,6 @@ const EventsMap = ({
             <MapBoundsReporter setMapBounds={setMapBounds} />
             <MapAutoFit markers={events} searchOnMove={searchOnMove} />
             {markers}
-            {/* ❌ ไม่มี <Popup> แล้ว! ปลอดภัย 100% */}
         </MapContainer>
     );
 };
