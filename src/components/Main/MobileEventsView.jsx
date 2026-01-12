@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-// ✅ เพิ่ม IconTarget, IconList เข้ามา
+// ✅ Import Icons ครบชุด
 import { IconChevronLeft, IconMapPin, IconTarget, IconList } from "../icons/Icons"; 
 import { SkeletonEvent } from "../ui/UIComponents";
 import { EventCard } from "../ui/CardComponents";
@@ -48,21 +48,15 @@ const MobileEventsView = ({
     // 🔇 FLAG 2: บอก Carousel ว่า "อย่าเพิ่งฟังนะ กำลังสไลด์ด้วยโค้ด" (ป้องกัน ID เปลี่ยนรัวๆ)
     const isProgrammaticScrollRef = useRef(false);
 
-    // --- Logic 1: Handle Marker Click (กดแล้วแมพนิ่ง + การ์ดสไลด์มาเงียบๆ) ---
+    // --- Logic 1: Handle Marker Click ---
     const handleMobileMarkerClick = (id) => {
         const clickedEvent = eventsWithLocation.find(e => e.id === id);
         if (!clickedEvent) return;
 
-        // 1. ล็อคเป้าแมพ!
         clickedMarkerIdRef.current = id;
-        
-        // 2. สั่งปิดหู Carousel! (ห้ามจับ Event ระหว่างทาง)
         isProgrammaticScrollRef.current = true;
-
-        // 3. เซ็ตค่า
         setHoveredEventId(id);
 
-        // 4. เรียงการ์ดใหม่ (เอาตัวที่กดไว้หน้าสุด)
         const sortedEvents = [...eventsWithLocation].sort((a, b) => {
             if (a.id === id) return -1;
             if (b.id === id) return 1;
@@ -72,67 +66,79 @@ const MobileEventsView = ({
         });
         setDisplayedEvents(sortedEvents);
         
-        // 5. สั่งสไลด์ไปใบแรก
         if (carouselRef.current) {
             carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
         }
 
-        // 6. ตั้งเวลาคืนค่า (เปิดหู) หลังจากสไลด์เสร็จ (ประมาณ 800ms)
         setTimeout(() => {
             isProgrammaticScrollRef.current = false;
         }, 800);
     };
 
+    // --- 🧠 Logic 2: Smart Near Me (หาใกล้ฉัน -> ถ้าไม่มี -> บินไปตัวใกล้สุด) ---
     const handleSmartNearMe = () => {
-        originalHandleNearMe(); 
+        originalHandleNearMe(); // เริ่มหมุน Loading
+        
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((position) => {
                 const userLat = position.coords.latitude;
                 const userLng = position.coords.longitude;
+                
+                // 1. หา Event ที่ใกล้ตัวเราที่สุด (Global Search)
+                let closestEvent = null;
                 let minDistance = Infinity;
-                const eventsToCheck = filteredEvents.length > 0 ? filteredEvents : eventsWithLocation;
-                eventsToCheck.forEach(evt => {
+
+                // ใช้ eventsWithLocation ทั้งหมดในการหา (ไม่สน Filter)
+                eventsWithLocation.forEach(evt => {
                     if (evt.lat && evt.lng) {
                         const dist = getDistanceFromLatLonInKm(userLat, userLng, parseFloat(evt.lat), parseFloat(evt.lng));
-                        if (dist < minDistance) minDistance = dist;
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            closestEvent = evt;
+                        }
                     }
                 });
-                const SEARCH_RADIUS_KM = 15;
-                if (minDistance > SEARCH_RADIUS_KM) {
+
+                const SEARCH_RADIUS_KM = 20; // ระยะที่ถือว่า "ใกล้บ้าน"
+
+                // 2. ถ้างานใกล้สุด อยู่ไกลเกิน 20 กม. -> แจ้งเตือน + ชวนบินไปหา
+                if (minDistance > SEARCH_RADIUS_KM && closestEvent) {
                     setToastInfo({
-                       type: 'no_events',
-                       message: 'ย่านนี้ไม่มีจัดงานเลย 😢',
-                       actionLabel: '🚀 วาร์ปไปสยาม',
+                       type: 'smart_near_me',
+                       message: 'แถวนี้เงียบเหงาจัง... 🍃',
+                       actionLabel: `🚀 ไปงานที่ใกล้ที่สุด (${minDistance.toFixed(0)} กม.)`,
                        onAction: () => {
                            setToastInfo(null);
                            if(mapRef.current) {
-                               mapRef.current.flyTo([13.7462, 100.5347], 14, { duration: 1.5 });
+                               // บินไปหาตัวที่ใกล้ที่สุด
+                               const targetLat = parseFloat(closestEvent.lat);
+                               const targetLng = parseFloat(closestEvent.lng);
+                               mapRef.current.flyTo([targetLat, targetLng], 12, { duration: 1.5 });
+                               
+                               // ล็อคเป้าด้วย
+                               setTimeout(() => handleMobileMarkerClick(closestEvent.id), 1600);
                            }
                        }
                    });
                 } else {
+                    // ถ้ามีงานในระยะใกล้ๆ ก็ปล่อยให้แมพซูมไปหา User ตามปกติ (เดี๋ยว Auto Sort จะทำงานเอง)
                     setToastInfo(null);
                 }
             }, (error) => console.error("Location error:", error));
         }
     };
 
-    // --- Effect 1: Auto Sort (ทำงานเมื่อแมพขยับ) ---
+    // --- Effect 1: Auto Sort & Smart Toast Logic ---
     useEffect(() => {
         if (mobileViewMode === 'map') {
             if (loading) { 
                 setVisibleEventsCount(0); setDisplayedEvents([]); setToastInfo(null); return; 
             }
 
-            // ⛔ ห้ามเรียงใหม่ ถ้า: กำลังบิน หรือ กำลังล็อคเป้า
-            if (isProgrammaticMoveRef.current) {
-                isProgrammaticMoveRef.current = false; return;
-            }
-            if (hoveredEventId && clickedMarkerIdRef.current === hoveredEventId) {
-                return; 
-            }
+            if (isProgrammaticMoveRef.current) { isProgrammaticMoveRef.current = false; return; }
+            if (hoveredEventId && clickedMarkerIdRef.current === hoveredEventId) { return; }
 
-            // ถ้า User เลื่อนแมพเอง -> เรียงตาม "กลางจอ"
+            // 1. คำนวณ Sort ตามระยะห่างจากกลางจอ
             let centerLat = 13.7462; let centerLng = 100.5347;
             if (mapRef.current) {
                 const center = mapRef.current.getCenter();
@@ -157,35 +163,73 @@ const MobileEventsView = ({
             setDisplayedEvents(sortedEvents);
             setVisibleEventsCount(sortedEvents.length);
 
+            // 🧠 Logic 3: Smart Toast (แจ้งเตือนเมื่อไม่เจอของ)
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+            
             if (sortedEvents.length === 0) {
                 toastTimerRef.current = setTimeout(() => {
+                    
+                    // Case A: ไม่เจองาน เพราะ "Filter เวลา/หมวดหมู่" (Global Filter Empty)
+                    if (filteredEvents.length === 0) {
+                        
+                        // A1. ติด Time Filter
+                        if (timeframeFilter !== 'all') {
+                             setToastInfo({
+                                type: 'filter_time',
+                                message: 'ช่วงเวลานี้ไม่มีงานเลย... 📅',
+                                actionLabel: '⚡ ดูงานเร็วๆ นี้',
+                                onAction: () => {
+                                    setToastInfo(null);
+                                    setTimeframeFilter('all'); // Reset เวลา
+                                    setSortOrder('upcoming');  // ปรับเป็นใกล้วันงาน
+                                    // เดี๋ยวรอบหน้ามันจะ Auto Sort เอง
+                                }
+                            });
+                            return;
+                        }
+
+                        // A2. ติด Category Filter
+                        if (categoryFilter !== 'ทั้งหมด') {
+                            setToastInfo({
+                               type: 'filter_cat',
+                               message: `ไม่พบ ${categoryFilter} ในตอนนี้`,
+                               actionLabel: '↺ ล้างตัวกรอง',
+                               onAction: () => {
+                                   handleClearFilters();
+                                   setToastInfo(null);
+                               }
+                           });
+                           return;
+                       }
+                    }
+
+                    // Case B: ไม่เจองาน เพราะ "เลื่อนแมพไปที่ว่างๆ" (Map Bounds Empty)
+                    // (แต่จริงๆ มีงานในระบบนะ แค่ไม่อยู่ในจอ)
                     setToastInfo({
                         type: 'lost_map',
                         message: "ไม่พบกิจกรรมในบริเวณนี้ 🍃",
                         actionLabel: "กลับไปโซนจัดงาน",
                         onAction: () => {
                             setToastInfo(null); 
+                            // บินกลับสยาม (Default Center)
                             if (mapRef.current) mapRef.current.flyTo([13.7462, 100.5347], 14, { duration: 1.5 });
                         }
                     });
+
                 }, 800);
             } else {
-                setToastInfo(prev => prev?.type === 'lost_map' ? null : prev);
+                // ถ้ามีงานโชว์อยู่ -> ซ่อน Toast (ยกเว้น Toast ของ Near Me ที่เราอยากให้ค้างไว้แป๊บนึง)
+                setToastInfo(prev => (prev?.type === 'smart_near_me' ? prev : null));
             }
         }
-    }, [mapBounds, mobileViewMode, filteredEvents, eventsWithLocation, loading, mapRef]);
+    }, [mapBounds, mobileViewMode, filteredEvents, eventsWithLocation, loading, mapRef, timeframeFilter, categoryFilter]); // เพิ่ม dependencies filter เข้ามาเช็ค
 
-    // --- Effect 2: FlyTo Logic (ระบบการบิน) ---
+    // --- Effect 2: FlyTo Logic ---
     useEffect(() => {
         if (mobileViewMode === 'map' && hoveredEventId && mapRef.current) {
-            
-            // 🔥 CHECK LOCK: ถ้ากดหมุด -> ห้ามบิน!!
-            if (clickedMarkerIdRef.current === hoveredEventId) {
-                return; 
-            }
+            if (clickedMarkerIdRef.current === hoveredEventId) { return; }
 
-            clickedMarkerIdRef.current = null; // ปลดล็อค
+            clickedMarkerIdRef.current = null; 
 
             const targetEvent = eventsWithLocation.find(e => e.id === hoveredEventId);
             if (targetEvent && targetEvent.lat && targetEvent.lng) {
@@ -197,7 +241,7 @@ const MobileEventsView = ({
                 const distKm = getDistanceFromLatLonInKm(currentCenter.lat, currentCenter.lng, targetLat, targetLng);
                 if (distKm < 0.005) return; 
 
-                isProgrammaticMoveRef.current = true; // บอก Auto Sort ว่าอย่าเพิ่งยุ่ง
+                isProgrammaticMoveRef.current = true; 
 
                 const currentZoom = map.getZoom(); 
                 const targetPoint = map.project([targetLat, targetLng], currentZoom);
@@ -313,10 +357,8 @@ const MobileEventsView = ({
                     <div className="relative flex-1 w-full h-full">
                         <MobileToast toastInfo={toastInfo} setToastInfo={setToastInfo} />
                         
-                        {/* ✅ UPDATE: แก้ไขปุ่มลอยขวาล่างให้เป็น Capsule Shape + Icon ใหม่ + มีข้อความ */}
                         <div className="absolute right-4 bottom-48 md:bottom-32 z-[5020] flex flex-col gap-3 items-end pointer-events-auto">
-                            
-                            {/* 1. ปุ่ม Near Me: ทรงแคปซูล + ไอคอนเป้าเล็ง + ข้อความ */}
+                            {/* 1. ปุ่ม Near Me */}
                             <button 
                                 onClick={handleSmartNearMe} 
                                 disabled={isLocating} 
@@ -326,7 +368,7 @@ const MobileEventsView = ({
                                 <span>ใกล้ฉัน</span>
                             </button>
 
-                            {/* 2. ปุ่ม Map to List: ทรงแคปซูล + ไอคอนรายการ + ข้อความ */}
+                            {/* 2. ปุ่ม Map to List */}
                             <button 
                                 onClick={() => setMobileViewMode('list')} 
                                 className="flex items-center gap-2 px-4 h-11 rounded-full bg-[#222] text-white shadow-2xl border border-white/20 font-bold text-sm transition transform hover:scale-105 active:scale-95"
@@ -334,7 +376,6 @@ const MobileEventsView = ({
                                 <IconList size={18} />
                                 <span>รายการ</span> 
                             </button>
-
                         </div>
 
                         <EventsMap 
@@ -348,7 +389,6 @@ const MobileEventsView = ({
                             mobileViewMode={mobileViewMode} 
                         />
 
-                        {/* ✅ ส่ง Ref ปิดหู ไปให้ลูก */}
                         <MobileEventCarousel 
                             visibleEventsCount={visibleEventsCount}
                             filteredEvents={displayedEvents}
