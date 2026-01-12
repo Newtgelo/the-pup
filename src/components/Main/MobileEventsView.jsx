@@ -77,9 +77,9 @@ const MobileEventsView = ({
     const handleSmartNearMe = () => {
         // 1. เปิด Loading Overlay ทันที
         setIsSearching(true);
-        setToastInfo(null); 
+        setToastInfo(null); // ซ่อน Toast เก่าถ้ามี
 
-        // 2. หน่วงเวลา 800ms
+        // 2. หน่วงเวลา 800ms เพื่อให้ User อ่านข้อความทัน + เปลี่ยนตัวกรอง
         setTimeout(() => {
             // A. บังคับเปลี่ยนตัวกรองเป็น "วันนี้"
             setTimeframeFilter('today');
@@ -93,6 +93,7 @@ const MobileEventsView = ({
                     let closestEvent = null;
                     let minDistance = Infinity;
 
+                    // ใช้ eventsWithLocation ทั้งหมด (แล้วเดี๋ยว Filter 'today' จะทำงานเองทีหลัง)
                     eventsWithLocation.forEach(evt => {
                         if (evt.lat && evt.lng) {
                             const dist = getDistanceFromLatLonInKm(userLat, userLng, parseFloat(evt.lat), parseFloat(evt.lng));
@@ -105,7 +106,8 @@ const MobileEventsView = ({
 
                     const SEARCH_RADIUS_KM = 20;
 
-                    setIsSearching(false); // ปิด Loading
+                    // ปิด Loading เมื่อคำนวณเสร็จ
+                    setIsSearching(false);
 
                     if (minDistance > SEARCH_RADIUS_KM && closestEvent) {
                         setToastInfo({
@@ -123,6 +125,7 @@ const MobileEventsView = ({
                            }
                        });
                     } else {
+                        // ถ้าเจอในระยะใกล้ ให้แมพบินไปหา User
                         if(mapRef.current) {
                              mapRef.current.flyTo([userLat, userLng], 13, { duration: 1.5 });
                         }
@@ -130,19 +133,19 @@ const MobileEventsView = ({
                     }
                 }, (error) => {
                     console.error("Location error:", error);
-                    setIsSearching(false); 
+                    setIsSearching(false); // ปิด Loading ถ้า Error
                     alert("ไม่สามารถระบุตำแหน่งได้");
                 });
             } else {
                 setIsSearching(false);
             }
-        }, 800); 
+        }, 800); // ⏳ Delay 0.8 วินาที
     };
 
     // --- Effect 1: Auto Sort & Smart Toast ---
     useEffect(() => {
         if (mobileViewMode === 'map') {
-            if (loading || isSearching) { 
+            if (loading || isSearching) { // ⛔ ถ้ากำลังค้นหา (Popup ขึ้น) อย่าเพิ่งคำนวณ
                 setVisibleEventsCount(0); setDisplayedEvents([]); setToastInfo(null); return; 
             }
 
@@ -216,7 +219,7 @@ const MobileEventsView = ({
                 setToastInfo(prev => (prev?.type === 'smart_near_me' ? prev : null));
             }
         }
-    }, [mapBounds, mobileViewMode, filteredEvents, eventsWithLocation, loading, mapRef, timeframeFilter, categoryFilter, isSearching]);
+    }, [mapBounds, mobileViewMode, filteredEvents, eventsWithLocation, loading, mapRef, timeframeFilter, categoryFilter, isSearching]); // ✅ Add isSearching dependency
 
     // --- Effect 2: FlyTo ---
     useEffect(() => {
@@ -246,9 +249,8 @@ const MobileEventsView = ({
 
     return (
         <div className="w-full h-full relative bg-white overflow-hidden flex flex-col">
-            {/* List View */}
+            {/* List View (เหมือนเดิม) */}
             <div className={`flex flex-col h-full transition-all duration-300 ${mobileViewMode === 'map' ? 'hidden' : 'flex'}`}>
-                {/* ... (List View Content เหมือนเดิม ไม่ต้องแก้) ... */}
                 <div className="flex-1 overflow-y-auto pb-24">
                      <div className="flex justify-between items-center mb-6 pt-6 px-4 bg-white z-30 relative">
                         <div className="flex items-center gap-3">
@@ -309,7 +311,7 @@ const MobileEventsView = ({
                 </div>
             )}
 
-            {/* --- MAP VIEW (แก้ไขตรงนี้) --- */}
+            {/* --- MAP VIEW --- */}
             {mobileViewMode === 'map' && (
                 <div className="fixed inset-0 z-[5000] bg-white flex flex-col">
                     <div className="bg-white shadow-sm z-[5010] flex-shrink-0">
@@ -321,35 +323,14 @@ const MobileEventsView = ({
                             {isFilterActive ? <button onClick={handleClearFilters} className="text-xs font-bold text-[#FF6B00]">ล้างตัวกรอง</button> : <div className="w-9"></div>}
                         </div>
                         <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-hide bg-white/95 backdrop-blur-sm">
-                            
-                            {/* ✅ UPDATED: Select ที่เปลี่ยนสีได้ + มี Animation */}
-                            <motion.div 
-                                className="relative shrink-0"
-                                key={timeframeFilter} // Key เปลี่ยน -> Trigger Animation
-                                initial={{ scale: 1 }}
-                                animate={{ scale: timeframeFilter !== 'all' ? [1, 1.1, 1] : 1 }} // เด้งดึ๋งเมื่อไม่ใช้ All
-                                transition={{ duration: 0.3 }}
-                            >
-                                <select 
-                                    className={`appearance-none text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none transition-all duration-300 border ${
-                                        timeframeFilter !== 'all' 
-                                        ? "bg-[#FF6B00] border-[#FF6B00] text-white shadow-md ring-2 ring-orange-200" // 🎨 Active Style
-                                        : "bg-gray-100 border-transparent hover:border-gray-300 text-gray-700" // Default Style
-                                    }`} 
-                                    value={timeframeFilter} 
-                                    onChange={(e) => setTimeframeFilter(e.target.value)}
-                                >
-                                    <option value="all" className="bg-white text-gray-700">📅 ทุกช่วงเวลา</option>
-                                    <option value="today" className="bg-white text-gray-700">🔥 วันนี้</option>
-                                    <option value="this_month" className="bg-white text-gray-700">เดือนนี้</option>
-                                    <option value="next_month" className="bg-white text-gray-700">เดือนหน้า</option>
+                            <div className="relative shrink-0">
+                                <select className="appearance-none bg-gray-100 border border-transparent hover:border-gray-300 text-gray-700 text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20" value={timeframeFilter} onChange={(e) => setTimeframeFilter(e.target.value)}>
+                                    <option value="all">📅 ทุกช่วงเวลา</option>
+                                    <option value="today">🔥 วันนี้</option>
+                                    <option value="this_month">เดือนนี้</option>
+                                    <option value="next_month">เดือนหน้า</option>
                                 </select>
-                                {/* Custom Arrow Icon เพื่อให้สีตัดกับพื้นหลัง */}
-                                <div className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none ${timeframeFilter !== 'all' ? 'text-white' : 'text-gray-500'}`}>
-                                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 1L5 5L9 1"/></svg>
-                                </div>
-                            </motion.div>
-
+                            </div>
                             <div className="relative shrink-0">
                                 <select className="appearance-none bg-gray-100 border border-transparent hover:border-gray-300 text-gray-700 text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
                                     {["ทั้งหมด", "Concert", "Fan Meeting", "Fansign", "Workshop", "Exhibition", "Fan Event", "Pop-up Store", "Others"].map((filter) => (
@@ -361,7 +342,7 @@ const MobileEventsView = ({
                     </div>
 
                     <div className="relative flex-1 w-full h-full">
-                        {/* ✅ Loading Overlay */}
+                        {/* ✅ 1. Loading Overlay (โชว์เมื่อกำลังค้นหา) */}
                         <AnimatePresence>
                             {isSearching && (
                                 <motion.div 
