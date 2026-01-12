@@ -7,7 +7,7 @@ const MobileEventCarousel = ({
     hoveredEventId, 
     setHoveredEventId, 
     carouselRef, 
-    isProgrammaticScrollRef // ✅ รับ Ref มา
+    isProgrammaticScrollRef 
 }) => {
 
     const handleNavigateToMap = (e, item) => {
@@ -26,7 +26,6 @@ const MobileEventCarousel = ({
     };
 
     const handleScroll = () => {
-        // ⛔ CHECK: ถ้าโดนสั่งปิดหูอยู่ (กำลังสไลด์ออโต้) -> ไม่ต้องทำอะไรเลย
         if (isProgrammaticScrollRef && isProgrammaticScrollRef.current) {
             return; 
         }
@@ -55,14 +54,27 @@ const MobileEventCarousel = ({
         }
     };
 
-    // Fix: Scroll reset when list changes
+    // ✅ Logic: โหลดเสร็จแล้ว ให้ข้ามการ์ดสรุป ไปโฟกัสงานแรกทันที
     useEffect(() => {
-        if (carouselRef.current) {
+        if (carouselRef.current && filteredEvents.length > 0) {
             setTimeout(() => {
-                if (carouselRef.current) {
-                    carouselRef.current.scrollTo({ left: 0, behavior: 'auto' });
+                if (!carouselRef.current) return;
+                
+                const firstEventId = filteredEvents[0].id;
+                const firstCard = document.getElementById(`mobile-card-${firstEventId}`);
+                
+                if (firstCard) {
+                    const container = carouselRef.current;
+                    const cardLeft = firstCard.offsetLeft;
+                    const cardWidth = firstCard.offsetWidth;
+                    const containerWidth = container.clientWidth;
+
+                    const scrollTo = cardLeft - (containerWidth / 2) + (cardWidth / 2);
+
+                    container.scrollTo({ left: scrollTo, behavior: 'auto' });
+                    setHoveredEventId(firstEventId);
                 }
-            }, 50);
+            }, 100); 
         }
     }, [filteredEvents]); 
 
@@ -81,6 +93,30 @@ const MobileEventCarousel = ({
                         onScroll={handleScroll} 
                         className="flex gap-3 overflow-x-auto px-4 pb-4 snap-x snap-mandatory scrollbar-hide pt-10 pointer-events-auto items-end touch-pan-x"
                     >
+                        {/* ℹ️ 1. HEAD CARD: เพิ่มคำแนะนำด้านล่าง */}
+                        <div className="snap-center shrink-0 w-[140px] h-[140px] flex items-center justify-center">
+                             <div className="bg-white/95 backdrop-blur-md w-full h-full rounded-xl shadow-sm border border-gray-200 flex flex-col items-center justify-between text-center p-3 py-4">
+                                
+                                {/* ส่วนบน: ไอคอน + จำนวน */}
+                                <div className="flex flex-col items-center justify-center flex-1">
+                                    <div className="bg-orange-50 text-[#FF6B00] w-9 h-9 rounded-full flex items-center justify-center mb-1.5 shadow-sm">
+                                        <span className="text-lg">🎉</span>
+                                    </div>
+                                    <div className="font-bold text-gray-900 text-sm">พบ {visibleEventsCount} งาน</div>
+                                    <div className="text-[10px] text-gray-500">ในบริเวณหน้าจอนี้</div>
+                                </div>
+
+                                {/* ✅ ส่วนล่าง (ใหม่): คำแนะนำเล็กๆ */}
+                                <div className="w-full mt-2 pt-2 border-t border-gray-100">
+                                    <p className="text-[9px] text-gray-400 font-medium bg-gray-50 rounded-lg py-1 px-2 inline-block">
+                                        👈 เลื่อนแผนที่เพื่อดูเพิ่ม
+                                    </p>
+                                </div>
+
+                             </div>
+                        </div>
+
+                        {/* 🔄 2. EVENT CARDS */}
                         {filteredEvents.map((item) => (
                             <div 
                                 id={`mobile-card-${item.id}`} 
@@ -89,12 +125,10 @@ const MobileEventCarousel = ({
                                 onClick={() => setHoveredEventId(item.id)}
                             >
                                 <div className={`bg-white rounded-xl shadow-lg overflow-hidden border transition-all duration-300 h-[140px] flex ${hoveredEventId === item.id ? 'border-gray-100 shadow-xl' : 'border-gray-100'}`}>
-                                    
                                     <div className="w-[110px] h-full shrink-0 relative bg-gray-200">
                                         <img src={item.image_url} className="w-full h-full object-cover" alt={item.title} loading="lazy"/>
                                         <div className="absolute top-0 left-0 w-1 h-full bg-transparent"></div>
                                     </div>
-
                                     <div className="flex-1 flex flex-col min-w-0">
                                         <div className="p-3 pb-1 flex-1">
                                             <div className="text-[10px] uppercase font-bold text-gray-400 mb-0.5">{item.category || "EVENT"}</div>
@@ -113,6 +147,16 @@ const MobileEventCarousel = ({
                                 </div>
                             </div>
                         ))}
+
+                        {/* 🛑 3. TAIL CARD */}
+                        <div className="snap-center shrink-0 w-[140px] h-[140px] flex items-center justify-center">
+                             <div className="bg-gray-50 w-full h-full rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center p-2 text-gray-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-2 opacity-50"><circle cx="12" cy="12" r="10"/><path d="m16 16-4-4 4-4"/><path d="m8 16 4-4-4-4"/></svg>
+                                <div className="font-bold text-xs text-gray-500">หมดรายการ</div>
+                                <div className="text-[10px] mt-0.5">เลื่อนแผนที่เพื่อดูเพิ่ม</div>
+                             </div>
+                        </div>
+
                     </div>
                 </motion.div>
             )}
