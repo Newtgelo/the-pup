@@ -29,7 +29,7 @@ export const HomePage = () => {
     const fetchData = async () => {
       setIsLoading(true);
 
-      // ✅ 1. กรอง News (เหมือนเดิม)
+      // ✅ 1. Get News
       const { data: news } = await supabase
         .from("news")
         .select("*")
@@ -42,7 +42,7 @@ export const HomePage = () => {
       d.setHours(d.getHours() - 4); 
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-      // ✅ 2. กรอง Events (เหมือนเดิม)
+      // ✅ 2. Get Events
       const { data: events } = await supabase
         .from("events")
         .select("*")
@@ -56,22 +56,16 @@ export const HomePage = () => {
         setFilteredHomeEvents(events);
       }
 
-      // ✅ 3. Cafe: แก้ให้เป็น Random 🎲
-      // 3.1 ดึงมาเยอะหน่อย (เช่น 50 ร้าน) เพื่อให้มี "ตัวเลือก" มาสุ่ม
+      // ✅ 3. Get Cafes (Random)
       const { data: cafes } = await supabase
         .from("cafes")
         .select("*")
         .eq("status", "published")
-        .limit(50); // <-- เปลี่ยนจาก 8 เป็น 50 (หรือมากกว่านี้ถ้าร้านเยอะ)
+        .limit(50);
 
       if (cafes) {
-        // 3.2 สุ่มลำดับ (Shuffle)
-        // ใช้เทคนิคง่ายๆ คือ .sort(() => 0.5 - Math.random()) เพื่อสลับตำแหน่ง array
         const shuffledCafes = cafes.sort(() => 0.5 - Math.random());
-
-        // 3.3 ตัดมาแค่ 8 อันแรกหลังจากสุ่มแล้ว
         const selectedCafes = shuffledCafes.slice(0, 8);
-        
         setCafeList(selectedCafes);
       }
       
@@ -136,7 +130,7 @@ export const HomePage = () => {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 pb-16">
       
-      {/* NEWS */}
+      {/* -------------------- 1. NEWS SECTION (ขึ้นก่อน) -------------------- */}
       <section id="news-section" className="mt-8 scroll-mt-28">
         <div className="flex justify-between items-center mb-4 border-l-4 border-[#0047FF] pl-4">
           <h2 className="text-2xl font-bold text-gray-900">Latest News</h2>
@@ -147,8 +141,10 @@ export const HomePage = () => {
             ดูทั้งหมด <IconChevronRight size={16} />
           </button>
         </div>
+        
+        {/* ✅ Tab ตัวกรอง: เพิ่ม Global และปรับตัวพิมพ์ใหญ่ตามสั่ง */}
         <div className="flex flex-wrap gap-2 mb-6">
-          {["ทั้งหมด", "K-pop", "T-pop"].map((filter) => (
+          {["ทั้งหมด", "K-Pop", "T-Pop", "Global"].map((filter) => (
             <button
               key={filter}
               onClick={() => setHomeNewsFilter(filter)}
@@ -162,12 +158,11 @@ export const HomePage = () => {
             </button>
           ))}
         </div>
-        
-        {/* ✅ แก้ไข Container: ลบ grid ออก, บังคับ flex แนวนอนตลอด */}
+
+        {/* ✅ News Grid: ปรับเป็นแนวนอน + Peek Effect (lg:w-[22%]) */}
         <div className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide">
           {isLoading
             ? [...Array(5)].map((_, i) => (
-                // Skeleton ก็ต้องแก้ขนาดให้เท่ากัน
                 <div key={i} className="flex-shrink-0 w-[85vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start">
                    <SkeletonNews />
                 </div>
@@ -175,9 +170,6 @@ export const HomePage = () => {
             : filteredNews.map((news) => (
                 <div
                   key={news.id}
-                  // ✅ แก้ไขขนาดการ์ด: 
-                  // - lg:w-[22%] -> จอใหญ่เห็น 4.5 ใบ (Peek)
-                  // - md:w-[260px] -> จอกลางเห็นประมาณ 3.5 ใบ (ถ้าเล็กกว่านี้การ์ดจะบีบเกินไปอ่านยากครับ)
                   className="flex-shrink-0 w-[85vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
                 >
                   <NewsCard
@@ -193,7 +185,7 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* EVENTS */}
+      {/* -------------------- 2. EVENTS SECTION -------------------- */}
       <section id="events-section" className="scroll-mt-28">
         <div className="flex flex-col mb-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
@@ -310,20 +302,18 @@ export const HomePage = () => {
           )}
         </div>
         
+        {/* ✅ Events Grid: ปรับเป็น Peek Effect (lg:w-[22%]) */}
         <ScrollableRow className="gap-4 pb-4 -mx-4 px-4 scroll-pl-4">
           {isLoading ? (
-            // ✅ แก้ Skeleton: ใส่ div หุ้มและกำหนดขนาดให้เท่าการ์ดจริง (lg:w-[22%])
             [...Array(5)].map((_, i) => (
-               <div key={i} className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full">
-                  <SkeletonEvent />
-               </div>
+                <div key={i} className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full">
+                    <SkeletonEvent />
+                </div>
             ))
           ) : filteredHomeEvents.length > 0 ? (
             filteredHomeEvents.map((event) => (
               <div
                 key={event.id}
-                // ✅ แก้ขนาดการ์ด: เปลี่ยน lg:w-[260px] -> lg:w-[22%]
-                // จอใหญ่จะเห็น 4 ใบเต็มๆ + ใบที่ 5 โผล่มานิดนึง
                 className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full"
               >
                 <EventCard
@@ -343,7 +333,7 @@ export const HomePage = () => {
         </ScrollableRow>
       </section>
 
-      {/* CAFES */}
+      {/* -------------------- 3. CAFES SECTION -------------------- */}
       <div id="cafes-section" className="max-w-6xl mx-auto px-4 scroll-mt-28">
         <div className="flex justify-between items-center mb-6">
           <div className="border-l-4 border-[#5607ff] pl-4">
@@ -384,7 +374,7 @@ export const HomePage = () => {
         </div>
       </div>
 
-              {/* HERO */}
+      {/* -------------------- 4. HERO BANNER (ย้ายมาล่างสุด) -------------------- */}
       <div className="bg-gradient-to-r from-[#FF6B00] to-[#E11D48] rounded-3xl p-8 mb-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between relative overflow-hidden mt-6">
         <div className="relative z-10 text-center md:text-left mb-4 md:mb-0">
           <h1 className="text-2xl md:text-3xl font-extrabold mb-2">

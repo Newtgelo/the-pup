@@ -33,7 +33,7 @@ export const AdminCreateNews = () => {
 
   // State ข้อมูลฟอร์ม
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('K-pop');
+  const [category, setCategory] = useState('K-Pop');
   const [imageUrl, setImageUrl] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
@@ -125,7 +125,7 @@ export const AdminCreateNews = () => {
                     <select className="w-full border border-gray-300 rounded-lg p-3" value={category} onChange={e => setCategory(e.target.value)}>
                         <option value="K-pop">K-pop</option>
                         <option value="T-pop">T-pop</option>
-                        <option value="J-pop">J-pop</option>
+                        <option value="Global">Global</option>
                         <option value="Others">Others</option>
                     </select>
                 </div>
