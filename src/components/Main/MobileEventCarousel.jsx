@@ -7,13 +7,14 @@ const MobileEventCarousel = ({
     hoveredEventId, 
     setHoveredEventId, 
     carouselRef, 
-    isProgrammaticScrollRef 
+    isProgrammaticScrollRef,
+    onWarp // ✅ เปลี่ยนชื่อให้ตรงกับ MobileEventsView
 }) => {
 
     const handleNavigateToMap = (e, item) => {
         e.stopPropagation(); 
         if (item.lat && item.lng) {
-            window.open(`https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}`, '_blank');
+            window.open(`http://maps.google.com/maps?q=${item.lat},${item.lng}`, '_blank');
         } else {
             alert("ไม่พบพิกัดของสถานที่จัดงานนี้");
         }
@@ -54,7 +55,6 @@ const MobileEventCarousel = ({
         }
     };
 
-    // ✅ Logic: โหลดเสร็จแล้ว ให้ข้ามการ์ดสรุป ไปโฟกัสงานแรกทันที
     useEffect(() => {
         if (carouselRef.current && filteredEvents.length > 0) {
             setTimeout(() => {
@@ -93,11 +93,9 @@ const MobileEventCarousel = ({
                         onScroll={handleScroll} 
                         className="flex gap-3 overflow-x-auto px-4 pb-4 snap-x snap-mandatory scrollbar-hide pt-10 pointer-events-auto items-end touch-pan-x"
                     >
-                        {/* ℹ️ 1. HEAD CARD: เพิ่มคำแนะนำด้านล่าง */}
+                        {/* 1. HEAD CARD (ใบสรุปงาน) */}
                         <div className="snap-center shrink-0 w-[140px] h-[140px] flex items-center justify-center">
                              <div className="bg-white/95 backdrop-blur-md w-full h-full rounded-xl shadow-sm border border-gray-200 flex flex-col items-center justify-between text-center p-3 py-4">
-                                
-                                {/* ส่วนบน: ไอคอน + จำนวน */}
                                 <div className="flex flex-col items-center justify-center flex-1">
                                     <div className="bg-orange-50 text-[#FF6B00] w-9 h-9 rounded-full flex items-center justify-center mb-1.5 shadow-sm">
                                         <span className="text-lg">🎉</span>
@@ -105,18 +103,15 @@ const MobileEventCarousel = ({
                                     <div className="font-bold text-gray-900 text-sm">พบ {visibleEventsCount} งาน</div>
                                     <div className="text-[10px] text-gray-500">ในบริเวณหน้าจอนี้</div>
                                 </div>
-
-                                {/* ✅ ส่วนล่าง (ใหม่): คำแนะนำเล็กๆ */}
                                 <div className="w-full mt-2 pt-2 border-t border-gray-100">
                                     <p className="text-[9px] text-gray-400 font-medium bg-gray-50 rounded-lg py-1 px-2 inline-block">
                                         👈 เลื่อนแผนที่เพื่อดูเพิ่ม
                                     </p>
                                 </div>
-
                              </div>
                         </div>
 
-                        {/* 🔄 2. EVENT CARDS */}
+                        {/* 2. EVENT CARDS (รายการงาน) */}
                         {filteredEvents.map((item) => (
                             <div 
                                 id={`mobile-card-${item.id}`} 
@@ -148,12 +143,24 @@ const MobileEventCarousel = ({
                             </div>
                         ))}
 
-                        {/* 🛑 3. TAIL CARD */}
+                        {/* ✅ 3. TAIL CARD (ใบสุดท้าย - ปุ่มวาร์ป) */}
                         <div className="snap-center shrink-0 w-[140px] h-[140px] flex items-center justify-center">
-                             <div className="bg-gray-50 w-full h-full rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center p-2 text-gray-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-2 opacity-50"><circle cx="12" cy="12" r="10"/><path d="m16 16-4-4 4-4"/><path d="m8 16 4-4-4-4"/></svg>
-                                <div className="font-bold text-xs text-gray-500">หมดรายการ</div>
-                                <div className="text-[10px] mt-0.5">เลื่อนแผนที่เพื่อดูเพิ่ม</div>
+                             <div className="bg-white/90 backdrop-blur-md w-full h-full rounded-xl border border-gray-200 shadow-sm flex flex-col items-center justify-center text-center p-3 relative overflow-hidden gap-3">
+                                
+                                {/* ปุ่มพระเอก: กดแล้ววาร์ปไป event นอกจอ */}
+                                <button 
+                                    onClick={onWarp}
+                                    className="bg-[#222] text-white w-full py-2.5 rounded-lg text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-gray-800 hover:scale-105 active:scale-95 transition-all"
+                                >
+                                    <span>🚀</span>
+                                    <span>ดู event อื่นๆ</span>
+                                </button>
+
+                                {/* ข้อความตัวเล็ก */}
+                                <div className="text-[9px] text-gray-400 font-medium leading-tight px-1">
+                                    หรือเลื่อนแผนที่<br/>เพื่อดูรอบๆ
+                                </div>
+
                              </div>
                         </div>
 

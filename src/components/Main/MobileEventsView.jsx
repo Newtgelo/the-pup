@@ -46,26 +46,59 @@ const MobileEventsView = ({
     const isProgrammaticMoveRef = useRef(false);
     const isProgrammaticScrollRef = useRef(false);
 
-    // ✅ NEW FUNCTION: ปุ่ม Reset All (ล้างทุกอย่าง + กลับบ้าน)
+    // ✅ NEW FUNCTION: ปุ่ม Reset All
     const handleFullReset = () => {
-        // 1. ขึ้น Loading
         setLoadingMessage("กำลังรีเซ็ตค่าเริ่มต้น... 🔄");
         setToastInfo(null);
-
         setTimeout(() => {
-            // 2. ล้างค่า Filter และ Sort
-            if (handleClearFilters) handleClearFilters(); // เรียก Prop หลักถ้ามี
+            if (handleClearFilters) handleClearFilters(); 
             setTimeframeFilter('all');
             setCategoryFilter('ทั้งหมด');
             setSortOrder('upcoming');
-
-            // 3. บินกลับจุดเริ่มต้น (Default Center: Siam/Bangkok)
             if (mapRef.current) {
                 mapRef.current.flyTo([13.7462, 100.5347], 13, { duration: 1.5 });
             }
-
-            // 4. ปิด Loading
             setLoadingMessage(null);
+        }, 800);
+    };
+
+    // ✅ NEW LOGIC: วาร์ปไป Event ใกล้เคียงที่อยู่นอกจอ
+    const handleWarpToNextEvent = () => {
+        if (!mapRef.current || !mapBounds) return;
+
+        // 1. หา Event ที่อยู่นอกกรอบหน้าจอ (MapBounds)
+        const center = mapRef.current.getCenter();
+        const offScreenEvents = eventsWithLocation.filter(evt => {
+            const lat = parseFloat(evt.lat);
+            const lng = parseFloat(evt.lng);
+            if (isNaN(lat) || isNaN(lng)) return false;
+            return !mapBounds.contains([lat, lng]); // ต้องไม่อยู่ในจอ
+        });
+
+        // 🛑 CHANGE: ถ้าไม่เหลืองานนอกจอแล้ว ให้ Reset กลับจุดเริ่มต้นเลย (ไม่ต้องขึ้น Popup)
+        if (offScreenEvents.length === 0) {
+            handleFullReset(); // <--- เรียกฟังก์ชัน Reset เลย
+            return;
+        }
+
+        // 2. เรียงลำดับตามความใกล้ (จากจุดกลางจอ)
+        const sortedByDist = offScreenEvents.map(evt => {
+             const dist = getDistanceFromLatLonInKm(center.lat, center.lng, parseFloat(evt.lat), parseFloat(evt.lng));
+             return { ...evt, dist };
+        }).sort((a, b) => a.dist - b.dist);
+
+        // 3. เลือกตัวที่ใกล้ที่สุด (ตัวแรก)
+        const target = sortedByDist[0];
+
+        // 4. บินไปหาเลย!
+        setLoadingMessage("กำลังวาร์ปไป... \nEvent ถัดไป 🚀");
+        setTimeout(() => {
+            if (mapRef.current) {
+                mapRef.current.flyTo([parseFloat(target.lat), parseFloat(target.lng)], 13, { duration: 1.5 });
+            }
+            setLoadingMessage(null);
+            // แถม: เปิดดูงานให้อัตโนมัติเมื่อไปถึง
+            setTimeout(() => handleMobileMarkerClick(target.id), 1600);
         }, 800);
     };
 
@@ -369,13 +402,13 @@ const MobileEventsView = ({
                             </button>
                             <h1 className="text-lg font-bold text-gray-900">สำรวจ Event ({visibleEventsCount})</h1>
                             
-                            {/* ✅ แก้ไข: ปุ่ม Reset All (โชว์ตลอดเวลา) */}
+                            {/* ปุ่ม Reset All */}
                             <button 
                                 onClick={handleFullReset} 
                                 className={`text-xs font-bold px-3 py-1.5 rounded-full transition flex items-center gap-1 ${
                                     isFilterActive 
-                                    ? "bg-orange-50 text-[#FF6B00] border border-orange-100 hover:bg-orange-100" // สไตล์ตอนมี Filter
-                                    : "bg-gray-100 text-gray-500 hover:bg-gray-200 border border-transparent" // สไตล์ปกติ
+                                    ? "bg-orange-50 text-[#FF6B00] border border-orange-100 hover:bg-orange-100"
+                                    : "bg-gray-100 text-gray-500 hover:bg-gray-200 border border-transparent"
                                 }`}
                             >
                                 <span className={isFilterActive ? "animate-spin-slow" : ""}>🔄</span> 
@@ -470,6 +503,7 @@ const MobileEventsView = ({
                             mobileViewMode={mobileViewMode} 
                         />
 
+                        {/* ✅ ส่ง onWarp ไปให้ Carousel ใช้งาน */}
                         <MobileEventCarousel 
                             visibleEventsCount={visibleEventsCount}
                             filteredEvents={displayedEvents}
@@ -477,7 +511,8 @@ const MobileEventsView = ({
                             setHoveredEventId={setHoveredEventId}
                             carouselRef={carouselRef}
                             navigate={navigate}
-                            isProgrammaticScrollRef={isProgrammaticScrollRef} 
+                            isProgrammaticScrollRef={isProgrammaticScrollRef}
+                            onWarp={handleWarpToNextEvent} 
                         />
                     </div>
                 </div>
