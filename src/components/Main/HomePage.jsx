@@ -135,30 +135,7 @@ export const HomePage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 pb-16">
-      {/* HERO */}
-      <div className="bg-gradient-to-r from-[#FF6B00] to-[#E11D48] rounded-3xl p-8 mb-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between relative overflow-hidden mt-6">
-        <div className="relative z-10 text-center md:text-left mb-4 md:mb-0">
-          <h1 className="text-2xl md:text-3xl font-extrabold mb-2">
-            The Popup Plan
-          </h1>
-          <p className="text-white/90 text-sm md:text-base font-medium">
-            รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว
-          </p>
-        </div>
-        <div className="relative z-10">
-          <button
-            onClick={() =>
-              document
-                .getElementById("events-section")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
-            className="bg-white text-[#E11D48] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95"
-          >
-            สำรวจอีเวนต์
-          </button>
-        </div>
-      </div>
-
+      
       {/* NEWS */}
       <section id="news-section" className="mt-8 scroll-mt-28">
         <div className="flex justify-between items-center mb-4 border-l-4 border-[#0047FF] pl-4">
@@ -185,15 +162,23 @@ export const HomePage = () => {
             </button>
           ))}
         </div>
-        <div className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:grid md:grid-cols-3 lg:grid-cols-4 md:gap-6 md:overflow-visible md:pb-0 md:mx-0 md:px-0 scrollbar-hide">
+        
+        {/* ✅ แก้ไข Container: ลบ grid ออก, บังคับ flex แนวนอนตลอด */}
+        <div className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide">
           {isLoading
-            ? [...Array(4)].map((_, i) => <SkeletonNews key={i} />)
-            : filteredNews.map((news, index) => (
+            ? [...Array(5)].map((_, i) => (
+                // Skeleton ก็ต้องแก้ขนาดให้เท่ากัน
+                <div key={i} className="flex-shrink-0 w-[85vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start">
+                   <SkeletonNews />
+                </div>
+              ))
+            : filteredNews.map((news) => (
                 <div
                   key={news.id}
-                  className={`flex-shrink-0 w-[85vw] sm:w-[350px] md:w-auto snap-start ${
-                    index >= 8 ? "hidden" : ""
-                  }`}
+                  // ✅ แก้ไขขนาดการ์ด: 
+                  // - lg:w-[22%] -> จอใหญ่เห็น 4.5 ใบ (Peek)
+                  // - md:w-[260px] -> จอกลางเห็นประมาณ 3.5 ใบ (ถ้าเล็กกว่านี้การ์ดจะบีบเกินไปอ่านยากครับ)
+                  className="flex-shrink-0 w-[85vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
                 >
                   <NewsCard
                     item={news}
@@ -324,14 +309,22 @@ export const HomePage = () => {
             </div>
           )}
         </div>
+        
         <ScrollableRow className="gap-4 pb-4 -mx-4 px-4 scroll-pl-4">
           {isLoading ? (
-            [...Array(5)].map((_, i) => <SkeletonEvent key={i} />)
+            // ✅ แก้ Skeleton: ใส่ div หุ้มและกำหนดขนาดให้เท่าการ์ดจริง (lg:w-[22%])
+            [...Array(5)].map((_, i) => (
+               <div key={i} className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full">
+                  <SkeletonEvent />
+               </div>
+            ))
           ) : filteredHomeEvents.length > 0 ? (
             filteredHomeEvents.map((event) => (
               <div
                 key={event.id}
-                className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[260px] snap-start h-full"
+                // ✅ แก้ขนาดการ์ด: เปลี่ยน lg:w-[260px] -> lg:w-[22%]
+                // จอใหญ่จะเห็น 4 ใบเต็มๆ + ใบที่ 5 โผล่มานิดนึง
+                className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full"
               >
                 <EventCard
                   item={event}
@@ -390,6 +383,31 @@ export const HomePage = () => {
               ))}
         </div>
       </div>
+
+              {/* HERO */}
+      <div className="bg-gradient-to-r from-[#FF6B00] to-[#E11D48] rounded-3xl p-8 mb-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between relative overflow-hidden mt-6">
+        <div className="relative z-10 text-center md:text-left mb-4 md:mb-0">
+          <h1 className="text-2xl md:text-3xl font-extrabold mb-2">
+            The Popup Plan
+          </h1>
+          <p className="text-white/90 text-sm md:text-base font-medium">
+            รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว
+          </p>
+        </div>
+        <div className="relative z-10">
+          <button
+            onClick={() =>
+              document
+                .getElementById("events-section")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
+            className="bg-white text-[#E11D48] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95"
+          >
+            สำรวจอีเวนต์
+          </button>
+        </div>
+      </div>
+
     </div>
   );
 };
