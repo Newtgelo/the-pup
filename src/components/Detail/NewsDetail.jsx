@@ -151,11 +151,19 @@ export const NewsDetail = ({ onTriggerToast }) => {
           </h1>
         </div>
 
-        {news.image_url && (
-          <div className="rounded-2xl overflow-hidden mb-10 shadow-lg aspect-video bg-gray-100 relative group">
-            <SafeImage src={news.image_url} alt={news.title} className="w-full h-full object-cover" />
-          </div>
-        )}
+      {news.image_url && (
+  // ✅ ลบ aspect-video ออก
+  // ✅ ใส่ max-h-[600px] เผื่อรูปยาวเกินไปจะได้ไม่ล้นจอ (ปรับเลขได้)
+  <div className="rounded-2xl overflow-hidden mb-10 shadow-lg bg-gray-100 relative group">
+    <SafeImage 
+        src={news.image_url} 
+        alt={news.title} 
+        // ✅ เปลี่ยน object-cover -> object-contain (หรือเอาออกเลยก็ได้ถ้ารูปเต็ม)
+        // ✅ h-auto = สูงตามจริง
+        className="w-full h-auto max-h-[80vh] object-contain mx-auto" 
+    />
+  </div>
+)}
 
         <div className="max-w-3xl mx-auto mb-10 prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line 
               [&>p]:mb-4 

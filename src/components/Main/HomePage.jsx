@@ -49,7 +49,7 @@ export const HomePage = () => {
         .eq('status', 'published')
         .or(`end_date.gte.${today},and(end_date.is.null,date.gte.${today})`)
         .order("date", { ascending: true })
-        .limit(20);
+        .limit(100);
 
       if (events) {
         setEventList(events);
@@ -163,15 +163,16 @@ export const HomePage = () => {
         <div className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide">
           {isLoading
             ? [...Array(5)].map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-[85vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start">
+                <div key={i} className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start">
                    <SkeletonNews />
                 </div>
               ))
             : filteredNews.map((news) => (
                 <div
                   key={news.id}
-                  className="flex-shrink-0 w-[85vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
-                >
+                  className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
+                  >
+
                   <NewsCard
                     item={news}
                     onClick={() =>
@@ -375,7 +376,26 @@ export const HomePage = () => {
       </div>
 
       {/* -------------------- 4. HERO BANNER (ย้ายมาล่างสุด) -------------------- */}
-      <div className="bg-gradient-to-r from-[#FF6B00] to-[#E11D48] rounded-3xl p-8 mb-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between relative overflow-hidden mt-6">
+      {/* ✅ แก้ไข:
+          1. ลบ bg-gradient เดิมออก
+          2. ใส่ bg-[url('...')] bg-cover bg-center แทน
+          3. เพิ่ม div overlay สีดำจางๆ ด้านใน เพื่อให้อ่านตัวหนังสือออก
+      */}
+      <div
+        className="relative overflow-hidden rounded-3xl p-8 mb-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between mt-6
+                   bg-cover bg-center"
+        style={{
+            // 👇👇👇 ใส่ URL รูปภาพตรงนี้ครับ 👇👇👇
+            backgroundImage: "url('https://res.cloudinary.com/diq1nr4jb/image/upload/v1768486173/cover_web_1_lyzyli.jpg')"
+            // ตัวอย่าง: backgroundImage: "url('https://cdn.pixabay.com/photo/2017/08/06/12/06/people-2591874_1280.jpg')"
+        }}
+      >
+
+        {/* ✅ Dark Overlay: เลเยอร์สีดำโปร่งแสง (bg-black/50 คือดำจาง 50%) ทับรูปภาพ */}
+        {/* ถ้าอยากให้มืดลงอีก ให้แก้ /50 เป็น /60, /70 ครับ */}
+        <div className="absolute inset-0 bg-black/5 z-0"></div>
+
+        {/* Content (ต้องมี relative z-10 เพื่อให้ลอยอยู่เหนือ overlay) */}
         <div className="relative z-10 text-center md:text-left mb-4 md:mb-0">
           <h1 className="text-2xl md:text-3xl font-extrabold mb-2">
             The Popup Plan
@@ -384,14 +404,11 @@ export const HomePage = () => {
             รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว
           </p>
         </div>
+        {/* Button (ต้องมี relative z-10 เหมือนกัน) */}
         <div className="relative z-10">
           <button
-            onClick={() =>
-              document
-                .getElementById("events-section")
-                ?.scrollIntoView({ behavior: "smooth" })
-            }
-            className="bg-white text-[#E11D48] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95"
+            onClick={() => navigate("/events")}
+            className="bg-white text-[#e1621d] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95"
           >
             สำรวจอีเวนต์
           </button>
