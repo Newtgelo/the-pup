@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { supabase } from "../../supabase"; 
-import { IconChevronRight, IconSort, IconFilter } from "../icons/Icons"; 
+import { supabase } from "../../supabase";
+import { IconChevronRight, IconSort, IconFilter } from "../icons/Icons";
 import {
   ScrollableRow,
   EmptyState,
@@ -33,20 +33,23 @@ export const HomePage = () => {
       const { data: news } = await supabase
         .from("news")
         .select("*")
-        .eq('status', 'published')
+        .eq("status", "published")
         .limit(10)
         .order("id", { ascending: false });
       if (news) setNewsList(news);
 
       const d = new Date();
-      d.setHours(d.getHours() - 4); 
-      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      d.setHours(d.getHours() - 4);
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(d.getDate()).padStart(2, "0")}`;
 
       // ✅ 2. Get Events
       const { data: events } = await supabase
         .from("events")
         .select("*")
-        .eq('status', 'published')
+        .eq("status", "published")
         .or(`end_date.gte.${today},and(end_date.is.null,date.gte.${today})`)
         .order("date", { ascending: true })
         .limit(100);
@@ -68,7 +71,7 @@ export const HomePage = () => {
         const selectedCafes = shuffledCafes.slice(0, 8);
         setCafeList(selectedCafes);
       }
-      
+
       setIsLoading(false);
     };
     fetchData();
@@ -129,7 +132,6 @@ export const HomePage = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 pb-16">
-      
       {/* -------------------- 1. NEWS SECTION (ขึ้นก่อน) -------------------- */}
       <section id="news-section" className="mt-8 scroll-mt-28">
         <div className="flex justify-between items-center mb-4 border-l-4 border-[#0047FF] pl-4">
@@ -141,49 +143,62 @@ export const HomePage = () => {
             ดูทั้งหมด <IconChevronRight size={16} />
           </button>
         </div>
-        
-        {/* ✅ Tab ตัวกรอง: เพิ่ม Global และปรับตัวพิมพ์ใหญ่ตามสั่ง */}
+
+        {/* ✅ Tab ตัวกรอง: Animation แบบ Pop (กดแล้วเด้งดึ๋ง) */}
         <div className="flex flex-wrap gap-2 mb-6">
           {["ทั้งหมด", "K-Pop", "T-Pop", "Global"].map((filter) => (
             <button
               key={filter}
               onClick={() => setHomeNewsFilter(filter)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
-                homeNewsFilter === filter
-                  ? "bg-[#FF6B00] text-white"
-                  : "bg-white border text-gray-600 hover:bg-gray-50"
-              }`}
+              className={`
+        px-4 py-1.5 rounded-full text-sm font-medium 
+        transition-all duration-200 ease-in-out active:scale-90 
+        ${
+          homeNewsFilter === filter
+            ? "bg-[#FF6B00] text-white shadow-md scale-105" // เลือกแล้ว: สีส้ม + ขยาย
+            : "bg-white border text-gray-600 hover:bg-gray-50 hover:border-gray-300" // ปกติ
+        }
+      `}
             >
               {filter}
             </button>
           ))}
         </div>
 
-        {/* ✅ News Grid: ปรับเป็นแนวนอน + Peek Effect (lg:w-[22%]) */}
-        <div className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide">
-          {isLoading
-            ? [...Array(5)].map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start">
-                   <SkeletonNews />
-                </div>
-              ))
-            : filteredNews.map((news) => (
-                <div
-                  key={news.id}
-                  className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
-                  >
-
-                  <NewsCard
-                    item={news}
-                    onClick={() =>
-                      navigate(`/news/${news.id}`, {
-                        state: { fromHome: true },
-                      })
-                    }
-                  />
-                </div>
-              ))}
+        {/* ✅ News Grid: ใส่ Waterfall Animation (Fade Up ทีละใบ) */}
+{/* 1. ใส่ key={homeNewsFilter} ที่ตัวแม่ เพื่อให้ Reset Animation ทุกครั้งที่เปลี่ยน Tab */}
+<div 
+  key={homeNewsFilter} 
+  className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide"
+>
+  {isLoading
+    ? [...Array(5)].map((_, i) => (
+        <div
+          key={i}
+          className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
+        >
+          <SkeletonNews />
         </div>
+      ))
+    : filteredNews.map((news, index) => ( // ✅ เพิ่ม index เข้าไปในวงเล็บ
+        <div
+          key={news.id}
+          // ✅ 2. ใส่ class: opacity-0 (ซ่อนก่อน) + animate-fade-up (สั่งเล่นท่า)
+          className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start opacity-0 animate-fade-up"
+          // ✅ 3. ใส่ Delay: ให้ใบที่ 2, 3, 4... ช้าลงเรื่อยๆ (ทีละ 0.1 วินาที)
+          style={{ animationDelay: `${index * 100}ms` }}
+        >
+          <NewsCard
+            item={news}
+            onClick={() =>
+              navigate(`/news/${news.id}`, {
+                state: { fromHome: true },
+              })
+            }
+          />
+        </div>
+      ))}
+</div>
       </section>
 
       {/* -------------------- 2. EVENTS SECTION -------------------- */}
@@ -249,30 +264,36 @@ export const HomePage = () => {
               </button>
             </div>
           </div>
-          <ScrollableRow className="pb-2 gap-2">
-            {[
-              "ทั้งหมด",
-              "Concert",
-              "Fan Meeting",
-              "Fansign",
-              "Workshop",
-              "Exhibition",
-              "Fan Event",
-              "Others",
-            ].map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setEventFilter(filter)}
-                className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition ${
-                  eventFilter === filter
-                    ? "bg-[#FF6B00] text-white"
-                    : "bg-white border text-gray-600 hover:bg-gray-50"
-                }`}
-              >
-                {filter}
-              </button>
-            ))}
-          </ScrollableRow>
+          
+          <ScrollableRow className="py-2 px-2 gap-2">
+  {[
+    "ทั้งหมด",
+    "Concert",
+    "Fan Meeting",
+    "Fansign",
+    "Workshop",
+    "Exhibition",
+    "Fan Event",
+    "Others",
+  ].map((filter) => (
+    <button
+      key={filter}
+      onClick={() => setEventFilter(filter)}
+      className={`
+        whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium 
+        transition-all duration-200 ease-in-out active:scale-90 
+        ${
+          eventFilter === filter
+            ? "bg-[#FF6B00] text-white shadow-md scale-105" // ✅ เลือกแล้ว: สีส้ม + ขยาย + เงา
+            : "bg-white border text-gray-600 hover:bg-gray-50 hover:border-gray-300" // ✅ ปกติ: สีขาว + Hover
+        }
+      `}
+    >
+      {filter}
+    </button>
+  ))}
+</ScrollableRow>
+
           {showMobileFilters && (
             <div className="md:hidden mt-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm animate-in slide-in-from-top-2 fade-in duration-200">
               <div className="grid grid-cols-2 gap-3">
@@ -302,14 +323,17 @@ export const HomePage = () => {
             </div>
           )}
         </div>
-        
+
         {/* ✅ Events Grid: ปรับเป็น Peek Effect (lg:w-[22%]) */}
         <ScrollableRow className="gap-4 pb-4 -mx-4 px-4 scroll-pl-4">
           {isLoading ? (
             [...Array(5)].map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full">
-                    <SkeletonEvent />
-                </div>
+              <div
+                key={i}
+                className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full"
+              >
+                <SkeletonEvent />
+              </div>
             ))
           ) : filteredHomeEvents.length > 0 ? (
             filteredHomeEvents.map((event) => (
@@ -385,22 +409,22 @@ export const HomePage = () => {
         className="relative overflow-hidden rounded-3xl p-8 mb-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between mt-6
                    bg-cover bg-center"
         style={{
-            // 👇👇👇 ใส่ URL รูปภาพตรงนี้ครับ 👇👇👇
-            backgroundImage: "url('https://res.cloudinary.com/diq1nr4jb/image/upload/v1768486173/cover_web_1_lyzyli.jpg')"
-            // ตัวอย่าง: backgroundImage: "url('https://cdn.pixabay.com/photo/2017/08/06/12/06/people-2591874_1280.jpg')"
+          // 👇👇👇 ใส่ URL รูปภาพตรงนี้ครับ 👇👇👇
+          backgroundImage:
+            "url('https://res.cloudinary.com/diq1nr4jb/image/upload/v1768486173/cover_web_1_lyzyli.jpg')",
+          // ตัวอย่าง: backgroundImage: "url('https://cdn.pixabay.com/photo/2017/08/06/12/06/people-2591874_1280.jpg')"
         }}
       >
-
         {/* ✅ Dark Overlay: เลเยอร์สีดำโปร่งแสง (bg-black/50 คือดำจาง 50%) ทับรูปภาพ */}
         {/* ถ้าอยากให้มืดลงอีก ให้แก้ /50 เป็น /60, /70 ครับ */}
         <div className="absolute inset-0 bg-black/2 z-0"></div>
 
         {/* Content (ต้องมี relative z-10 เพื่อให้ลอยอยู่เหนือ overlay) */}
         <div className="relative z-10 text-center md:text-left mb-4 md:mb-0">
-          <h1 className="text-2xl md:text-3xl font-extrabold mb-2">
+          <h1 className="text-2xl md:text-3xl font-extrabold mb-2 drop-shadow-lg">
             The Popup Plan
           </h1>
-          <p className="text-white/90 text-sm md:text-base font-medium">
+          <p className="text-white/90 text-sm md:text-base font-medium drop-shadow-sm">
             รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว
           </p>
         </div>
@@ -414,7 +438,6 @@ export const HomePage = () => {
           </button>
         </div>
       </div>
-
     </div>
   );
 };

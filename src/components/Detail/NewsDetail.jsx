@@ -142,7 +142,9 @@ export const NewsDetail = ({ onTriggerToast }) => {
                             {news.category}
                         </span>
                         <span className="text-gray-200 flex items-center gap-1 font-medium text-sm drop-shadow-md">
-                            <IconClock size={16} /> {news.date}
+                            <IconClock size={16} />
+                            {/* ✅ แก้เป็นแบบนี้ */}
+    {news.date ? news.date.split('-').reverse().join('-') : ''}
                         </span>
                     </div>
                     <h1 className="text-3xl lg:text-4xl font-extrabold text-white leading-[1.6] lg:leading-[1.5] drop-shadow-lg max-w-3xl">
@@ -176,7 +178,10 @@ export const NewsDetail = ({ onTriggerToast }) => {
           <div className="md:hidden block mb-8 text-center">
              <div className="flex flex-wrap items-center justify-center gap-3 mb-4">
                 <span className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">{news.category}</span>
-                <span className="text-gray-500 flex items-center gap-1 font-medium text-xs"><IconClock size={16} /> {news.date}</span>
+                <span className="text-gray-500 flex items-center gap-1 font-medium text-xs"><IconClock size={16} />
+                {/* ✅ แก้เป็นแบบนี้ */}
+    {news.date ? news.date.split('-').reverse().join('-') : ''}
+                </span>
              </div>
              <h1 className="text-2xl font-extrabold text-[#111111] leading-tight"> 
                 {news.title}
@@ -233,7 +238,13 @@ export const NewsDetail = ({ onTriggerToast }) => {
                     <SafeImage src={n.image_url} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
                   </div>
                   <h4 className="font-bold text-[#111111] leading-tight group-hover:text-[#FF6B00] transition line-clamp-2">{n.title}</h4>
-                  <p className="text-xs text-gray-500 mt-2">{n.date}</p>
+                  
+                  {/* ✅ แก้ไข: ใส่ไอคอนนาฬิกา และสลับเลขเป็น วัน-เดือน-ปี */}
+<div className="flex items-center gap-1 text-xs text-gray-500 mt-2">
+   <IconClock size={12} />
+   <span>{n.date ? n.date.split('-').reverse().join('-') : ''}</span>
+</div>
+
                 </div>
               ))}
             </div>

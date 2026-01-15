@@ -5,40 +5,57 @@ import { IconClock, IconCalendar, IconMapPin } from "../icons/Icons";
 // ==========================================
 // 1. การ์ดข่าว (News Card)
 // ==========================================
-export const NewsCard = ({ item, onClick, className = "" }) => (
-  <div
-    onClick={onClick}
-    className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md cursor-pointer  flex flex-col group/news ${className}`}
-  >
-    {/* Image Section */}
-    <div className="aspect-[4/3] md:aspect-square bg-gray-100 relative overflow-hidden">
-      <SafeImage
-        src={item.image_url || item.image}
-        alt={item.title}
-        className="w-full h-full object-cover transition-transform duration-500 group-hover/news:scale-110"
-      />
+export const NewsCard = ({ item, onClick, className = "" }) => {
+  
+  // ✅ เพิ่มฟังก์ชันแปลงวันที่เป็น วัน-เดือน-ปี (DD-MM-YYYY)
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    // ถ้าค่ามาเป็น YYYY-MM-DD (เช่น 2026-01-14)
+    // ให้แยกส่วนแล้วสลับตำแหน่งเลยครับ ง่ายและชัวร์สุด
+    const parts = dateString.split("-");
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day}-${month}-${year}`; // ผลลัพธ์: 14-01-2026
+    }
+    return dateString; // กันเหนียว ถ้า format มาแปลกๆ ให้โชว์เหมือนเดิม
+  };
 
-      {/* Category Badge */}
-      <div className="absolute top-3 left-3">
-        <span className="bg-[#FF69B4] text-white text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider shadow-sm">
-          {item.category}
-        </span>
+  return (
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md cursor-pointer flex flex-col group/news ${className}`}
+    >
+      {/* Image Section */}
+      <div className="aspect-[4/3] md:aspect-square bg-gray-100 relative overflow-hidden">
+        <SafeImage
+          src={item.image_url || item.image}
+          alt={item.title}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover/news:scale-110"
+        />
+
+        {/* Category Badge */}
+        <div className="absolute top-3 left-3">
+          <span className="bg-[#FF69B4] text-white text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider shadow-sm">
+            {item.category}
+          </span>
+        </div>
+      </div>
+
+      {/* Content Section */}
+      <div className="p-4 flex flex-col flex-1">
+        <h3 className="text-gray-900 font-bold text-lg leading-tight line-clamp-2 mb-2 group-hover/news:text-[#FF6B00] transition">
+          {item.title}
+        </h3>
+
+        <div className="mt-auto flex items-center gap-1 text-xs text-gray-400">
+          <IconClock size={12} />
+          {/* ✅ เรียกใช้ฟังก์ชันตรงนี้ครับ */}
+          <span>{formatDate(item.date)}</span>
+        </div>
       </div>
     </div>
-
-    {/* Content Section */}
-    <div className="p-4 flex flex-col flex-1">
-      <h3 className="text-gray-900 font-bold text-lg leading-tight line-clamp-2 mb-2 group-hover/news:text-[#FF6B00] transition">
-        {item.title}
-      </h3>
-
-      <div className="mt-auto flex items-center gap-1 text-xs text-gray-400">
-        <IconClock size={12} />
-        <span>{item.date}</span>
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 // ==========================================
 // 2. การ์ดอีเวนต์ (Event Card)

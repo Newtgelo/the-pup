@@ -28,3 +28,20 @@
     transform: translateY(0);
   }
 }
+
+
+/* ✅ Animation: ลอยขึ้นมานุ่มๆ (Waterfall Effect) */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px); /* เริ่มต้น: จางและอยู่ต่ำกว่าปกตินิดนึง */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);    /* จบ: ชัดแจ๋วและอยู่ถูกที่ */
+  }
+}
+
+.animate-fade-up {
+  animation: fadeInUp 0.5s ease-out forwards; /* เล่น 0.5วิ แล้วค้างไว้ท่าจบ */
+}
