@@ -393,7 +393,7 @@ export const HomePage = () => {
 
         {/* ✅ Dark Overlay: เลเยอร์สีดำโปร่งแสง (bg-black/50 คือดำจาง 50%) ทับรูปภาพ */}
         {/* ถ้าอยากให้มืดลงอีก ให้แก้ /50 เป็น /60, /70 ครับ */}
-        <div className="absolute inset-0 bg-black/5 z-0"></div>
+        <div className="absolute inset-0 bg-black/2 z-0"></div>
 
         {/* Content (ต้องมี relative z-10 เพื่อให้ลอยอยู่เหนือ overlay) */}
         <div className="relative z-10 text-center md:text-left mb-4 md:mb-0">

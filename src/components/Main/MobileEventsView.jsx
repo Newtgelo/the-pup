@@ -336,7 +336,7 @@ const MobileEventsView = ({
                      <div className="flex justify-between items-center mb-6 pt-6 px-4 bg-white z-30 relative">
                         <div className="flex items-center gap-3">
                             <button onClick={() => navigate("/#events-section")} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition"><IconChevronLeft size={24} className="text-gray-700" /></button>
-                            <div><h1 className="text-2xl font-bold text-gray-900">กิจกรรมทั้งหมด</h1>{!loading && <p className="text-sm text-gray-500">พบ {filteredEvents.length} อีเวนต์</p>}</div>
+                            <div><h1 className="text-xl font-bold text-gray-900">กิจกรรมทั้งหมด</h1>{!loading && <p className="text-sm text-gray-500">พบ {filteredEvents.length} อีเวนต์</p>}</div>
                         </div>
                         {isFilterActive && (<button onClick={handleClearFilters} className="text-xs font-bold text-[#FF6B00] hover:text-[#e65000] bg-orange-50 px-3 py-1.5 rounded-full transition">ล้างตัวกรอง</button>)}
                     </div>
