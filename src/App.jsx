@@ -12,6 +12,9 @@ import { Toast, NotFound } from "./components/ui/UIComponents";
 import RouteLoader from "./components/RouteLoader";
 import ScrollToTop from "./components/ScrollToTop";
 
+// ✅ Import Footer ที่แยกออกมาใหม่
+import { Footer } from "./components/Footer";
+
 // Import Views (Detail Pages)
 import { NewsDetail, EventDetail, CafeDetail } from "./components/Detail";
 
@@ -242,39 +245,8 @@ export default function App() {
 
       <Toast message={toast.message} show={toast.show} onClose={closeToast} />
 
-      {!isAdminPage && (
-        <footer className="bg-[#0F172A] text-white mt-20 pt-12 pb-28 md:py-12">
-          <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-start gap-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 rounded-full bg-white/20"></div>
-                <span className="font-bold text-lg">The Popup Plan</span>
-              </div>
-              <p className="text-gray-400 text-sm">
-                Minimalist K-Pop Hub & Event Planner
-              </p>
-            </div>
-            <div className="flex gap-12 text-sm text-gray-400">
-              <div className="flex flex-col gap-2">
-                <span className="text-white font-bold mb-2">เมนูหลัก</span>
-                <button
-                  onClick={handleLogoClick}
-                  className="text-left hover:text-white"
-                >
-                  หน้าหลัก
-                </button>
-              </div>
-              <div className="flex flex-col gap-2">
-                <span className="text-white font-bold mb-2">ติดต่อเรา</span>
-                <p>อีเมล: pr@thepopupplan.com</p>
-              </div>
-            </div>
-          </div>
-          <div className="max-w-6xl mx-auto px-4 mt-12 pt-8 border-t border-gray-800 text-center text-xs text-gray-500">
-            © 2025 The Popup Plan. All rights reserved.
-          </div>
-        </footer>
-      )}
+      {/* ✅ เรียกใช้ Footer Component (ส่ง function ไปให้เวลากดโลโก้ใน Footer) */}
+      {!isAdminPage && <Footer onLogoClick={handleLogoClick} />}
     </div>
   );
 }
