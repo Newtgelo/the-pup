@@ -129,12 +129,13 @@ const MobileEventsView = ({
         }, 800);
     };
 
-    // --- 🧠 Logic 2: Smart Near Me ---
+    // --- 🧠 Logic 2: Smart Near Me (Revised) ---
     const handleSmartNearMe = () => {
         setLoadingMessage("กำลังค้นหากิจกรรม... \n'วันนี้' ในบริเวณนี้"); 
         setToastInfo(null);
 
         setTimeout(() => {
+            // 1. บังคับปรับเป็น "วันนี้" ตามสูตร
             setTimeframeFilter('today');
 
             if (navigator.geolocation) {
@@ -142,6 +143,13 @@ const MobileEventsView = ({
                     const userLat = position.coords.latitude;
                     const userLng = position.coords.longitude;
                     
+                    // ✅ STEP 1: บินไปหาลูกค้าก่อนเลย (UX เดิม) ให้เห็นกับตาว่าตรงนี้มีอะไรไหม
+                    if(mapRef.current) {
+                        mapRef.current.flyTo([userLat, userLng], 14, { duration: 1.5 });
+                    }
+                    setLoadingMessage(null); 
+
+                    // 2. คำนวณหา "งานที่ใกล้ที่สุด" เตรียมไว้
                     let closestEvent = null;
                     let minDistance = Infinity;
 
@@ -155,42 +163,45 @@ const MobileEventsView = ({
                         }
                     });
 
+                    // 3. ถ้างานที่ใกล้ที่สุด มันไกลเกิน 20 กม. -> ค่อยขึ้นเตือน
                     const SEARCH_RADIUS_KM = 20;
 
-                    setLoadingMessage(null); 
-
                     if (minDistance > SEARCH_RADIUS_KM && closestEvent) {
-                        setToastInfo({
-                           type: 'smart_near_me',
-                           message: 'แถวนี้เงียบเหงาจัง... 🍃',
-                           actionLabel: `🚀 ไปงานที่ใกล้ที่สุด (${minDistance.toFixed(0)} กม.)`,
-                           onAction: () => {
-                               setToastInfo(null);
-                               setLoadingMessage("กำลังเดินทาง... \nไปงานที่ใกล้ที่สุด 🚀");
-                               setTimeout(() => {
-                                   if(mapRef.current) {
-                                       const targetLat = parseFloat(closestEvent.lat);
-                                       const targetLng = parseFloat(closestEvent.lng);
-                                       mapRef.current.flyTo([targetLat, targetLng], 12, { duration: 1.5 });
-                                       setLoadingMessage(null);
-                                       setTimeout(() => handleMobileMarkerClick(closestEvent.id), 1600);
-                                   }
-                               }, 800);
-                           }
-                       });
+                        // หน่วงเวลานิดนึง ให้แมพวิ่งไปถึงตัวคนก่อน ค่อยเด้งถาม
+                        setTimeout(() => {
+                            setToastInfo({
+                                type: 'smart_near_me',
+                                message: 'แถวนี้เงียบจัง... 🍃', // ข้อความตามที่พี่ขอ
+                                actionLabel: `🚀 ไปหางานใกล้สุด (${minDistance.toFixed(0)} กม.)`,
+                                onAction: () => {
+                                    setToastInfo(null);
+                                    setLoadingMessage("กำลังเดินทาง... \nไปงานที่ใกล้ที่สุด 🚀"); // ข้อความตอนบินวื้ดดด
+                                    setTimeout(() => {
+                                        if(mapRef.current) {
+                                            const targetLat = parseFloat(closestEvent.lat);
+                                            const targetLng = parseFloat(closestEvent.lng);
+                                            mapRef.current.flyTo([targetLat, targetLng], 14, { duration: 1.5 });
+                                            setLoadingMessage(null);
+                                            // แถม: เปิดการ์ดงานให้ดูด้วยเมื่อไปถึง
+                                            setTimeout(() => handleMobileMarkerClick(closestEvent.id), 1600);
+                                        }
+                                    }, 800);
+                                }
+                            });
+                        }, 2000); // รอ 2 วิ (ให้แมพวิ่งถึงตัวเราก่อนค่อยถาม)
                     } else {
-                        if(mapRef.current) {
-                             mapRef.current.flyTo([userLat, userLng], 13, { duration: 1.5 });
-                        }
+                        // ถ้ามีงานใกล้ๆ ก็จบแค่นี้ (User เห็นงานในแมพเอง)
                         setToastInfo(null);
                     }
+
                 }, (error) => {
                     console.error("Location error:", error);
                     setLoadingMessage(null);
-                    alert("ไม่สามารถระบุตำแหน่งได้");
+                    alert("ไม่สามารถระบุตำแหน่งได้ กรุณาเปิด GPS");
                 });
             } else {
                 setLoadingMessage(null);
+                alert("Browser นี้ไม่รองรับ Geolocation");
             }
         }, 800); 
     };
@@ -281,15 +292,35 @@ const MobileEventsView = ({
                            return;
                        }
                     }
+                    
                     setToastInfo({
                         type: 'lost_map',
                         message: "ไม่พบกิจกรรมในบริเวณนี้ 🍃",
-                        actionLabel: "กลับไปโซนจัดงาน",
+                        // ✅ ปรับข้อความปุ่มให้ดูรู้เรื่องขึ้น
+                        actionLabel: filteredEvents.length > 0 ? "🚀 ไปหางานที่ใกล้ที่สุด" : "กลับไปโซนจัดงาน",
                         onAction: () => {
                             setToastInfo(null); 
-                            setLoadingMessage("กำลังเดินทาง... \nกลับไปโซนจัดงาน 🏙️");
+                            
+                            // ✅ LOGIC ใหม่: หางานจริงๆ แทนการ Fix พิกัด
+                            let targetLat = 13.7462; // Default: Siam (ถ้าไม่มีงานเลย)
+                            let targetLng = 100.5347;
+                            let msg = "กำลังเดินทาง... \nกลับไปโซนจัดงาน 🏙️";
+
+                            // ถ้ามีงานในลิสต์ (เช่น งานวันนี้) ให้พุ่งไปหางานแรกเลย
+                            if (filteredEvents.length > 0) {
+                                const target = filteredEvents[0]; // เอางานแรกในลิสต์
+                                if (target.lat && target.lng) {
+                                    targetLat = parseFloat(target.lat);
+                                    targetLng = parseFloat(target.lng);
+                                    msg = "กำลังวาร์ป... \nไปหางานที่จัดอยู่ 🚀";
+                                }
+                            }
+
+                            setLoadingMessage(msg);
                             setTimeout(() => {
-                                if (mapRef.current) mapRef.current.flyTo([13.7462, 100.5347], 14, { duration: 1.5 });
+                                if (mapRef.current) {
+                                    mapRef.current.flyTo([targetLat, targetLng], 14, { duration: 1.5 });
+                                }
                                 setLoadingMessage(null);
                             }, 800);
                         }
