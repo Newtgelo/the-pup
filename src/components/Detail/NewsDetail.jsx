@@ -78,7 +78,7 @@ export const NewsDetail = ({ onTriggerToast }) => {
           .select("*")
           .neq("id", id)
           .order('date', { ascending: false })
-          .limit(3);
+          .limit(6);
         
         if (others) setOtherNews(others);
       }
@@ -110,7 +110,7 @@ export const NewsDetail = ({ onTriggerToast }) => {
       : `อ่านข่าว ${news.title} อัปเดตล่าสุดวงการ K-Pop ที่ The Popup Plan`;
 
   return (
-    <>
+    <div className="min-h-screen bg-white">
       <Helmet>
         <title>{`${news.title} | The Popup Plan`}</title>
         <meta name="description" content={metaDescription} />
@@ -146,7 +146,7 @@ export const NewsDetail = ({ onTriggerToast }) => {
             <span className="text-gray-500 flex items-center gap-1"><IconClock size={14} /> {news.date}</span>
           </div>
           
-          <h1 className="text-2xl md:text-4xl lg:text-4xl font-extrabold text-gray-900 leading-snug md:leading-snug lg:leading-snug py-2 mb-4"> 
+          <h1 className="text-2xl md:text-4xl lg:text-4xl font-extrabold text-[#111111] leading-snug md:leading-snug lg:leading-snug py-2 mb-4 text-center"> 
             {news.title}
           </h1>
         </div>
@@ -165,19 +165,26 @@ export const NewsDetail = ({ onTriggerToast }) => {
   </div>
 )}
 
-        <div className="max-w-3xl mx-auto mb-10 prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line 
-              [&>p]:mb-4 
-              [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-3
-              [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mt-6 [&>h2]:mb-3
-              [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-4
-              [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-4
-              [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-8 [&_img]:max-w-full [&_img]:max-h-[500px] [&_img]:object-contain [&_img]:mx-auto"
+        <div className="max-w-3xl mx-auto mb-10 prose prose-sm md:prose-lg text-[#111111] text-left leading-relaxed whitespace-pre-line break-words w-full
+              [&>p]:mb-6 
+              [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4
+              [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mt-8 [&>h2]:mb-4
+              [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-6
+              [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-6
+              [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-8 [&_img]:max-w-full [&_img]:max-h-[500px] [&_img]:object-contain [&_img]:mx-auto
+              
+              /* 👇 แก้ Blockquote: ตัวหนังสือสีดำ #111111 + พื้นหลังขาว/ใส */
+              [&>blockquote]:border-l-4 [&>blockquote]:border-[#FF6B00] 
+              [&>blockquote]:pl-4 [&>blockquote]:py-2 [&>blockquote]:my-6
+              [&>blockquote]:italic [&>blockquote]:font-medium
+              [&>blockquote]:text-[#111111] [&>blockquote]:bg-transparent"
         >
+          
           {parse(news.content || "", {
             replace: (domNode) => {
               if (domNode.name === "iframe" && domNode.attribs) {
                 return (
-                  <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
+                  <div className="w-full aspect-video my-1 rounded-xl overflow-hidden shadow-lg bg-black">
                     <iframe {...domNode.attribs} className="w-full h-full" allowFullScreen></iframe>
                   </div>
                 );
@@ -192,7 +199,7 @@ export const NewsDetail = ({ onTriggerToast }) => {
 
                   if (videoId) {
                     return (
-                      <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
+                      <div className="w-full aspect-video my-1 rounded-xl overflow-hidden shadow-lg bg-black">
                         <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen frameBorder="0"></iframe>
                       </div>
                     );
@@ -215,23 +222,38 @@ export const NewsDetail = ({ onTriggerToast }) => {
             ))}
           </div>
         )}
-        <hr className="border-gray-200 mb-12" />
+        <hr className="border-gray-200 mb-3" />
 
-        <div className="bg-gray-50 rounded-2xl p-6 md:p-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">ข่าวล่าสุดที่น่าสนใจ</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-2xl p-6 md:p-8">
+          <h3 className="text-xl font-bold text-[#111111] mb-6">ข่าวล่าสุดที่น่าสนใจ</h3>
+          
+          {/* ✅ แก้ไข: เปลี่ยน Grid เป็น Slider แนวนอน */}
+          <div className="flex overflow-x-auto gap-4 pb-4 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide snap-x">
             {otherNews.map((n) => (
-              <div key={n.id} onClick={() => { navigate(`/news/${n.id}`); window.scrollTo(0, 0); }} className="cursor-pointer group">
-                <div className="aspect-video rounded-xl overflow-hidden bg-gray-200 mb-3">
-                  <SafeImage src={n.image_url} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
+              <div 
+                key={n.id} 
+                onClick={() => { navigate(`/news/${n.id}`); window.scrollTo(0, 0); }} 
+                // 👇 สูตรคำนวณความกว้าง:
+                // มือถือ: w-[42vw] (เห็น 2 ใบเต็ม + ใบที่ 3 โผล่นิดๆ)
+                // คอม:   w-[30%]  (เห็น 3 ใบเต็ม + ใบที่ 4 โผล่นิดๆ)
+                className="flex-shrink-0 w-[42vw] md:w-[30%] snap-start cursor-pointer group"
+              >
+                <div className="aspect-video rounded-xl overflow-hidden bg-gray-200 mb-3 relative">
+                   <SafeImage 
+                      src={n.image_url} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition duration-500" 
+                   />
                 </div>
-                <h4 className="font-bold text-gray-900 leading-tight group-hover:text-[#FF6B00] transition line-clamp-2">{n.title}</h4>
+                <h4 className="font-bold text-gray-900 leading-tight group-hover:text-[#FF6B00] transition line-clamp-2">
+                  {n.title}
+                </h4>
                 <p className="text-xs text-gray-500 mt-2">{n.date}</p>
               </div>
             ))}
           </div>
         </div>
+
       </div>
-    </>
+    </div>
   );
 };
