@@ -25,8 +25,8 @@ export const NewsCard = ({ item, onClick, className = "" }) => {
       onClick={onClick}
       className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md cursor-pointer flex flex-col group/news ${className}`}
     >
-      {/* Image Section */}
-      <div className="aspect-[4/3] md:aspect-square bg-gray-100 relative overflow-hidden">
+      {/* Image Section */} {/* ✅ แก้ตรงนี้: เปลี่ยน aspect-[4/3] เป็น aspect-square */}
+      <div className="aspect-square md:aspect-square bg-gray-100 relative overflow-hidden">
         <SafeImage
           src={item.image_url || item.image}
           alt={item.title}
@@ -41,9 +41,11 @@ export const NewsCard = ({ item, onClick, className = "" }) => {
         </div>
       </div>
 
-      {/* Content Section */}
-      <div className="p-4 flex flex-col flex-1">
-        <h3 className="text-gray-900 font-bold text-lg leading-tight line-clamp-2 mb-2 group-hover/news:text-[#FF6B00] transition">
+     {/* ✅ แก้จุดที่ 1: ลด Padding มือถือ (p-3) จอใหญ่เท่าเดิม (md:p-4) */}
+      <div className="p-3 md:p-4 flex flex-col flex-1">
+        
+        {/* ✅ แก้จุดที่ 2: ลดขนาดฟอนต์มือถือ (text-sm) จอใหญ่เท่าเดิม (md:text-lg) */}
+        <h3 className="text-gray-900 font-bold text-sm md:text-lg leading-tight line-clamp-2 mb-2 group-hover/news:text-[#FF6B00] transition">
           {item.title}
         </h3>
 

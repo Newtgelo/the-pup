@@ -8,21 +8,54 @@ import {
 import { SafeImage, NotFound } from "../ui/UIComponents";
 import { Helmet } from "react-helmet-async";
 
+// ✅ แก้ไข Skeleton ให้ตรงกับดีไซน์ใหม่ (Hero Banner เต็มจอ)
 const NewsDetailSkeleton = () => (
-  <div className="max-w-4xl mx-auto px-4 py-8 animate-pulse">
-    <div className="w-full aspect-video bg-gray-200 rounded-2xl mb-8 mt-[80px]"></div>
-    <div className="flex gap-3 mb-4">
-      <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
-      <div className="h-6 w-24 bg-gray-200 rounded-full"></div>
+  <div className="min-h-screen bg-white animate-pulse font-sans">
+    
+    {/* 1. ส่วน Hero Banner (เลียนแบบของจริง: เต็มจอ + Overlay) */}
+    <div className="relative w-full aspect-video max-h-[70vh] lg:max-h-[85vh] bg-gray-200">
+      
+      {/* Desktop Topic Placeholder: จำลองข้อความลอยบนรูป (เฉพาะจอใหญ่) */}
+      <div className="hidden md:flex absolute bottom-0 left-0 right-0 pb-12 pt-24 justify-end flex-col max-w-4xl mx-auto px-4 w-full">
+         {/* Badge & Date */}
+         <div className="flex gap-3 mb-4">
+            <div className="h-7 w-20 bg-gray-300/50 rounded-full backdrop-blur-sm"></div>
+            <div className="h-7 w-32 bg-gray-300/50 rounded-full backdrop-blur-sm"></div>
+         </div>
+         {/* Title */}
+         <div className="h-10 w-3/4 bg-gray-300/50 rounded-lg mb-3 backdrop-blur-sm"></div>
+         <div className="h-10 w-1/2 bg-gray-300/50 rounded-lg backdrop-blur-sm"></div>
+      </div>
     </div>
-    <div className="h-10 bg-gray-200 rounded-lg w-full mb-3"></div>
-    <div className="h-10 bg-gray-200 rounded-lg w-2/3 mb-12"></div>
-    <div className="max-w-3xl mx-auto space-y-4">
-      <div className="h-4 bg-gray-200 rounded w-full"></div>
-      <div className="h-4 bg-gray-200 rounded w-full"></div>
-      <div className="h-4 bg-gray-200 rounded w-11/12"></div>
-      <div className="h-40 bg-gray-200 rounded w-full my-6"></div>
-      <div className="h-4 bg-gray-200 rounded w-full"></div>
+
+    {/* 2. ส่วนเนื้อหาข่าว (Content Body) */}
+    <div className="max-w-4xl mx-auto px-4 mt-8 md:mt-12">
+      
+      {/* Mobile Header Placeholder: จำลองหัวข้อสำหรับมือถือ (เฉพาะจอเล็ก) */}
+      <div className="md:hidden block mb-8 text-center">
+         <div className="flex justify-center gap-3 mb-4">
+            <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+            <div className="h-6 w-24 bg-gray-200 rounded-full"></div>
+         </div>
+         <div className="h-8 w-full bg-gray-200 rounded mb-2"></div>
+         <div className="h-8 w-2/3 bg-gray-200 rounded mx-auto"></div>
+         <hr className="border-gray-100 mt-6" />
+      </div>
+
+      {/* Paragraphs: เนื้อหาข่าวจำลอง */}
+      <div className="space-y-4">
+        <div className="h-4 bg-gray-200 rounded w-full"></div>
+        <div className="h-4 bg-gray-200 rounded w-full"></div>
+        <div className="h-4 bg-gray-200 rounded w-11/12"></div>
+        <div className="h-4 bg-gray-200 rounded w-full"></div>
+        
+        {/* รูปแทรกในเนื้อหา (Optional) */}
+        <div className="h-64 w-full bg-gray-100 rounded-xl my-8"></div>
+        
+        <div className="h-4 bg-gray-200 rounded w-full"></div>
+        <div className="h-4 bg-gray-200 rounded w-4/5"></div>
+        <div className="h-4 bg-gray-200 rounded w-full"></div>
+      </div>
     </div>
   </div>
 );
@@ -191,9 +224,15 @@ export const NewsDetail = ({ onTriggerToast }) => {
 
           {/* Body Content */}
           <div className="prose prose-sm md:prose-lg text-[#111111] leading-relaxed whitespace-pre-line break-words w-full
+                font-body 
+                {/* 👆 ✅ ใส่ตรงนี้: เนื้อหาปกติจะเป็นฟอนต์มีหัว (Looped) */}
+
                 [&>p]:mb-6 
-                [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4
-                [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mt-8 [&>h2]:mb-4
+                
+                {/* 👇 ✅ สั่งให้หัวข้อแทรก (h1, h2) กลับไปใช้ฟอนต์เท่ๆ ไม่มีหัว (Sans) */}
+                [&>h1]:font-sans [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4
+                [&>h2]:font-sans [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mt-8 [&>h2]:mb-4
+                
                 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-6
                 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-6
                 [&_img]:rounded-xl [&_img]:shadow-sm [&_img]:my-8 [&_img]:max-w-full [&_img]:mx-auto
@@ -211,7 +250,12 @@ export const NewsDetail = ({ onTriggerToast }) => {
                         if (href.includes("/embed/")) videoId = href.split("/embed/")[1]?.split("?")[0];
                         else if (href.includes("v=")) videoId = href.split("v=")[1]?.split("&")[0];
                         else if (href.includes("youtu.be/")) videoId = href.split("youtu.be/")[1]?.split("?")[0];
-                        if (videoId) return (<div className="w-full aspect-video my-4 rounded-xl overflow-hidden shadow-sm bg-black"><iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen frameBorder="0"></iframe></div>);
+                        
+                        if (videoId) return (
+  <span className="block w-full aspect-video my-4 rounded-xl overflow-hidden shadow-sm bg-black">
+    <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen frameBorder="0"></iframe>
+  </span>
+);
                       }
                      return <a {...domNode.attribs} target="_blank" rel="noopener noreferrer" className="text-[#FF6B00] hover:underline break-words font-bold">{domToReact(domNode.children)}</a>
                  }
