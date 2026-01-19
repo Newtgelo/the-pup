@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 import { SafeImage } from "../components/ui/UIComponents";
-import Swal from 'sweetalert2'; // ✅ Import SweetAlert2
+import Swal from 'sweetalert2';
 
 export const AdminEventDashboard = () => {
   const navigate = useNavigate();
@@ -10,9 +10,8 @@ export const AdminEventDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // ✅ เปลี่ยน Default Filter เป็น 'all' หรือ 'upcoming' ก็ได้ ตามสะดวก
   const [filterStatus, setFilterStatus] = useState("all");
-  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' }); // เปลี่ยน default sort เป็นวันที่จัดงาน
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -32,7 +31,6 @@ export const AdminEventDashboard = () => {
     setLoading(false);
   };
 
-  // ✅ ฟังก์ชันลบแบบใหม่ (SweetAlert2)
   const handleDelete = async (id) => {
     Swal.fire({
       title: 'ยืนยันการลบ?',
@@ -49,11 +47,7 @@ export const AdminEventDashboard = () => {
         
         if (!error) {
           setEvents(events.filter((e) => e.id !== id));
-          Swal.fire(
-            'ลบเรียบร้อย!',
-            'อีเวนต์ถูกลบออกจากระบบแล้ว',
-            'success'
-          );
+          Swal.fire('ลบเรียบร้อย!', 'อีเวนต์ถูกลบออกจากระบบแล้ว', 'success');
         } else {
           Swal.fire('Error', error.message, 'error');
         }
@@ -74,10 +68,16 @@ export const AdminEventDashboard = () => {
     return sortConfig.direction === 'asc' ? <span className="text-[#FF6B00] ml-1">↑</span> : <span className="text-[#FF6B00] ml-1">↓</span>;
   };
 
-  // ✅ Helper: หาวันที่ปัจจุบัน (YYYY-MM-DD)
   const today = new Date().toISOString().split('T')[0];
 
-  // ✅ Logic การกรอง (ปรับปรุงใหม่ รองรับ Upcoming / Past)
+  // ✅ Helper: เช็คว่าอีเวนต์จบหรือยัง (รองรับงานหลายวัน)
+  // ถ้ามี end_date ให้ใช้ end_date เทียบ, ถ้าไม่มีให้ใช้ date
+  const isEventEnded = (event) => {
+    const effectiveEndDate = event.end_date || event.date;
+    return effectiveEndDate < today;
+  };
+
+  // ✅ Logic การกรอง (Updated)
   const processedEvents = [...events]
     .filter((e) => {
         const lowerTerm = searchTerm.toLowerCase().trim();
@@ -92,19 +92,21 @@ export const AdminEventDashboard = () => {
                               (idToSearch !== '' && e.id.toString().includes(idToSearch));
         
         // 2. Status & Date Filter Logic
-        const status = e.status || 'published'; // ถ้าไม่มี status ให้ถือว่าเป็น published
+        const status = e.status || 'published';
         let matchesStatus = false;
+
+        const eventEnded = isEventEnded(e);
 
         if (filterStatus === 'all') {
             matchesStatus = true;
         } else if (filterStatus === 'draft') {
             matchesStatus = status === 'draft';
         } else if (filterStatus === 'upcoming') {
-            // Upcoming: ต้อง Published และ วันที่ >= วันนี้
-            matchesStatus = status === 'published' && e.date >= today;
+            // Upcoming: ต้อง Published และ ยังไม่จบ (Ended = false)
+            matchesStatus = status === 'published' && !eventEnded;
         } else if (filterStatus === 'past') {
-            // Past: ต้อง Published และ วันที่ < วันนี้
-            matchesStatus = status === 'published' && e.date < today;
+            // Past: ต้อง Published และ จบแล้ว (Ended = true)
+            matchesStatus = status === 'published' && eventEnded;
         }
 
         return matchesSearch && matchesStatus;
@@ -148,13 +150,15 @@ export const AdminEventDashboard = () => {
     return <span>{start} - {end}</span>;
   };
 
-  // ✅ คำนวณจำนวนแต่ละ Tab
+  // ✅ คำนวณจำนวนแต่ละ Tab (Updated Logic)
   const allCount = events.length;
   const draftCount = events.filter(e => e.status === 'draft').length;
-  // Upcoming: Published + วันที่ >= วันนี้
-  const upcomingCount = events.filter(e => (e.status || 'published') === 'published' && e.date >= today).length;
-  // Past: Published + วันที่ < วันนี้
-  const pastCount = events.filter(e => (e.status || 'published') === 'published' && e.date < today).length;
+  
+  // Upcoming: Published + ยังไม่จบ (end_date >= today หรือ date >= today)
+  const upcomingCount = events.filter(e => (e.status || 'published') === 'published' && !isEventEnded(e)).length;
+  
+  // Past: Published + จบแล้ว (end_date < today หรือ date < today)
+  const pastCount = events.filter(e => (e.status || 'published') === 'published' && isEventEnded(e)).length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -175,7 +179,7 @@ export const AdminEventDashboard = () => {
           </button>
         </div>
 
-        {/* ✅ TABS ใหม่: All / Upcoming / Past / Draft */}
+        {/* TABS */}
         <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
            <div className="flex bg-gray-100 p-1 rounded-lg self-start md:self-auto overflow-x-auto max-w-full">
                 <button 
@@ -237,8 +241,8 @@ export const AdminEventDashboard = () => {
                   <tr><td colSpan="7" className="p-8 text-center text-gray-400">ไม่พบอีเวนต์ตามเงื่อนไข</td></tr>
                 ) : (
                   processedEvents.map((event) => {
-                    // ✅ เช็คว่าจบไปแล้วหรือยัง
-                    const isPast = event.date < today;
+                    // ✅ ใช้ Logic ใหม่: เช็ค end_date ด้วย
+                    const isPast = isEventEnded(event);
                     const isDraft = event.status === 'draft';
 
                     return (
@@ -264,7 +268,7 @@ export const AdminEventDashboard = () => {
                             <p className="text-xs text-gray-400 mt-1">{event.time || "ไม่ระบุเวลา"}</p>
                         </td>
 
-                        {/* ✅ Badge Logic: Draft / Published / Ended */}
+                        {/* Badge Logic */}
                         <td className="p-4 text-center">
                             {isDraft ? (
                                 <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold inline-block border border-gray-200">
@@ -292,8 +296,6 @@ export const AdminEventDashboard = () => {
                             <div className="flex items-center justify-center gap-2">
                             <button onClick={() => window.open(`/event/${event.id}`, "_blank")} className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#FF6B00] hover:bg-orange-50 transition" title="ดูหน้าเว็บจริง">👁️</button>
                             <button onClick={() => navigate(`/admin/edit-event/${event.id}`)} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition">แก้ไข</button>
-                            
-                            {/* ✅ เรียกใช้ handleDelete ใหม่ */}
                             <button onClick={() => handleDelete(event.id)} className="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition">ลบ</button>
                             </div>
                         </td>
