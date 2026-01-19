@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../supabase";
-import { IconChevronRight } from "../icons/Icons"; // ❌ ลบ IconSort, IconFilter ออกแล้ว
+import { IconChevronRight } from "../icons/Icons";
 import {
   ScrollableRow,
   EmptyState,
@@ -26,8 +26,10 @@ export const HomePage = () => {
   const [homeNewsFilter, setHomeNewsFilter] = useState("ทั้งหมด");
   const [eventFilter, setEventFilter] = useState("ทั้งหมด");
   
-  // ❌ ลบ State ที่ไม่จำเป็นออก (timeframe, sort, mobileFilter)
   const [filteredHomeEvents, setFilteredHomeEvents] = useState([]);
+
+  // ✅ 1. สร้าง Reference เพื่อจับตัวกล่อง Scroll ของข่าว
+  const newsScrollRef = useRef(null);
 
   // -----------------------------------------------------------------
   // 🟢 Fetch Data
@@ -50,14 +52,14 @@ export const HomePage = () => {
       d.setHours(d.getHours() - 4);
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,"0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-      // 2. Get Events (ดึงมา 100-150 เพื่อให้ครอบคลุมหมวดหมู่ย่อย)
+      // 2. Get Events
       const { data: events } = await supabase
         .from("events")
         .select("*")
         .eq("status", "published")
         .or(`end_date.gte.${today},and(end_date.is.null,date.gte.${today})`)
-        .order("date", { ascending: true }) // Default เรียงตามวันงาน
-        .limit(150); // 👈 เพิ่ม limit นิดนึงกันเหนียว
+        .order("date", { ascending: true }) 
+        .limit(150);
 
       if (events) {
         setEventList(events);
@@ -92,18 +94,23 @@ export const HomePage = () => {
     })
     .slice(0, 10);
 
+  // ✅ 2. สั่งให้ Scroll ดีดกลับไปซ้ายสุด เมื่อมีการเปลี่ยน Filter
+  useEffect(() => {
+    if (newsScrollRef.current) {
+      newsScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+  }, [homeNewsFilter]);
+
   // -----------------------------------------------------------------
-  // 🟠 Logic กรอง Events (เหลือแค่ Filter ตามหมวด)
+  // 🟠 Logic กรอง Events
   // -----------------------------------------------------------------
   useEffect(() => {
     let result = [...eventList];
 
-    // 1. กรอง Category
     if (eventFilter !== "ทั้งหมด") {
       result = result.filter((event) => event.category === eventFilter);
     }
 
-    // 2. เรียงตามวันที่เสมอ (Upcoming)
     result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
     setFilteredHomeEvents(result);
@@ -161,8 +168,11 @@ export const HomePage = () => {
           ))}
         </div>
 
-        {/* News Grid */}
-        <div className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide">
+        {/* ✅ 3. ใส่ ref={newsScrollRef} ที่นี่ เพื่อให้จับตัวถูก */}
+        <div 
+          ref={newsScrollRef}
+          className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide"
+        >
           {isLoading ? (
             [...Array(5)].map((_, i) => (
                 <div key={i} className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start">
@@ -187,7 +197,6 @@ export const HomePage = () => {
       {/* -------------------- 2. EVENTS SECTION -------------------- */}
       <section id="events-section" className="scroll-mt-28">
         
-        {/* ✅ Header: เรียบง่ายขึ้น ลบ Dropdown ออกหมด */}
         <div className="flex flex-col mb-6">
           <div className="flex items-center justify-between mb-4">
              <div className="border-l-4 border-[#FF6B00] pl-4">
@@ -204,7 +213,6 @@ export const HomePage = () => {
               </button>
           </div>
           
-          {/* Tab Events: ยังคงไว้ เพื่อให้กดเลือกหมวดได้เร็วๆ */}
           <ScrollableRow className="py-2 px-2 gap-2">
             {[
               "ทั้งหมด", "Concert", "Fan Meeting", "Fansign", 
@@ -229,7 +237,6 @@ export const HomePage = () => {
           </ScrollableRow>
         </div>
 
-        {/* ✅ Events Grid: ตัดให้โชว์แค่ 12 อัน (.slice(0, 12)) */}
         <ScrollableRow className="gap-4 pb-4 -mx-4 px-4 scroll-pl-4">
           {isLoading ? (
             [...Array(5)].map((_, i) => (
@@ -238,13 +245,11 @@ export const HomePage = () => {
               </div>
             ))
           ) : filteredHomeEvents.length > 0 ? (
-            // 👇 ตัดข้อมูลเหลือแค่ 12 อันตรงนี้ครับ
             filteredHomeEvents.slice(0, 12).map((event) => (
               <div key={event.id} className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full">
                 <EventCard
                   item={event}
                   onClick={() => navigate(`/event/${event.id}`, { state: { fromHome: true } })}
-                  // showNewBadge ลบออกก็ได้ เพราะเราเน้น Upcoming แล้ว
                 />
               </div>
             ))
