@@ -14,10 +14,16 @@ import { NewsCard, EventCard, CafeCard } from "../ui/CardComponents";
 export const HomePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // ✅ รวม Loading เหลือตัวเดียว เพราะเราจะโหลดตูมเดียวตอนแรก
   const [isLoading, setIsLoading] = useState(true);
-  const [newsList, setNewsList] = useState([]);
+
+  // ✅ เปลี่ยนจากเก็บ list ย่อย เป็นเก็บ "Master List" (ก้อนใหญ่)
+  const [allNewsList, setAllNewsList] = useState([]); 
+  
   const [eventList, setEventList] = useState([]);
   const [cafeList, setCafeList] = useState([]);
+  
   const [homeNewsFilter, setHomeNewsFilter] = useState("ทั้งหมด");
   const [eventFilter, setEventFilter] = useState("ทั้งหมด");
   const [eventSort, setEventSort] = useState("upcoming");
@@ -25,27 +31,29 @@ export const HomePage = () => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [filteredHomeEvents, setFilteredHomeEvents] = useState([]);
 
+  // -----------------------------------------------------------------
+  // 🟢 Fetch Data (ดึงทีเดียวจบ ครบทุกอย่าง)
+  // -----------------------------------------------------------------
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
 
-      // ✅ 1. Get News
+      // 1. Get News (ดึงมาเผื่อเยอะๆ เลยครับ สัก 60 อัน เพื่อให้ครอบคลุมทุกหมวด)
+      // การดึง 60 rows แป๊บเดียวครับ ไม่ต่างกับ 10 rows มาก แต่ User Experience ดีกว่าเยอะ
       const { data: news } = await supabase
         .from("news")
         .select("*")
         .eq("status", "published")
-        .limit(10)
-        .order("id", { ascending: false });
-      if (news) setNewsList(news);
+        .limit(60) // 👈 ดึงมาตุนไว้ 60 อัน
+        .order("date", { ascending: false });
+      
+      if (news) setAllNewsList(news);
 
       const d = new Date();
       d.setHours(d.getHours() - 4);
-      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-        2,
-        "0"
-      )}-${String(d.getDate()).padStart(2, "0")}`;
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,"0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-      // ✅ 2. Get Events
+      // 2. Get Events
       const { data: events } = await supabase
         .from("events")
         .select("*")
@@ -59,7 +67,7 @@ export const HomePage = () => {
         setFilteredHomeEvents(events);
       }
 
-      // ✅ 3. Get Cafes (Random)
+      // 3. Get Cafes
       const { data: cafes } = await supabase
         .from("cafes")
         .select("*")
@@ -77,18 +85,21 @@ export const HomePage = () => {
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (!isLoading && location.hash) {
-      const id = location.hash.replace("#", "");
-      const element = document.getElementById(id);
-      if (element) {
-        setTimeout(() => {
-          element.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 300);
-      }
-    }
-  }, [location, isLoading]);
+  // -----------------------------------------------------------------
+  // 🟡 Logic การกรองข่าว (ทำในเครื่อง ไม่ต้องรอ Server)
+  // -----------------------------------------------------------------
+  // กรองจาก allNewsList ที่ตุนไว้ แล้วตัดมาแค่ 10 อัน
+  const displayNews = allNewsList
+    .filter(news => {
+      if (homeNewsFilter === "ทั้งหมด") return true;
+      // กรองตามหมวดหมู่ (Check case-insensitive)
+      return news.category?.toLowerCase().trim() === homeNewsFilter.toLowerCase().trim();
+    })
+    .slice(0, 10); // 👈 ตัดมาโชว์แค่ 10 อัน
 
+  // -----------------------------------------------------------------
+  // 🟠 Logic Events & Scroll (เหมือนเดิม)
+  // -----------------------------------------------------------------
   useEffect(() => {
     let result = [...eventList];
     if (eventFilter !== "ทั้งหมด")
@@ -123,82 +134,92 @@ export const HomePage = () => {
     setFilteredHomeEvents(result);
   }, [eventFilter, eventSort, timeframeFilter, eventList]);
 
-  const filteredNews = newsList.filter((n) => {
-    if (homeNewsFilter === "ทั้งหมด") return true;
-    return (
-      n.category?.toLowerCase().trim() === homeNewsFilter.toLowerCase().trim()
-    );
-  });
+  useEffect(() => {
+    if (!isLoading && location.hash) {
+      const id = location.hash.replace("#", "");
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 300);
+      }
+    }
+  }, [location, isLoading]);
 
+  // =================================================================
+  // RENDER UI
+  // =================================================================
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 pb-16">
-      {/* -------------------- 1. NEWS SECTION (ขึ้นก่อน) -------------------- */}
+      
+      {/* -------------------- 1. NEWS SECTION -------------------- */}
       <section id="news-section" className="mt-8 scroll-mt-28">
         <div className="flex justify-between items-center mb-4 border-l-4 border-[#0047FF] pl-4">
-          <h2 className="text-2xl font-bold text-gray-900">Latest News</h2>
+          <h2 className="text-2xl font-bold text-gray-900 font-sans">Latest News</h2>
           <button
             onClick={() => navigate("/news")}
-            className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1"
+            className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1 font-sans"
           >
             ดูทั้งหมด <IconChevronRight size={16} />
           </button>
         </div>
 
-        {/* ✅ Tab ตัวกรอง: Animation แบบ Pop (กดแล้วเด้งดึ๋ง) */}
+        {/* Tab News */}
         <div className="flex flex-wrap gap-2 mb-6">
           {["ทั้งหมด", "K-Pop", "T-Pop", "Global"].map((filter) => (
             <button
               key={filter}
               onClick={() => setHomeNewsFilter(filter)}
               className={`
-        px-4 py-1.5 rounded-full text-sm font-medium 
-        transition-all duration-200 ease-in-out active:scale-90 
-        ${
-          homeNewsFilter === filter
-            ? "bg-[#FF6B00] text-white shadow-md scale-105" // เลือกแล้ว: สีส้ม + ขยาย
-            : "bg-white border text-gray-600 hover:bg-gray-50 hover:border-gray-300" // ปกติ
-        }
-      `}
+                px-4 py-1.5 rounded-full text-sm font-medium 
+                transition-colors duration-200 
+                ${
+                  homeNewsFilter === filter
+                    ? "bg-[#FF6B00] text-white"
+                    : "bg-white border text-gray-600 hover:bg-gray-50 hover:border-gray-300"
+                }
+              `}
             >
               {filter}
             </button>
           ))}
         </div>
 
-        {/* ✅ News Grid: ใส่ Waterfall Animation (Fade Up ทีละใบ) */}
-{/* 1. ใส่ key={homeNewsFilter} ที่ตัวแม่ เพื่อให้ Reset Animation ทุกครั้งที่เปลี่ยน Tab */}
-<div 
-  key={homeNewsFilter} 
-  className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide"
->
-  {isLoading
-    ? [...Array(5)].map((_, i) => (
-        <div
-          key={i}
-          className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
-        >
-          <SkeletonNews />
+        {/* News Grid */}
+        <div className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide">
+          {isLoading ? (
+             // ตอนโหลดครั้งแรก
+            [...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
+                >
+                  <SkeletonNews />
+                </div>
+              ))
+          ) : displayNews.length > 0 ? (
+                // แสดงผลจากข้อมูลที่กรองแล้ว (ไม่ต้องรอโหลด)
+                displayNews.map((news) => (
+                  <div
+                    key={news.id}
+                    className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
+                  >
+                    <NewsCard
+                      item={news}
+                      onClick={() =>
+                        navigate(`/news/${news.id}`, {
+                          state: { fromHome: true },
+                        })
+                      }
+                    />
+                  </div>
+                ))
+            ) : (
+                <div className="w-full text-center py-8 text-gray-400">
+                    ไม่พบข่าวในหมวดนี้
+                </div>
+            )}
         </div>
-      ))
-    : filteredNews.map((news, index) => ( // ✅ เพิ่ม index เข้าไปในวงเล็บ
-        <div
-          key={news.id}
-          // ✅ 2. ใส่ class: opacity-0 (ซ่อนก่อน) + animate-fade-up (สั่งเล่นท่า)
-          className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start opacity-0 animate-fade-up"
-          // ✅ 3. ใส่ Delay: ให้ใบที่ 2, 3, 4... ช้าลงเรื่อยๆ (ทีละ 0.1 วินาที)
-          style={{ animationDelay: `${index * 100}ms` }}
-        >
-          <NewsCard
-            item={news}
-            onClick={() =>
-              navigate(`/news/${news.id}`, {
-                state: { fromHome: true },
-              })
-            }
-          />
-        </div>
-      ))}
-</div>
       </section>
 
       {/* -------------------- 2. EVENTS SECTION -------------------- */}
@@ -207,7 +228,7 @@ export const HomePage = () => {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
             <div className="flex items-center justify-between w-full md:w-auto">
               <div className="border-l-4 border-[#FF6B00] pl-4">
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-2xl font-bold text-gray-900 font-sans">
                   ตาราง Event
                 </h2>
               </div>
@@ -224,7 +245,7 @@ export const HomePage = () => {
                 </button>
                 <button
                   onClick={() => navigate("/events")}
-                  className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1"
+                  className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1 font-sans"
                 >
                   ดูทั้งหมด <IconChevronRight size={16} />
                 </button>
@@ -233,7 +254,7 @@ export const HomePage = () => {
             <div className="hidden md:flex flex-1 items-center justify-end gap-3 ml-4">
               <div className="flex gap-2 shrink-0">
                 <select
-                  className="pl-3 pr-8 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer"
+                  className="pl-3 pr-8 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer font-sans"
                   value={timeframeFilter}
                   onChange={(e) => setTimeframeFilter(e.target.value)}
                 >
@@ -243,7 +264,7 @@ export const HomePage = () => {
                 </select>
                 <div className="relative">
                   <select
-                    className="w-full pl-8 pr-8 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer"
+                    className="w-full pl-8 pr-8 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer font-sans"
                     value={eventSort}
                     onChange={(e) => setEventSort(e.target.value)}
                   >
@@ -257,7 +278,7 @@ export const HomePage = () => {
               </div>
               <button
                 onClick={() => navigate("/events")}
-                className="shrink-0 text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1 ml-2"
+                className="shrink-0 text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1 ml-2 font-sans"
               >
                 {" "}
                 ดูทั้งหมด <IconChevronRight size={16} />
@@ -266,33 +287,27 @@ export const HomePage = () => {
           </div>
           
           <ScrollableRow className="py-2 px-2 gap-2">
-  {[
-    "ทั้งหมด",
-    "Concert",
-    "Fan Meeting",
-    "Fansign",
-    "Workshop",
-    "Exhibition",
-    "Fan Event",
-    "Others",
-  ].map((filter) => (
-    <button
-      key={filter}
-      onClick={() => setEventFilter(filter)}
-      className={`
-        whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium 
-        transition-all duration-200 ease-in-out active:scale-90 
-        ${
-          eventFilter === filter
-            ? "bg-[#FF6B00] text-white shadow-md scale-105" // ✅ เลือกแล้ว: สีส้ม + ขยาย + เงา
-            : "bg-white border text-gray-600 hover:bg-gray-50 hover:border-gray-300" // ✅ ปกติ: สีขาว + Hover
-        }
-      `}
-    >
-      {filter}
-    </button>
-  ))}
-</ScrollableRow>
+            {[
+              "ทั้งหมด", "Concert", "Fan Meeting", "Fansign", 
+              "Workshop", "Exhibition", "Fan Event", "Others",
+            ].map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setEventFilter(filter)}
+                className={`
+                  whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium 
+                  transition-colors duration-200 
+                  ${
+                    eventFilter === filter
+                      ? "bg-[#FF6B00] text-white"
+                      : "bg-white border text-gray-600 hover:bg-gray-50 hover:border-gray-300"
+                  }
+                `}
+              >
+                {filter}
+              </button>
+            ))}
+          </ScrollableRow>
 
           {showMobileFilters && (
             <div className="md:hidden mt-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm animate-in slide-in-from-top-2 fade-in duration-200">
@@ -324,7 +339,6 @@ export const HomePage = () => {
           )}
         </div>
 
-        {/* ✅ Events Grid: ปรับเป็น Peek Effect (lg:w-[22%]) */}
         <ScrollableRow className="gap-4 pb-4 -mx-4 px-4 scroll-pl-4">
           {isLoading ? (
             [...Array(5)].map((_, i) => (
@@ -362,14 +376,14 @@ export const HomePage = () => {
       <div id="cafes-section" className="max-w-6xl mx-auto px-4 scroll-mt-28">
         <div className="flex justify-between items-center mb-6">
           <div className="border-l-4 border-[#5607ff] pl-4">
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900 font-sans">
               แนะนำที่จัด Fancafe
             </h2>
           </div>
 
           <button
             onClick={() => navigate("/cafes")}
-            className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1"
+            className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1 font-sans"
           >
             ดูทั้งหมด <IconChevronRight size={16} />
           </button>
@@ -399,40 +413,29 @@ export const HomePage = () => {
         </div>
       </div>
 
-      {/* -------------------- 4. HERO BANNER (ย้ายมาล่างสุด) -------------------- */}
-      {/* ✅ แก้ไข:
-          1. ลบ bg-gradient เดิมออก
-          2. ใส่ bg-[url('...')] bg-cover bg-center แทน
-          3. เพิ่ม div overlay สีดำจางๆ ด้านใน เพื่อให้อ่านตัวหนังสือออก
-      */}
+      {/* -------------------- 4. HERO BANNER -------------------- */}
       <div
         className="relative overflow-hidden rounded-3xl p-8 mb-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between mt-6
                    bg-cover bg-center"
         style={{
-          // 👇👇👇 ใส่ URL รูปภาพตรงนี้ครับ 👇👇👇
           backgroundImage:
             "url('https://res.cloudinary.com/diq1nr4jb/image/upload/v1768486173/cover_web_1_lyzyli.jpg')",
-          // ตัวอย่าง: backgroundImage: "url('https://cdn.pixabay.com/photo/2017/08/06/12/06/people-2591874_1280.jpg')"
         }}
       >
-        {/* ✅ Dark Overlay: เลเยอร์สีดำโปร่งแสง (bg-black/50 คือดำจาง 50%) ทับรูปภาพ */}
-        {/* ถ้าอยากให้มืดลงอีก ให้แก้ /50 เป็น /60, /70 ครับ */}
         <div className="absolute inset-0 bg-black/2 z-0"></div>
 
-        {/* Content (ต้องมี relative z-10 เพื่อให้ลอยอยู่เหนือ overlay) */}
         <div className="relative z-10 text-center md:text-left mb-4 md:mb-0">
-          <h1 className="text-2xl md:text-3xl font-extrabold mb-2 drop-shadow-lg">
+          <h1 className="text-2xl md:text-3xl font-extrabold mb-2 drop-shadow-lg font-sans">
             The Popup Plan
           </h1>
-          <p className="text-white/90 text-sm md:text-base font-medium drop-shadow-sm">
+          <p className="text-white/90 text-sm md:text-base font-medium drop-shadow-sm font-sans">
             รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว
           </p>
         </div>
-        {/* Button (ต้องมี relative z-10 เหมือนกัน) */}
         <div className="relative z-10">
           <button
             onClick={() => navigate("/events")}
-            className="bg-white text-[#e1621d] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95"
+            className="bg-white text-[#e1621d] px-5 py-2 rounded-full font-bold text-sm shadow-sm hover:bg-gray-50 transition active:scale-95 font-sans"
           >
             สำรวจอีเวนต์
           </button>
