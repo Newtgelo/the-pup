@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../supabase";
-import { IconChevronRight, IconSort, IconFilter } from "../icons/Icons";
+import { IconChevronRight } from "../icons/Icons"; // ❌ ลบ IconSort, IconFilter ออกแล้ว
 import {
   ScrollableRow,
   EmptyState,
@@ -15,36 +15,33 @@ export const HomePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // ✅ รวม Loading เหลือตัวเดียว เพราะเราจะโหลดตูมเดียวตอนแรก
   const [isLoading, setIsLoading] = useState(true);
 
-  // ✅ เปลี่ยนจากเก็บ list ย่อย เป็นเก็บ "Master List" (ก้อนใหญ่)
+  // Data States
   const [allNewsList, setAllNewsList] = useState([]); 
-  
   const [eventList, setEventList] = useState([]);
   const [cafeList, setCafeList] = useState([]);
   
+  // Filter States
   const [homeNewsFilter, setHomeNewsFilter] = useState("ทั้งหมด");
   const [eventFilter, setEventFilter] = useState("ทั้งหมด");
-  const [eventSort, setEventSort] = useState("upcoming");
-  const [timeframeFilter, setTimeframeFilter] = useState("all");
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  
+  // ❌ ลบ State ที่ไม่จำเป็นออก (timeframe, sort, mobileFilter)
   const [filteredHomeEvents, setFilteredHomeEvents] = useState([]);
 
   // -----------------------------------------------------------------
-  // 🟢 Fetch Data (ดึงทีเดียวจบ ครบทุกอย่าง)
+  // 🟢 Fetch Data
   // -----------------------------------------------------------------
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
 
-      // 1. Get News (ดึงมาเผื่อเยอะๆ เลยครับ สัก 60 อัน เพื่อให้ครอบคลุมทุกหมวด)
-      // การดึง 60 rows แป๊บเดียวครับ ไม่ต่างกับ 10 rows มาก แต่ User Experience ดีกว่าเยอะ
+      // 1. Get News
       const { data: news } = await supabase
         .from("news")
         .select("*")
         .eq("status", "published")
-        .limit(60) // 👈 ดึงมาตุนไว้ 60 อัน
+        .limit(60)
         .order("date", { ascending: false });
       
       if (news) setAllNewsList(news);
@@ -53,14 +50,14 @@ export const HomePage = () => {
       d.setHours(d.getHours() - 4);
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,"0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-      // 2. Get Events
+      // 2. Get Events (ดึงมา 100-150 เพื่อให้ครอบคลุมหมวดหมู่ย่อย)
       const { data: events } = await supabase
         .from("events")
         .select("*")
         .eq("status", "published")
         .or(`end_date.gte.${today},and(end_date.is.null,date.gte.${today})`)
-        .order("date", { ascending: true })
-        .limit(100);
+        .order("date", { ascending: true }) // Default เรียงตามวันงาน
+        .limit(150); // 👈 เพิ่ม limit นิดนึงกันเหนียว
 
       if (events) {
         setEventList(events);
@@ -86,54 +83,33 @@ export const HomePage = () => {
   }, []);
 
   // -----------------------------------------------------------------
-  // 🟡 Logic การกรองข่าว (ทำในเครื่อง ไม่ต้องรอ Server)
+  // 🟡 Logic กรอง News
   // -----------------------------------------------------------------
-  // กรองจาก allNewsList ที่ตุนไว้ แล้วตัดมาแค่ 10 อัน
   const displayNews = allNewsList
     .filter(news => {
       if (homeNewsFilter === "ทั้งหมด") return true;
-      // กรองตามหมวดหมู่ (Check case-insensitive)
       return news.category?.toLowerCase().trim() === homeNewsFilter.toLowerCase().trim();
     })
-    .slice(0, 10); // 👈 ตัดมาโชว์แค่ 10 อัน
+    .slice(0, 10);
 
   // -----------------------------------------------------------------
-  // 🟠 Logic Events & Scroll (เหมือนเดิม)
+  // 🟠 Logic กรอง Events (เหลือแค่ Filter ตามหมวด)
   // -----------------------------------------------------------------
   useEffect(() => {
     let result = [...eventList];
-    if (eventFilter !== "ทั้งหมด")
-      result = result.filter((event) => event.category === eventFilter);
-    const now = new Date();
-    if (timeframeFilter !== "all") {
-      result = result.filter((e) => {
-        if (!e.date) return false;
-        const eventDate = new Date(e.date);
-        if (timeframeFilter === "this_month")
-          return (
-            eventDate.getMonth() === now.getMonth() &&
-            eventDate.getFullYear() === now.getFullYear()
-          );
-        else if (timeframeFilter === "next_month") {
-          let nextMonth = now.getMonth() + 1;
-          let nextYear = now.getFullYear();
-          if (nextMonth > 11) {
-            nextMonth = 0;
-            nextYear++;
-          }
-          return (
-            eventDate.getMonth() === nextMonth &&
-            eventDate.getFullYear() === nextYear
-          );
-        }
-        return true;
-      });
-    }
-    if (eventSort === "newest") result.sort((a, b) => b.id - a.id);
-    else result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-    setFilteredHomeEvents(result);
-  }, [eventFilter, eventSort, timeframeFilter, eventList]);
 
+    // 1. กรอง Category
+    if (eventFilter !== "ทั้งหมด") {
+      result = result.filter((event) => event.category === eventFilter);
+    }
+
+    // 2. เรียงตามวันที่เสมอ (Upcoming)
+    result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+    setFilteredHomeEvents(result);
+  }, [eventFilter, eventList]);
+
+  // Scroll to Anchor Logic
   useEffect(() => {
     if (!isLoading && location.hash) {
       const id = location.hash.replace("#", "");
@@ -188,104 +164,47 @@ export const HomePage = () => {
         {/* News Grid */}
         <div className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide">
           {isLoading ? (
-             // ตอนโหลดครั้งแรก
             [...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
-                >
+                <div key={i} className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start">
                   <SkeletonNews />
                 </div>
               ))
           ) : displayNews.length > 0 ? (
-                // แสดงผลจากข้อมูลที่กรองแล้ว (ไม่ต้องรอโหลด)
                 displayNews.map((news) => (
-                  <div
-                    key={news.id}
-                    className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start"
-                  >
+                  <div key={news.id} className="flex-shrink-0 w-[42vw] sm:w-[350px] md:w-[260px] lg:w-[22%] snap-start">
                     <NewsCard
                       item={news}
-                      onClick={() =>
-                        navigate(`/news/${news.id}`, {
-                          state: { fromHome: true },
-                        })
-                      }
+                      onClick={() => navigate(`/news/${news.id}`, { state: { fromHome: true } })}
                     />
                   </div>
                 ))
             ) : (
-                <div className="w-full text-center py-8 text-gray-400">
-                    ไม่พบข่าวในหมวดนี้
-                </div>
+                <div className="w-full text-center py-8 text-gray-400">ไม่พบข่าวในหมวดนี้</div>
             )}
         </div>
       </section>
 
       {/* -------------------- 2. EVENTS SECTION -------------------- */}
       <section id="events-section" className="scroll-mt-28">
+        
+        {/* ✅ Header: เรียบง่ายขึ้น ลบ Dropdown ออกหมด */}
         <div className="flex flex-col mb-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
-            <div className="flex items-center justify-between w-full md:w-auto">
-              <div className="border-l-4 border-[#FF6B00] pl-4">
+          <div className="flex items-center justify-between mb-4">
+             <div className="border-l-4 border-[#FF6B00] pl-4">
                 <h2 className="text-2xl font-bold text-gray-900 font-sans">
                   ตาราง Event
                 </h2>
               </div>
-              <div className="flex items-center gap-3 md:hidden">
-                <button
-                  onClick={() => setShowMobileFilters(!showMobileFilters)}
-                  className={`p-2 rounded-full transition ${
-                    showMobileFilters
-                      ? "bg-orange-100 text-[#FF6B00]"
-                      : "text-gray-500 hover:bg-gray-100"
-                  }`}
-                >
-                  <IconFilter size={20} />
-                </button>
-                <button
-                  onClick={() => navigate("/events")}
-                  className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1 font-sans"
-                >
-                  ดูทั้งหมด <IconChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-            <div className="hidden md:flex flex-1 items-center justify-end gap-3 ml-4">
-              <div className="flex gap-2 shrink-0">
-                <select
-                  className="pl-3 pr-8 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer font-sans"
-                  value={timeframeFilter}
-                  onChange={(e) => setTimeframeFilter(e.target.value)}
-                >
-                  <option value="all">ทุกช่วงเวลา</option>
-                  <option value="this_month">เดือนนี้</option>
-                  <option value="next_month">เดือนหน้า</option>
-                </select>
-                <div className="relative">
-                  <select
-                    className="w-full pl-8 pr-8 py-1.5 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] appearance-none cursor-pointer font-sans"
-                    value={eventSort}
-                    onChange={(e) => setEventSort(e.target.value)}
-                  >
-                    <option value="upcoming">ใกล้วันงาน</option>
-                    <option value="newest">ประกาศล่าสุด</option>
-                  </select>
-                  <div className="absolute left-2.5 top-2 text-gray-400 pointer-events-none">
-                    <IconSort size={14} />
-                  </div>
-                </div>
-              </div>
+              
               <button
                 onClick={() => navigate("/events")}
-                className="shrink-0 text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1 ml-2 font-sans"
+                className="text-sm text-gray-500 hover:text-[#FF6B00] flex items-center gap-1 font-sans"
               >
-                {" "}
                 ดูทั้งหมด <IconChevronRight size={16} />
               </button>
-            </div>
           </div>
           
+          {/* Tab Events: ยังคงไว้ เพื่อให้กดเลือกหมวดได้เร็วๆ */}
           <ScrollableRow className="py-2 px-2 gap-2">
             {[
               "ทั้งหมด", "Concert", "Fan Meeting", "Fansign", 
@@ -308,66 +227,29 @@ export const HomePage = () => {
               </button>
             ))}
           </ScrollableRow>
-
-          {showMobileFilters && (
-            <div className="md:hidden mt-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm animate-in slide-in-from-top-2 fade-in duration-200">
-              <div className="grid grid-cols-2 gap-3">
-                <select
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00]"
-                  value={timeframeFilter}
-                  onChange={(e) => setTimeframeFilter(e.target.value)}
-                >
-                  <option value="all">ทุกช่วงเวลา</option>
-                  <option value="this_month">เดือนนี้</option>
-                  <option value="next_month">เดือนหน้า</option>
-                </select>
-                <div className="relative">
-                  <select
-                    className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-[#FF6B00] appearance-none"
-                    value={eventSort}
-                    onChange={(e) => setEventSort(e.target.value)}
-                  >
-                    <option value="upcoming">ใกล้วันงาน</option>
-                    <option value="newest">ประกาศล่าสุด</option>
-                  </select>
-                  <div className="absolute left-2.5 top-2.5 text-gray-400 pointer-events-none">
-                    <IconSort size={14} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
+        {/* ✅ Events Grid: ตัดให้โชว์แค่ 12 อัน (.slice(0, 12)) */}
         <ScrollableRow className="gap-4 pb-4 -mx-4 px-4 scroll-pl-4">
           {isLoading ? (
             [...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full"
-              >
+              <div key={i} className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full">
                 <SkeletonEvent />
               </div>
             ))
           ) : filteredHomeEvents.length > 0 ? (
-            filteredHomeEvents.map((event) => (
-              <div
-                key={event.id}
-                className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full"
-              >
+            // 👇 ตัดข้อมูลเหลือแค่ 12 อันตรงนี้ครับ
+            filteredHomeEvents.slice(0, 12).map((event) => (
+              <div key={event.id} className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full">
                 <EventCard
                   item={event}
-                  onClick={() =>
-                    navigate(`/event/${event.id}`, {
-                      state: { fromHome: true },
-                    })
-                  }
-                  showNewBadge={eventSort === "newest"}
+                  onClick={() => navigate(`/event/${event.id}`, { state: { fromHome: true } })}
+                  // showNewBadge ลบออกก็ได้ เพราะเราเน้น Upcoming แล้ว
                 />
               </div>
             ))
           ) : (
-            <EmptyState title="ไม่พบกิจกรรม" subtitle="ลองปรับตัวกรองดูนะ" />
+            <EmptyState title="ไม่พบกิจกรรม" subtitle="ลองเลือกหมวดอื่นดูนะ" />
           )}
         </ScrollableRow>
       </section>
@@ -396,17 +278,10 @@ export const HomePage = () => {
                 </div>
               ))
             : cafeList.map((cafe, index) => (
-                <div
-                  key={cafe.id}
-                  className={index >= 6 ? "hidden lg:block" : ""}
-                >
+                <div key={cafe.id} className={index >= 6 ? "hidden lg:block" : ""}>
                   <CafeCard
                     item={cafe}
-                    onClick={() =>
-                      navigate(`/cafe/${cafe.id}`, {
-                        state: { fromHome: true },
-                      })
-                    }
+                    onClick={() => navigate(`/cafe/${cafe.id}`, { state: { fromHome: true } })}
                   />
                 </div>
               ))}
