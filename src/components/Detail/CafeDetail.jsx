@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../supabase";
 import {
@@ -14,21 +14,16 @@ import {
   IconLayout,
 } from "../icons/Icons";
 import { SafeImage, NotFound } from "../ui/UIComponents";
-
-// ✅ 1. Import ตัวแปลง HTML
 import parse, { domToReact } from "html-react-parser";
 
-// ✅ 2. สร้าง Skeleton Component (โครงกระดูกสำหรับโหลด)
 const CafeDetailSkeleton = () => (
   <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 animate-pulse">
-    {/* Header Buttons Placeholder */}
+    {/* ... Skeleton เดิม ... */}
     <div className="hidden md:flex justify-between items-center mb-6">
       <div className="h-10 w-32 bg-gray-200 rounded-full"></div>
       <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
     </div>
-
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 mt-8 md:mt-0">
-      {/* Left: Image Gallery Skeleton */}
       <div>
         <div className="rounded-2xl bg-gray-200 h-[300px] md:h-[400px] mb-3"></div>
         <div className="flex gap-2 overflow-hidden">
@@ -37,8 +32,6 @@ const CafeDetailSkeleton = () => (
           ))}
         </div>
       </div>
-
-      {/* Right: Info Skeleton */}
       <div className="flex flex-col">
         <div className="mb-6 space-y-3">
           <div className="h-10 w-3/4 bg-gray-200 rounded-lg"></div>
@@ -47,11 +40,7 @@ const CafeDetailSkeleton = () => (
              <div className="h-5 w-24 bg-gray-200 rounded"></div>
           </div>
         </div>
-
-        {/* Tabs Placeholder */}
         <div className="flex bg-gray-100 p-1 rounded-xl mb-6 h-12"></div>
-
-        {/* Info Box Placeholder */}
         <div className="space-y-6">
             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4 h-40"></div>
             <div className="hidden md:flex gap-3">
@@ -61,8 +50,6 @@ const CafeDetailSkeleton = () => (
         </div>
       </div>
     </div>
-
-    {/* Description Skeleton */}
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 border-t border-gray-100 pt-10">
         <div className="lg:col-span-7 space-y-4">
             <div className="h-8 w-1/2 bg-gray-200 rounded mb-6"></div>
@@ -87,9 +74,9 @@ export const CafeDetail = ({ onTriggerToast }) => {
   const [activeTab, setActiveTab] = useState("general");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
   const [showStickyTabs, setShowStickyTabs] = useState(false);
+
+  const scrollContainerRef = useRef(null);
 
   const goBack = () => {
     if (location.state?.fromHome) {
@@ -102,9 +89,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
   useEffect(() => {
     const fetchCafe = async () => {
       setLoading(true);
-      // หน่วงเวลาเทียม 0.5 วิ เพื่อให้เห็น Skeleton (ถ้าไม่ชอบลบ setTimeout ออกได้ครับ)
-      // await new Promise(resolve => setTimeout(resolve, 500)); 
-
       const { data, error } = await supabase
         .from("cafes")
         .select("*")
@@ -133,12 +117,11 @@ export const CafeDetail = ({ onTriggerToast }) => {
     fetchCafe();
   }, [id]);
 
-  // Helper สำหรับแปลงวันที่เป็นภาษาไทย (แบบย่อสวยๆ)
   const formatDate = (dateString) => {
     if (!dateString) return "";
     return new Date(dateString).toLocaleDateString("th-TH", {
-      year: "2-digit", // ใช้ปี 2 หลักพอ (68)
-      month: "short",  // เดือนย่อ (ธ.ค.)
+      year: "2-digit", 
+      month: "short",  
       day: "numeric",
     });
   };
@@ -146,29 +129,77 @@ export const CafeDetail = ({ onTriggerToast }) => {
   const allImages = cafe?.images || [];
   const currentImage = allImages[selectedImageIndex] || cafe?.image_url || "";
 
+  // Scroll Helper
+  const scrollToIndex = (index) => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const items = container.querySelectorAll('[data-snap-item]');
+      if (items[index]) {
+        items[index].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+    setSelectedImageIndex(index);
+  };
+
   const handleNext = (e) => {
     e?.stopPropagation();
     if (allImages.length <= 1) return;
-    setSelectedImageIndex((prev) => (prev + 1) % allImages.length);
+    const nextIndex = (selectedImageIndex + 1) % allImages.length;
+    scrollToIndex(nextIndex);
   };
+
   const handlePrev = (e) => {
     e?.stopPropagation();
     if (allImages.length <= 1) return;
-    setSelectedImageIndex((prev) =>
-      prev === 0 ? allImages.length - 1 : prev - 1
-    );
+    const prevIndex = selectedImageIndex === 0 ? allImages.length - 1 : selectedImageIndex - 1;
+    scrollToIndex(prevIndex);
   };
-  const onTouchStart = (e) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+
+  useEffect(() => {
+    if (isLightboxOpen && scrollContainerRef.current) {
+        setTimeout(() => {
+            const container = scrollContainerRef.current;
+            const items = container.querySelectorAll('[data-snap-item]');
+            if (items[selectedImageIndex]) {
+                items[selectedImageIndex].scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+            }
+        }, 10);
+    }
+  }, [isLightboxOpen]);
+
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const container = scrollContainerRef.current;
+    const containerCenter = container.scrollLeft + (container.clientWidth / 2);
+    
+    const items = container.querySelectorAll('[data-snap-item]');
+    let closestIndex = selectedImageIndex;
+    let minDistance = Infinity;
+
+    items.forEach((item, index) => {
+        const itemCenter = item.offsetLeft + (item.clientWidth / 2);
+        const distance = Math.abs(containerCenter - itemCenter);
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestIndex = index;
+        }
+    });
+
+    if (closestIndex !== selectedImageIndex) {
+        setSelectedImageIndex(closestIndex);
+    }
   };
-  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    if (distance > 50) handleNext();
-    if (distance < -50) handlePrev();
-  };
+
+  useEffect(() => {
+    if (isLightboxOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isLightboxOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -180,6 +211,7 @@ export const CafeDetail = ({ onTriggerToast }) => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isLightboxOpen, allImages.length]);
+
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 300) setShowStickyTabs(true);
@@ -197,7 +229,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
   };
   const facilities = getFacilities();
 
-  // ✅ 3. ฟังก์ชัน renderRichText
   const renderRichText = (htmlContent) => {
     return parse(htmlContent || "", {
       replace: (domNode) => {
@@ -209,26 +240,21 @@ export const CafeDetail = ({ onTriggerToast }) => {
           );
         }
         if (domNode.name === "a" && domNode.attribs && domNode.attribs.href) {
-          const href = domNode.attribs.href;
-          if (href.includes("youtube.com/embed") || href.includes("youtu.be") || href.includes("youtube.com/watch")) {
-            let videoId = "";
-            if (href.includes("/embed/")) videoId = href.split("/embed/")[1]?.split("?")[0];
-            else if (href.includes("v=")) videoId = href.split("v=")[1]?.split("&")[0];
-            else if (href.includes("youtu.be/")) videoId = href.split("youtu.be/")[1]?.split("?")[0];
-
-            if (videoId) {
-              return (
-                <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
-                  <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen frameBorder="0"></iframe>
-                </div>
-              );
-            }
-          }
-          return (
-            <a {...domNode.attribs} target="_blank" rel="noopener noreferrer" className="text-[#FF6B00] hover:underline break-words font-bold">
-              {domToReact(domNode.children)}
-            </a>
-          );
+             const href = domNode.attribs.href;
+             if (href.includes("youtube.com/embed") || href.includes("youtu.be") || href.includes("youtube.com/watch")) {
+                let videoId = "";
+                if (href.includes("/embed/")) videoId = href.split("/embed/")[1]?.split("?")[0];
+                else if (href.includes("v=")) videoId = href.split("v=")[1]?.split("&")[0];
+                else if (href.includes("youtu.be/")) videoId = href.split("youtu.be/")[1]?.split("?")[0];
+                if (videoId) {
+                    return (
+                        <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
+                            <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full h-full" allowFullScreen frameBorder="0"></iframe>
+                        </div>
+                    );
+                }
+             }
+            return <a {...domNode.attribs} target="_blank" rel="noopener noreferrer" className="text-[#FF6B00] hover:underline break-words font-bold">{domToReact(domNode.children)}</a>;
         }
         if (domNode.name === "p" && domNode.children && domNode.children.length === 1 && domNode.children[0].type === "text") {
             const text = domNode.children[0].data.trim();
@@ -236,7 +262,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
                 let videoId = "";
                 if (text.includes("v=")) videoId = text.split("v=")[1]?.split("&")[0];
                 else if (text.includes("youtu.be/")) videoId = text.split("youtu.be/")[1]?.split("?")[0];
-
                 if (videoId) {
                     return (
                         <div className="w-full aspect-video my-8 rounded-xl overflow-hidden shadow-lg bg-black">
@@ -250,7 +275,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
     });
   };
 
-  // ✅ 4. ใช้ Skeleton Component แทน Loading Text
   if (loading) return <CafeDetailSkeleton />;
 
   if (!cafe)
@@ -285,50 +309,15 @@ export const CafeDetail = ({ onTriggerToast }) => {
 
   return (
     <>
-      <div
-        className={`fixed top-16 md:top-20 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-gray-100 z-40 shadow-sm transition-transform duration-300 ${
-          showStickyTabs ? "translate-y-0" : "-translate-y-[200%]"
-        }`}
-      >
+      <div className={`fixed top-16 md:top-20 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-gray-100 z-40 shadow-sm transition-transform duration-300 ${showStickyTabs ? "translate-y-0" : "-translate-y-[200%]"}`}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <button
-              onClick={goBack}
-              className="md:hidden flex-shrink-0 text-gray-500 hover:text-[#FF6B00]"
-            >
-              <IconChevronLeft size={24} />
-            </button>
-            <h3 className="font-bold text-gray-900 truncate leading-tight flex-1">
-              {cafe.name}
-            </h3>
+            <button onClick={goBack} className="md:hidden flex-shrink-0 text-gray-500 hover:text-[#FF6B00]"><IconChevronLeft size={24} /></button>
+            <h3 className="font-bold text-gray-900 truncate leading-tight flex-1">{cafe.name}</h3>
           </div>
           <div className="flex bg-gray-100 p-1 rounded-lg flex-shrink-0">
-            <button
-              onClick={() => {
-                setActiveTab("general");
-                window.scrollTo({ top: 400, behavior: "smooth" });
-              }}
-              className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all ${
-                activeTab === "general"
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              ลูกค้า
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab("venue");
-                window.scrollTo({ top: 400, behavior: "smooth" });
-              }}
-              className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-1 ${
-                activeTab === "venue"
-                  ? "bg-blue-950 text-white shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              <IconBriefcase size={14} /> ผู้จัด
-            </button>
+            <button onClick={() => { setActiveTab("general"); window.scrollTo({ top: 400, behavior: "smooth" }); }} className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === "general" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>ลูกค้า</button>
+            <button onClick={() => { setActiveTab("venue"); window.scrollTo({ top: 400, behavior: "smooth" }); }} className={`px-3 py-1.5 rounded-md text-sm font-bold transition-all flex items-center gap-1 ${activeTab === "venue" ? "bg-blue-950 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}><IconBriefcase size={14} /> ผู้จัด</button>
           </div>
         </div>
       </div>
@@ -338,39 +327,35 @@ export const CafeDetail = ({ onTriggerToast }) => {
           className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center backdrop-blur-sm"
           onClick={() => setIsLightboxOpen(false)}
         >
-          <button
-            onClick={() => setIsLightboxOpen(false)}
-            className="absolute top-4 right-4 text-white hover:text-[#FF6B00] transition z-50 p-2"
-          >
-            <IconX size={32} />
-          </button>
-          <button
-            onClick={handlePrev}
-            className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full items-center justify-center text-white transition z-50"
-          >
-            <IconChevronLeft size={32} />
-          </button>
-          <div
-            className="relative w-full max-w-5xl h-full flex items-center justify-center px-2 md:px-16"
+          <button onClick={() => setIsLightboxOpen(false)} className="absolute top-4 right-4 z-50 w-11 h-11 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 transition-all active:scale-90"><IconX size={32} /></button>
+          <button onClick={handlePrev} className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full items-center justify-center text-white transition z-50"><IconChevronLeft size={32} /></button>
+          <button onClick={handleNext} className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full items-center justify-center text-white transition z-50"><div className="rotate-180"><IconChevronLeft size={32} /></div></button>
+          
+          {/* ✅ แก้ไข: ปรับ Width และ Padding ให้เห็นขอบในทุกจอ (Mobile, Tablet, Desktop) */}
+          <div 
+            ref={scrollContainerRef}
+            className="w-full h-full flex items-center gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-[7.5vw] md:px-[12.5vw] lg:px-[20vw]"
             onClick={(e) => e.stopPropagation()}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
+            onScroll={handleScroll}
           >
-            <SafeImage
-              src={currentImage}
-              alt="Full View"
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl select-none"
-            />
+            {allImages.map((img, idx) => (
+                <div 
+                    key={idx} 
+                    data-snap-item 
+                    // ✅ แก้ไข: ปรับขนาดรูปให้สัมพันธ์กับ Padding เพื่อให้เห็นขอบเพื่อนบ้าน
+                    className="snap-center flex-shrink-0 w-[85vw] md:w-[75vw] lg:w-[60vw] h-[75vh] md:h-[85vh] flex items-center justify-center relative transition-transform duration-300"
+                >
+                    <SafeImage
+                        src={img}
+                        alt={`View ${idx}`}
+                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl select-none"
+                        draggable="false"
+                        onContextMenu={(e) => e.preventDefault()}
+                    />
+                </div>
+            ))}
           </div>
-          <button
-            onClick={handleNext}
-            className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full items-center justify-center text-white transition z-50"
-          >
-            <div className="rotate-180">
-              <IconChevronLeft size={32} />
-            </div>
-          </button>
+          
           {allImages.length > 1 && (
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/90 bg-white/10 border border-white/20 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-medium">
               {selectedImageIndex + 1} / {allImages.length}
@@ -379,80 +364,32 @@ export const CafeDetail = ({ onTriggerToast }) => {
         </div>
       )}
 
-      <div
-        className={`md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none transition-all duration-300 ${
-          showStickyTabs
-            ? "opacity-0 pointer-events-none -translate-y-20"
-            : "opacity-100 translate-y-0"
-        }`}
-      >
-        <button
-          onClick={goBack}
-          className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"
-        >
-          <IconChevronLeft size={24} />
-        </button>
-        <button
-          onClick={handleShare}
-          className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"
-        >
-          <IconShare size={20} />
-        </button>
+      {/* UI อื่นๆ คงเดิม */}
+      <div className={`md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none transition-all duration-300 ${showStickyTabs ? "opacity-0 pointer-events-none -translate-y-20" : "opacity-100 translate-y-0"}`}>
+        <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
+        <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconShare size={20} /></button>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 relative animate-fade-in">
         <div className="hidden md:flex justify-between items-center mb-6">
-          <button
-            onClick={goBack}
-            className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition"
-          >
-            <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition">
-              <IconChevronLeft size={24} />
-            </div>
-            <span className="font-bold text-gray-900 group-hover:text-[#FF6B00]">
-              ย้อนกลับ
-            </span>
+          <button onClick={goBack} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
+            <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition"><IconChevronLeft size={24} /></div>
+            <span className="font-bold text-gray-900 group-hover:text-[#FF6B00]">ย้อนกลับ</span>
           </button>
-          <button
-            onClick={handleShare}
-            className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#FF6B00] transition shadow-sm"
-          >
-            <IconShare size={20} />
-          </button>
+          <button onClick={handleShare} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#FF6B00] transition shadow-sm"><IconShare size={20} /></button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10 mt-8 md:mt-0">
           <div>
-            <div
-              className="rounded-2xl overflow-hidden shadow-md mb-3 h-[300px] md:h-[400px] bg-gray-100 relative group cursor-pointer"
-              onClick={() => setIsLightboxOpen(true)}
-            >
-              <SafeImage
-                src={currentImage}
-                alt={cafe.name}
-                className="w-full h-full object-cover transition-opacity duration-300"
-              />
-              <div className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/70 transition flex items-center justify-center">
-                <IconZoomIn size={16} color="white" />
-              </div>
+            <div className="rounded-2xl overflow-hidden shadow-md mb-3 h-[300px] md:h-[400px] bg-gray-100 relative group cursor-pointer" onClick={() => setIsLightboxOpen(true)}>
+              <SafeImage src={currentImage} alt={cafe.name} className="w-full h-full object-cover transition-opacity duration-300" />
+              <div className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full backdrop-blur-md hover:bg-black/70 transition flex items-center justify-center"><IconZoomIn size={16} color="white" /></div>
             </div>
             {allImages.length > 1 && (
               <div className="flex overflow-x-auto gap-2 pb-2 md:grid md:grid-cols-6 md:gap-2 md:pb-0 scrollbar-hide snap-x">
                 {allImages.map((img, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setSelectedImageIndex(idx)}
-                    className={`flex-shrink-0 snap-start w-24 aspect-square md:w-auto rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
-                      selectedImageIndex === idx
-                        ? "border-[#FF6B00] scale-95 ring-2 ring-[#FF6B00]/30"
-                        : "border-transparent hover:border-gray-300"
-                    }`}
-                  >
-                    <SafeImage
-                      src={img}
-                      alt={`gallery-${idx}`}
-                      className="w-full h-full object-cover"
-                    />
+                  <div key={idx} onClick={() => setSelectedImageIndex(idx)} className={`flex-shrink-0 snap-start w-24 aspect-square md:w-auto rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${selectedImageIndex === idx ? "border-[#FF6B00] scale-95 ring-2 ring-[#FF6B00]/30" : "border-transparent hover:border-gray-300"}`}>
+                    <SafeImage src={img} alt={`gallery-${idx}`} className="w-full h-full object-cover" />
                   </div>
                 ))}
               </div>
@@ -461,89 +398,28 @@ export const CafeDetail = ({ onTriggerToast }) => {
 
           <div className="flex flex-col">
             <div className="mb-6">
-              {/* ✅ ส่วนหัวข้อร้าน + วันที่ (ย้ายมาไว้ข้างล่างแล้ว) */}
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-                {cafe.name}
-              </h1>
-              
-              {/* ✅ Layout: พิกัด + วันที่ (Option A) */}
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">{cafe.name}</h1>
               <div className="flex flex-wrap items-center gap-3 text-gray-500 text-sm">
-                 <div className="flex items-center">
-                    <IconMapPin size={16} className="mr-1" />{" "}
-                    {cafe.location_text || "ไม่ระบุสถานที่"}
-                 </div>
-                 
-                 {/* เส้นคั่นเล็กๆ (แสดงเฉพาะจอใหญ่) */}
+                 <div className="flex items-center"><IconMapPin size={16} className="mr-1" /> {cafe.location_text || "ไม่ระบุสถานที่"}</div>
                  <div className="hidden md:block w-1 h-1 rounded-full bg-gray-300"></div>
-
-                 {/* วันที่ */}
-                 <div className="flex items-center text-gray-400 text-xs">
-                    <IconClock size={12} className="mr-1" />
-                    อัปเดต {formatDate(cafe.updated_at || cafe.created_at)}
-                 </div>
+                 <div className="flex items-center text-gray-400 text-xs"><IconClock size={12} className="mr-1" /> อัปเดต {formatDate(cafe.updated_at || cafe.created_at)}</div>
               </div>
             </div>
 
             <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
-              <button
-                onClick={() => setActiveTab("general")}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${
-                  activeTab === "general"
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                สำหรับลูกค้า
-              </button>
-              <button
-                onClick={() => setActiveTab("venue")}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                  activeTab === "venue"
-                    ? "bg-blue-950 text-white shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <IconBriefcase size={16} /> สำหรับผู้จัด
-              </button>
+              <button onClick={() => setActiveTab("general")} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${activeTab === "general" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>สำหรับลูกค้า</button>
+              <button onClick={() => setActiveTab("venue")} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === "venue" ? "bg-blue-950 text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}><IconBriefcase size={16} /> สำหรับผู้จัด</button>
             </div>
 
             {activeTab === "general" && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4">
-                  <div className="flex gap-4 items-start">
-                    <IconClock className="text-gray-400 mt-1" />
-                    <div>
-                      <p className="font-bold text-sm">เวลาทำการ</p>
-                      <p className="text-sm whitespace-pre-line text-gray-600">
-                        {cafe.open_time || "โปรดสอบถามข้อมูลจากทางร้าน"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 items-start">
-                    <div className="w-5 h-5 flex items-center justify-center text-gray-400 font-bold">
-                      🏷️
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm">ราคาเฉลี่ย</p>
-                      <p className="text-sm text-[#FF6B00] font-bold">
-                        {cafe.price_range || "~100 - 250 บาท"}
-                      </p>
-                    </div>
-                  </div>
+                  <div className="flex gap-4 items-start"><IconClock className="text-gray-400 mt-1" /><div><p className="font-bold text-sm">เวลาทำการ</p><p className="text-sm whitespace-pre-line text-gray-600">{cafe.open_time || "โปรดสอบถามข้อมูลจากทางร้าน"}</p></div></div>
+                  <div className="flex gap-4 items-start"><div className="w-5 h-5 flex items-center justify-center text-gray-400 font-bold">🏷️</div><div><p className="font-bold text-sm">ราคาเฉลี่ย</p><p className="text-sm text-[#FF6B00] font-bold">{cafe.price_range || "~100 - 250 บาท"}</p></div></div>
                 </div>
                 <div className="hidden md:flex gap-3">
-                  <button
-                    onClick={handleMap}
-                    className="flex-1 bg-[#FF6B00] hover:bg-[#E65000] text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"
-                  >
-                    <IconMapPin size={18} /> ดูแผนที่
-                  </button>
-                  <button
-                    onClick={handleCall}
-                    className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"
-                  >
-                    <IconPhone size={18} /> โทร
-                  </button>
+                  <button onClick={handleMap} className="flex-1 bg-[#FF6B00] hover:bg-[#E65000] text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"><IconMapPin size={18} /> ดูแผนที่</button>
+                  <button onClick={handleCall} className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"><IconPhone size={18} /> โทร</button>
                 </div>
               </div>
             )}
@@ -551,65 +427,19 @@ export const CafeDetail = ({ onTriggerToast }) => {
             {activeTab === "venue" && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 space-y-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-2 h-6 bg-blue-950 rounded-full"></span>
-                    <h3 className="font-bold text-lg text-gray-900">
-                      ข้อมูลสถานที่จัดงาน
-                    </h3>
-                  </div>
+                  <div className="flex items-center gap-2 mb-2"><span className="w-2 h-6 bg-blue-950 rounded-full"></span><h3 className="font-bold text-lg text-gray-900">ข้อมูลสถานที่จัดงาน</h3></div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white p-3 rounded-xl border border-blue-100">
-                      <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                        <IconUsers size={12} /> ความจุ
-                      </div>
-                      <div className="font-bold text-gray-900">
-                        {cafe.capacity || "สอบถามร้าน"}
-                      </div>
-                    </div>
-                    <div className="bg-white p-3 rounded-xl border border-blue-100">
-                      <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                        <IconLayout size={12} /> พื้นที่
-                      </div>
-                      <div className="font-bold text-gray-900">
-                        {cafe.area_type || "Indoor / Outdoor"}
-                      </div>
-                    </div>
+                    <div className="bg-white p-3 rounded-xl border border-blue-100"><div className="text-xs text-gray-500 mb-1 flex items-center gap-1"><IconUsers size={12} /> ความจุ</div><div className="font-bold text-gray-900">{cafe.capacity || "สอบถามร้าน"}</div></div>
+                    <div className="bg-white p-3 rounded-xl border border-blue-100"><div className="text-xs text-gray-500 mb-1 flex items-center gap-1"><IconLayout size={12} /> พื้นที่</div><div className="font-bold text-gray-900">{cafe.area_type || "Indoor / Outdoor"}</div></div>
                   </div>
                   <div>
-                    <p className="font-bold text-sm mb-2 text-gray-700">
-                      สิ่งอำนวยความสะดวก
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {facilities.length > 0 ? (
-                        facilities.map((fac, i) => (
-                          <span
-                            key={i}
-                            className="text-xs bg-white border border-blue-100 px-3 py-1.5 rounded-full text-gray-600"
-                          >
-                            {fac.trim()}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-xs text-gray-400">
-                          - ไม่มีข้อมูล -
-                        </span>
-                      )}
-                    </div>
+                    <p className="font-bold text-sm mb-2 text-gray-700">สิ่งอำนวยความสะดวก</p>
+                    <div className="flex flex-wrap gap-2">{facilities.length > 0 ? (facilities.map((fac, i) => (<span key={i} className="text-xs bg-white border border-blue-100 px-3 py-1.5 rounded-full text-gray-600">{fac.trim()}</span>))) : (<span className="text-xs text-gray-400">- ไม่มีข้อมูล -</span>)}</div>
                   </div>
                 </div>
                 <div className="hidden md:flex gap-3">
-                  <button
-                    onClick={handleMap}
-                    className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"
-                  >
-                    <IconMapPin size={18} /> ดูแผนที่
-                  </button>
-                  <button
-                    onClick={handleBooking}
-                    className="flex-1 bg-[#1E293B] hover:bg-black text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"
-                  >
-                    <IconBriefcase size={18} /> สนใจจัดงานที่นี่
-                  </button>
+                  <button onClick={handleMap} className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 rounded-xl font-medium transition flex justify-center items-center gap-2 active:scale-95"><IconMapPin size={18} /> ดูแผนที่</button>
+                  <button onClick={handleBooking} className="flex-1 bg-[#1E293B] hover:bg-black text-white py-3 rounded-xl font-bold transition flex justify-center items-center gap-2 shadow-md active:scale-95"><IconBriefcase size={18} /> สนใจจัดงานที่นี่</button>
                 </div>
               </div>
             )}
@@ -618,64 +448,27 @@ export const CafeDetail = ({ onTriggerToast }) => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 border-t border-gray-100 pt-10">
           <div className="lg:col-span-7">
-            <h2
-              className={`text-2xl font-bold mb-6 flex items-center gap-2 ${
-                activeTab === "venue" ? "text-[#1E293B]" : "text-gray-900"
-              }`}
-            >
-              {activeTab === "general"
-                ? "📝 รายละเอียดและบรรยากาศร้าน"
-                : "🏢 รายละเอียดพื้นที่และกฎระเบียบ"}
+            <h2 className={`text-2xl font-bold mb-6 flex items-center gap-2 ${activeTab === "venue" ? "text-[#1E293B]" : "text-gray-900"}`}>
+              {activeTab === "general" ? "📝 รายละเอียดและบรรยากาศร้าน" : "🏢 รายละเอียดพื้นที่และกฎระเบียบ"}
             </h2>
-            {/* ✅ 3. ใช้ renderRichText ในจุดนี้ โดยคง Class เดิมไว้ครบถ้วน */}
             <div className="prose prose-lg text-gray-600 leading-relaxed whitespace-pre-line mb-8">
-              {activeTab === "venue"
-                ? (cafe.organizer_description || cafe.description ? renderRichText(cafe.organizer_description || cafe.description) : "ยังไม่มีรายละเอียดเพิ่มเติม")
-                : (cafe.description ? renderRichText(cafe.description) : "ยังไม่มีรายละเอียดเพิ่มเติม")}
+              {activeTab === "venue" ? (cafe.organizer_description || cafe.description ? renderRichText(cafe.organizer_description || cafe.description) : "ยังไม่มีรายละเอียดเพิ่มเติม") : (cafe.description ? renderRichText(cafe.description) : "ยังไม่มีรายละเอียดเพิ่มเติม")}
             </div>
           </div>
         </div>
 
         <div className="mt-16 pt-10 border-t border-gray-200">
-          <h3 className="text-xl font-bold mb-6 text-gray-900">
-            คาเฟ่แนะนำอื่นๆ
-          </h3>
+          <h3 className="text-xl font-bold mb-6 text-gray-900">คาเฟ่แนะนำอื่นๆ</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {otherCafes.map((c) => {
               let cImg = c.image_url;
-              if (Array.isArray(c.images) && c.images.length > 0) {
-                cImg = c.images[0];
-              } else if (
-                typeof c.images === "string" &&
-                c.images.startsWith("{")
-              ) {
-                const parsed = c.images
-                  .replace(/^{|}$/g, "")
-                  .split(",")
-                  .map((s) => s.replace(/"/g, ""));
-                if (parsed.length > 0 && parsed[0] !== "") cImg = parsed[0];
-              }
+              if (Array.isArray(c.images) && c.images.length > 0) { cImg = c.images[0]; } else if (typeof c.images === "string" && c.images.startsWith("{")) { const parsed = c.images.replace(/^{|}$/g, "").split(",").map((s) => s.replace(/"/g, "")); if (parsed.length > 0 && parsed[0] !== "") cImg = parsed[0]; }
               return (
-                <div
-                  key={c.id}
-                  onClick={() => navigate(`/cafe/${c.id}`)}
-                  className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition cursor-pointer group"
-                >
-                  <div className="h-32 md:h-40 overflow-hidden bg-gray-100">
-                    <SafeImage
-                      src={cImg}
-                      alt={c.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                    />
-                  </div>
+                <div key={c.id} onClick={() => navigate(`/cafe/${c.id}`)} className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition cursor-pointer group">
+                  <div className="h-32 md:h-40 overflow-hidden bg-gray-100"><SafeImage src={cImg} alt={c.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" /></div>
                   <div className="p-3">
-                    <h4 className="font-bold text-sm text-gray-900 line-clamp-1 group-hover:text-[#FF6B00] transition">
-                      {c.name}
-                    </h4>
-                    <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-400">
-                      <IconMapPin size={10} />{" "}
-                      {(c.location_text || "").split(",")[0]}
-                    </div>
+                    <h4 className="font-bold text-sm text-gray-900 line-clamp-1 group-hover:text-[#FF6B00] transition">{c.name}</h4>
+                    <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-400"><IconMapPin size={10} /> {(c.location_text || "").split(",")[0]}</div>
                   </div>
                 </div>
               );
@@ -687,33 +480,13 @@ export const CafeDetail = ({ onTriggerToast }) => {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 md:hidden z-50 flex items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] safe-area-bottom">
         {activeTab === "general" ? (
           <>
-            <button
-              onClick={handleMap}
-              className="flex-1 bg-[#FF6B00] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition"
-            >
-              <IconMapPin size={20} /> ดูแผนที่
-            </button>
-            <button
-              onClick={handleCall}
-              className="flex-1 border border-gray-200 text-gray-700 bg-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition"
-            >
-              <IconPhone size={20} /> โทร
-            </button>
+            <button onClick={handleMap} className="flex-1 bg-[#FF6B00] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition"><IconMapPin size={20} /> ดูแผนที่</button>
+            <button onClick={handleCall} className="flex-1 border border-gray-200 text-gray-700 bg-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition"><IconPhone size={20} /> โทร</button>
           </>
         ) : (
           <>
-            <button
-              onClick={handleMap}
-              className="flex-1 border border-gray-200 text-gray-700 bg-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition"
-            >
-              <IconMapPin size={20} /> ดูแผนที่
-            </button>
-            <button
-              onClick={handleBooking}
-              className="flex-[2] bg-[#1E293B] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition"
-            >
-              <IconBriefcase size={20} /> สนใจจัดงาน
-            </button>
+            <button onClick={handleMap} className="flex-1 border border-gray-200 text-gray-700 bg-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition"><IconMapPin size={20} /> ดูแผนที่</button>
+            <button onClick={handleBooking} className="flex-[2] bg-[#1E293B] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg active:scale-95 transition"><IconBriefcase size={20} /> สนใจจัดงาน</button>
           </>
         )}
       </div>
