@@ -11,7 +11,6 @@ const isValidCoordinate = (lat, lng) => {
     return validLat && validLng;
 };
 
-// ✅ ต้องมีบรรทัดนี้ครับ! export const EventsPage
 export const EventsPage = () => {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
@@ -34,16 +33,22 @@ export const EventsPage = () => {
 
   const mapRef = useRef();
 
-  // Fetch Data
+  // ✅ Fetch Data: แก้ Logic ดึงข้อมูลให้รองรับงานที่เริ่มไปแล้วแต่ยังไม่จบ
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
     const fetchEvents = async () => {
       setLoading(true);
+
+      // สร้างวันที่ปัจจุบัน (YYYY-MM-DD)
+      const d = new Date();
+      // ปรับเวลาเล็กน้อยเผื่อเรื่อง Timezone หรือกรณีเลยเที่ยงคืนมานิดหน่อย (optional)
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
       const { data } = await supabase
         .from("events")
         .select("*")
         .eq("status", "published")
-        .gte("date", today)
+        // 👇 แก้ตรงนี้: เช็คว่า (จบหลังวันนี้) หรือ (ไม่มีวันจบ แต่เริ่มหลังวันนี้)
+        .or(`end_date.gte.${today},and(end_date.is.null,date.gte.${today})`)
         .order("date", { ascending: true });
 
       if (data) setEvents(data);
@@ -61,21 +66,43 @@ export const EventsPage = () => {
       result = result.filter((event) => event.category === categoryFilter);
     }
     
-    // 2. Filter Time
+    // 2. Filter Time (ปรับปรุงให้รองรับ Multi-day Event)
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    // set เวลาเป็น 00:00:00 เพื่อเทียบแค่วันที่
+    now.setHours(0,0,0,0); 
+
     if (timeframeFilter !== "all") {
       result = result.filter((e) => {
         if (!e.date) return false;
-        if (timeframeFilter === "today") return e.date === todayStr;
-        const eventDate = new Date(e.date);
-        if (timeframeFilter === "this_month")
-          return (eventDate.getMonth() === now.getMonth() && eventDate.getFullYear() === now.getFullYear());
+        
+        const startDate = new Date(e.date);
+        startDate.setHours(0,0,0,0);
+
+        // ถ้ามี end_date ให้ใช้, ถ้าไม่มีให้ถือว่าเป็นวันเดียวกับ start_date
+        const endDate = e.end_date ? new Date(e.end_date) : new Date(startDate);
+        endDate.setHours(0,0,0,0);
+
+        // กรอง "วันนี้" : งานต้องครอบคลุมวันนี้ (เริ่ม <= วันนี้ <= จบ)
+        if (timeframeFilter === "today") {
+            return startDate <= now && endDate >= now;
+        }
+
+        // กรอง "เดือนนี้" : งานต้องมีส่วนใดส่วนหนึ่งอยู่ในเดือนนี้
+        if (timeframeFilter === "this_month") {
+             const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+             const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+             return startDate <= endOfMonth && endDate >= startOfMonth;
+        }
+        
+        // กรอง "เดือนหน้า"
         else if (timeframeFilter === "next_month") {
           let nextMonth = now.getMonth() + 1;
           let nextYear = now.getFullYear();
           if (nextMonth > 11) { nextMonth = 0; nextYear++; }
-          return (eventDate.getMonth() === nextMonth && eventDate.getFullYear() === nextYear);
+          
+          const startOfNextMonth = new Date(nextYear, nextMonth, 1);
+          const endOfNextMonth = new Date(nextYear, nextMonth + 1, 0);
+          return startDate <= endOfNextMonth && endDate >= startOfNextMonth;
         }
         return true;
       });
