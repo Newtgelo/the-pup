@@ -1,31 +1,31 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { SafeImage } from "./UIComponents";
 import { IconClock, IconCalendar, IconMapPin } from "../icons/Icons";
 
 // ==========================================
 // 1. การ์ดข่าว (News Card)
+// ✅ คง Hover Effect ไว้
 // ==========================================
-export const NewsCard = ({ item, onClick, className = "" }) => {
+export const NewsCard = ({ item, className = "" }) => {
   
-  // ✅ เพิ่มฟังก์ชันแปลงวันที่เป็น วัน-เดือน-ปี (DD-MM-YYYY)
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    // ถ้าค่ามาเป็น YYYY-MM-DD (เช่น 2026-01-14)
-    // ให้แยกส่วนแล้วสลับตำแหน่งเลยครับ ง่ายและชัวร์สุด
     const parts = dateString.split("-");
     if (parts.length === 3) {
       const [year, month, day] = parts;
-      return `${day}-${month}-${year}`; // ผลลัพธ์: 14-01-2026
+      return `${day}-${month}-${year}`;
     }
-    return dateString; // กันเหนียว ถ้า format มาแปลกๆ ให้โชว์เหมือนเดิม
+    return dateString;
   };
 
   return (
-    <div
-      onClick={onClick}
-      className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md cursor-pointer flex flex-col group/news ${className}`}
+    <Link
+      to={`/news/${item.id}`}
+      state={{ fromHome: true }}
+      className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md cursor-pointer flex flex-col group/news h-full ${className}`}
     >
-      {/* Image Section */} {/* ✅ แก้ตรงนี้: เปลี่ยน aspect-[4/3] เป็น aspect-square */}
+      {/* Image Section */}
       <div className="aspect-square md:aspect-square bg-gray-100 relative overflow-hidden">
         <SafeImage
           src={item.image_url || item.image}
@@ -41,31 +41,26 @@ export const NewsCard = ({ item, onClick, className = "" }) => {
         </div>
       </div>
 
-     {/* ✅ แก้จุดที่ 1: ลด Padding มือถือ (p-3) จอใหญ่เท่าเดิม (md:p-4) */}
       <div className="p-3 md:p-4 flex flex-col flex-1">
-        
-        {/* ✅ แก้จุดที่ 2: ลดขนาดฟอนต์มือถือ (text-sm) จอใหญ่เท่าเดิม (md:text-lg) */}
         <h3 className="text-gray-900 font-bold text-sm md:text-lg leading-tight line-clamp-2 mb-2 group-hover/news:text-[#FF6B00] transition">
           {item.title}
         </h3>
 
         <div className="mt-auto flex items-center gap-1 text-xs text-gray-400">
           <IconClock size={12} />
-          {/* ✅ เรียกใช้ฟังก์ชันตรงนี้ครับ */}
           <span>{formatDate(item.date)}</span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
 // ==========================================
 // 2. การ์ดอีเวนต์ (Event Card)
+// ❌ ลบ Hover Effect (นิ่งๆ) + Full Cover
 // ==========================================
-
 export const EventCard = ({
   item,
-  onClick,
   showNewBadge = false,
   className = "",
 }) => {
@@ -80,21 +75,17 @@ export const EventCard = ({
   };
 
   return (
-    <div
-      onClick={onClick}
-      className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition flex flex-col h-full cursor-pointer group/event ${className}`}
+    <Link
+      to={`/event/${item.id}`}
+      state={{ fromHome: true }}
+      className={`bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col h-full cursor-pointer ${className}`}
     >
       {/* Image Container */}
-      <div className="relative aspect-[3/4] bg-gray-900 overflow-hidden">
-        <div
-          className="absolute inset-0 bg-center bg-cover blur-xl opacity-50 scale-110 transition-transform duration-500 group-hover/event:scale-125"
-          style={{ backgroundImage: `url(${item.image_url || item.image})` }}
-        ></div>
-
+      <div className="relative aspect-[3/4] bg-gray-200 overflow-hidden">
         <SafeImage
           src={item.image_url || item.image || item.cover}
           alt={item.title}
-          className="absolute inset-0 w-full h-full object-contain z-10 p-2 transition-transform duration-500 group-hover/event:scale-110"
+          className="w-full h-full object-cover object-top"
         />
 
         {showNewBadge && (
@@ -106,7 +97,7 @@ export const EventCard = ({
 
       {/* Content Section */}
       <div className="p-3 md:p-4 flex-1 flex flex-col">
-        <h3 className="font-bold text-sm md:text-base text-gray-900 mb-1 leading-tight group-hover/event:text-[#FF6B00] transition line-clamp-2">
+        <h3 className="font-bold text-sm md:text-base text-gray-900 mb-1 leading-tight line-clamp-2">
           {item.title}
         </h3>
 
@@ -138,16 +129,15 @@ export const EventCard = ({
           </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
 // ==========================================
 // 3. การ์ดคาเฟ่ (Cafe Card)
-// ✅ เพิ่มฟังก์ชันล้าง HTML Tags และตัดข้อความ
+// ✅ คง Hover Effect ไว้
 // ==========================================
-export const CafeCard = ({ item, onClick, className = "" }) => {
-  // ฟังก์ชันล้าง HTML Tag ออกให้เหลือแต่ Text
+export const CafeCard = ({ item, className = "" }) => {
   const stripHtml = (html) => {
     if (!html) return "";
     const tmp = document.createElement("DIV");
@@ -155,7 +145,6 @@ export const CafeCard = ({ item, onClick, className = "" }) => {
     return tmp.textContent || tmp.innerText || "";
   };
 
-  // ฟังก์ชันตัดคำ
   const truncate = (str, length = 100) => {
     if (!str) return "";
     if (str.length <= length) return str;
@@ -165,9 +154,10 @@ export const CafeCard = ({ item, onClick, className = "" }) => {
   const plainDescription = stripHtml(item.description);
 
   return (
-    <div
-      onClick={onClick}
-      className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition group/cafe cursor-pointer ${className}`}
+    <Link
+      to={`/cafe/${item.id}`}
+      state={{ fromHome: true }}
+      className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition group/cafe cursor-pointer flex flex-col h-full ${className}`}
     >
       <div className="h-32 md:h-48 overflow-hidden bg-gray-100">
         <SafeImage
@@ -179,19 +169,18 @@ export const CafeCard = ({ item, onClick, className = "" }) => {
           className="w-full h-full object-cover group-hover/cafe:scale-105 transition duration-500"
         />
       </div>
-      <div className="p-3 md:p-4">
+      <div className="p-3 md:p-4 flex flex-col flex-1">
         <h3 className="font-bold text-sm md:text-lg text-gray-900 group-hover/cafe:text-[#FF6B00] transition line-clamp-1">
           {item.name}
         </h3>
-        {/* ✅ ใช้ plainDescription ที่ล้าง HTML แล้ว */}
         <p className="text-xs md:text-sm text-gray-500 mt-1 line-clamp-2 h-8 md:h-10">
           {truncate(plainDescription, 100)}
         </p>
-        <div className="mt-2 md:mt-4 flex items-center gap-1 text-[10px] md:text-xs text-gray-400">
+        <div className="mt-auto pt-2 md:pt-4 flex items-center gap-1 text-[10px] md:text-xs text-gray-400">
           <IconMapPin size={12} />{" "}
           {(item.location_text || item.location || "").split(",")[0]}
         </div>
       </div>
-    </div>
+    </Link>
   );
 };

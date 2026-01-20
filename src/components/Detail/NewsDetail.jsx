@@ -193,9 +193,15 @@ export const NewsDetail = ({ onTriggerToast }) => {
 
         {/* ✅ ปุ่มย้อนกลับและแชร์ */}
         <div className="absolute top-4 left-4 right-4 md:top-8 md:left-8 md:right-8 z-20 flex justify-between items-start text-white drop-shadow-md">
-            <button onClick={goBack} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-md border border-white/30 flex items-center justify-center hover:bg-white/20 transition">
-                 <IconChevronLeft size={24} className="text-white" />
-            </button>
+            
+            {/* ✅ Logic ซ่อนปุ่ม Back ถ้าเปิด Tab ใหม่ (ไม่มี state) */}
+            {location.state?.fromHome ? (
+                <button onClick={goBack} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-md border border-white/30 flex items-center justify-center hover:bg-white/20 transition">
+                     <IconChevronLeft size={24} className="text-white" />
+                </button>
+            ) : (
+                <div></div>
+            )}
             
             <button onClick={handleShare} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-md border border-white/30 flex items-center justify-center hover:bg-white/20 transition">
                 <IconShare size={20} className="text-white"/>

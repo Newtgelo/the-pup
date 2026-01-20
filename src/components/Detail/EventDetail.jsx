@@ -14,7 +14,7 @@ import { SafeImage, NotFound } from "../ui/UIComponents";
 import parse, { domToReact } from "html-react-parser";
 import { Helmet } from "react-helmet-async";
 
-// ✅ Skeleton แก้ไขให้ตรงกับ Layout จริงเป๊ะๆ (h-550px, gap-3, pt-8)
+// ✅ Skeleton Layout
 const EventDetailSkeleton = () => (
   <div className="min-h-screen bg-white animate-pulse font-sans">
     {/* Background Placeholder */}
@@ -160,12 +160,19 @@ export const EventDetail = ({ onTriggerToast }) => {
 
       {/* Navbar Buttons Back and Share */}
       <div className="absolute top-24 left-0 right-0 z-20 p-4 max-w-7xl mx-auto flex justify-between items-start pointer-events-none">
-        <button
-          onClick={goBack}
-          className="pointer-events-auto w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-white hover:bg-black/70 flex items-center justify-center transition active:scale-90 shadow-lg"
-        >
-          <IconChevronLeft size={24} />
-        </button>
+        
+        {/* ✅ Logic: เช็ค state ถ้ามาจาก Home ให้โชว์ Back ถ้าไม่ ให้ใส่ div ว่างๆ ไว้ */}
+        {location.state?.fromHome ? (
+          <button
+            onClick={goBack}
+            className="pointer-events-auto w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-white hover:bg-black/70 flex items-center justify-center transition active:scale-90 shadow-lg"
+          >
+            <IconChevronLeft size={24} />
+          </button>
+        ) : (
+          <div></div> 
+        )}
+
         <button
           onClick={handleShare}
           className="pointer-events-auto w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-white hover:bg-black/70 flex items-center justify-center transition active:scale-90 shadow-lg"
@@ -176,7 +183,7 @@ export const EventDetail = ({ onTriggerToast }) => {
 
       <div className="min-h-screen bg-white pb-24 lg:pb-12 font-sans">
 
-        {/* Background */}
+        {/* Background (Static) */}
         <div className="absolute inset-x-0 top-0 h-[550px] overflow-hidden bg-gray-900">
           <div
             className="absolute inset-0 bg-center bg-cover blur-sm opacity-100 scale-105"
@@ -185,9 +192,8 @@ export const EventDetail = ({ onTriggerToast }) => {
           <div className="absolute inset-0 bg-black/20"></div>
         </div>
 
-        {/* ✅ Main Content: pt-8 */}
+        {/* Main Content */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 pt-8 lg:pt-8">
-          {/* ✅ Grid: gap-3 */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
             
             {/* LEFT: POSTER */}
@@ -206,7 +212,7 @@ export const EventDetail = ({ onTriggerToast }) => {
               </div>
             </div>
 
-            {/* ✅ RIGHT: INFO CARD */}
+            {/* RIGHT: INFO CARD */}
             <div className="lg:col-span-7">
               <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-lg border border-gray-100">
                 {/* Tags */}
@@ -265,9 +271,8 @@ export const EventDetail = ({ onTriggerToast }) => {
                   </div>
                 </div>
 
-                {/* Desktop Buttons */}
+                {/* Desktop Buttons (Swapped) */}
                 <div className="hidden lg:flex gap-4 mt-8 pt-6 border-t border-gray-100">
-                  {/* 1. ปุ่มเพิ่มในปฏิทิน (ย้ายมาไว้ด้านซ้าย) */}
                   <button
                     onClick={addToCalendar}
                     className="flex-1 border border-gray-200 hover:border-[#FF6B00] hover:text-[#FF6B00] text-gray-700 bg-white py-3 px-6 rounded-xl font-bold flex justify-center items-center gap-2 active:scale-95 transition"
@@ -275,7 +280,6 @@ export const EventDetail = ({ onTriggerToast }) => {
                     <IconCalendar size={20} /> เพิ่มในปฏิทิน
                   </button>
 
-                  {/* 2. ปุ่มจองบัตรเลย (ย้ายไปไว้ด้านขวา) */}
                   <a
                     href={event.link || "#"}
                     target={event.link ? "_blank" : "_self"}
@@ -390,7 +394,6 @@ export const EventDetail = ({ onTriggerToast }) => {
 
       {/* Mobile Sticky Bar */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 z-50 flex items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] safe-area-bottom">
-        {/* 1. ปุ่มปฏิทิน: เปลี่ยน w-12 เป็น flex-1 และเพิ่มข้อความ */}
         <button
           onClick={addToCalendar}
           className="flex-1 h-12 flex items-center justify-center gap-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 active:scale-95 transition"
@@ -399,7 +402,6 @@ export const EventDetail = ({ onTriggerToast }) => {
           <span className="text-sm font-bold">เพิ่มในปฏิทิน</span>
         </button>
 
-        {/* 2. ปุ่มจองบัตร: flex-1 (แบ่งครึ่งพอดี) */}
         <a
           href={event.link || "#"}
           target={event.link ? "_blank" : "_self"}

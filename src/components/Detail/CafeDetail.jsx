@@ -309,10 +309,16 @@ export const CafeDetail = ({ onTriggerToast }) => {
 
   return (
     <>
+      {/* Sticky Header */}
       <div className={`fixed top-16 md:top-20 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-gray-100 z-40 shadow-sm transition-transform duration-300 ${showStickyTabs ? "translate-y-0" : "-translate-y-[200%]"}`}>
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <button onClick={goBack} className="md:hidden flex-shrink-0 text-gray-500 hover:text-[#FF6B00]"><IconChevronLeft size={24} /></button>
+            {/* ✅ ซ่อนปุ่ม Back ตรงนี้ถ้ามาจาก Tab ใหม่ */}
+            {location.state?.fromHome && (
+              <button onClick={goBack} className="md:hidden flex-shrink-0 text-gray-500 hover:text-[#FF6B00]">
+                <IconChevronLeft size={24} />
+              </button>
+            )}
             <h3 className="font-bold text-gray-900 truncate leading-tight flex-1">{cafe.name}</h3>
           </div>
           <div className="flex bg-gray-100 p-1 rounded-lg flex-shrink-0">
@@ -331,7 +337,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
           <button onClick={handlePrev} className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full items-center justify-center text-white transition z-50"><IconChevronLeft size={32} /></button>
           <button onClick={handleNext} className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full items-center justify-center text-white transition z-50"><div className="rotate-180"><IconChevronLeft size={32} /></div></button>
           
-          {/* ✅ แก้ไข: ปรับ Width และ Padding ให้เห็นขอบในทุกจอ (Mobile, Tablet, Desktop) */}
           <div 
             ref={scrollContainerRef}
             className="w-full h-full flex items-center gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-[7.5vw] md:px-[12.5vw] lg:px-[20vw]"
@@ -342,7 +347,6 @@ export const CafeDetail = ({ onTriggerToast }) => {
                 <div 
                     key={idx} 
                     data-snap-item 
-                    // ✅ แก้ไข: ปรับขนาดรูปให้สัมพันธ์กับ Padding เพื่อให้เห็นขอบเพื่อนบ้าน
                     className="snap-center flex-shrink-0 w-[85vw] md:w-[75vw] lg:w-[60vw] h-[75vh] md:h-[85vh] flex items-center justify-center relative transition-transform duration-300"
                 >
                     <SafeImage
@@ -364,18 +368,29 @@ export const CafeDetail = ({ onTriggerToast }) => {
         </div>
       )}
 
-      {/* UI อื่นๆ คงเดิม */}
+      {/* Mobile Top Icons */}
       <div className={`md:hidden fixed top-[80px] left-0 right-0 px-4 z-40 flex justify-between pointer-events-none transition-all duration-300 ${showStickyTabs ? "opacity-0 pointer-events-none -translate-y-20" : "opacity-100 translate-y-0"}`}>
-        <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
+        {/* ✅ Logic: เช็ค state ถ้ามาจาก Home ให้โชว์ Back */}
+        {location.state?.fromHome ? (
+          <button onClick={goBack} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconChevronLeft size={24} /></button>
+        ) : (
+          <div></div>
+        )}
         <button onClick={handleShare} className="pointer-events-auto w-10 h-10 rounded-full bg-white/80 backdrop-blur-md border border-white/20 shadow-lg flex items-center justify-center text-gray-700 hover:text-[#FF6B00] transition active:scale-90"><IconShare size={20} /></button>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 relative animate-fade-in">
         <div className="hidden md:flex justify-between items-center mb-6">
-          <button onClick={goBack} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
-            <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition"><IconChevronLeft size={24} /></div>
-            <span className="font-bold text-gray-900 group-hover:text-[#FF6B00]">ย้อนกลับ</span>
-          </button>
+           {/* ✅ Desktop Button: เช็ค state ถ้ามาจาก Home ให้โชว์ Back */}
+           {location.state?.fromHome ? (
+            <button onClick={goBack} className="group flex items-center gap-2 text-gray-500 hover:text-[#FF6B00] transition">
+              <div className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center bg-white shadow-sm group-hover:shadow-md transition"><IconChevronLeft size={24} /></div>
+              <span className="font-bold text-gray-900 group-hover:text-[#FF6B00]">ย้อนกลับ</span>
+            </button>
+           ) : (
+             <div></div>
+           )}
+
           <button onClick={handleShare} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#FF6B00] transition shadow-sm"><IconShare size={20} /></button>
         </div>
 
