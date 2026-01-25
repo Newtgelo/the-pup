@@ -1,42 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
-
-// ✅ 1. Import Helmet สำหรับจัดการ SEO
 import { Helmet } from 'react-helmet-async';
-
-// Import Icons
 import { IconSearch, IconX, IconLogo } from "./components/icons/Icons";
-
-// Import UI Components
 import { Toast, NotFound } from "./components/ui/UIComponents";
 import RouteLoader from "./components/RouteLoader";
 import ScrollToTop from "./components/ScrollToTop";
-
-// ✅ Import Footer ที่แยกออกมาใหม่
 import { Footer } from "./components/Footer";
-
-// Import Views (Detail Pages)
 import { NewsDetail, EventDetail, CafeDetail } from "./components/Detail";
-
-// --- Zone Admin Imports ---
 import { AdminLogin } from "./pages/AdminLogin";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminNewsDashboard } from "./pages/AdminNewsDashboard";
 import { AdminCreateNews } from "./pages/AdminCreateNews";
 import { AdminEditNews } from "./pages/AdminEditNews";
-
 import { AdminEventDashboard } from "./pages/AdminEventDashboard";
 import { AdminCreateEvent } from "./pages/AdminCreateEvent";
 import { AdminEditEvent } from "./pages/AdminEditEvent";
-
 import { AdminLayout } from "./pages/AdminLayout";
-
 import { AdminCafeDashboard } from "./pages/AdminCafeDashboard";
 import { AdminCreateCafe } from "./pages/AdminCreateCafe";
 import { AdminEditCafe } from "./pages/AdminEditCafe";
-
 import { AdminSettings } from "./pages/AdminSettings";
-
 import {
   HomePage,
   SearchPage,
@@ -48,9 +31,15 @@ import {
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // State เดิม
   const [searchTerm, setSearchTerm] = useState("");
   const [toast, setToast] = useState({ show: false, message: "" });
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+
+  // ✅ 1. เพิ่ม State สำหรับ Smart Navbar
+  const [showNavbar, setShowNavbar] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   const triggerToast = (message) => setToast({ show: true, message });
   const closeToast = () => setToast({ ...toast, show: false });
@@ -58,6 +47,24 @@ export default function App() {
   useEffect(() => {
     setIsMobileSearchOpen(false);
   }, [location.pathname]);
+
+  // ✅ 2. เพิ่ม Logic จับการเลื่อนหน้าจอ (Scroll Listener)
+  useEffect(() => {
+    const controlNavbar = () => {
+      // ถ้าหน้าจอเลื่อนลงเยอะกว่าเดิม (Scroll Down) -> ซ่อน
+      if (window.scrollY > lastScrollY && window.scrollY > 100) { 
+        setShowNavbar(false);
+      } else { 
+        // ถ้าเลื่อนขึ้น (Scroll Up) -> โชว์
+        setShowNavbar(true);
+      }
+      // จำค่าล่าสุดไว้เทียบรอบหน้า
+      setLastScrollY(window.scrollY);
+    };
+
+    window.addEventListener('scroll', controlNavbar);
+    return () => window.removeEventListener('scroll', controlNavbar);
+  }, [lastScrollY]);
 
   const handleSearch = (e) => {
     const val = e.target.value;
@@ -81,11 +88,8 @@ export default function App() {
   };
 
   const isAdminPage = location.pathname.startsWith("/admin");
-
-  // ✅ เช็คว่าเป็นหน้า Events หรือไม่ (เพื่อซ่อน Navbar ในมือถือ)
   const isEventsPage = location.pathname === '/events';
 
-  // ✅ 2. กำหนดค่า Default SEO
   const defaultTitle = "The Popup Plan | Minimalist K-Pop Hub";
   const defaultDesc = "รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว ค้นหาคาเฟ่ โปรเจกต์วันเกิด และคอนเสิร์ตศิลปินคนโปรดได้ง่ายๆ";
   const defaultImage = "https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=1200&auto=format&fit=crop";
@@ -93,20 +97,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
-      
-      {/* ✅ 3. Helmet SEO */}
       <Helmet>
         <title>{defaultTitle}</title>
         <meta name="description" content={defaultDesc} />
-
-        {/* Facebook / Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={siteUrl} />
         <meta property="og:title" content={defaultTitle} />
         <meta property="og:description" content={defaultDesc} />
         <meta property="og:image" content={defaultImage} />
-
-        {/* Twitter */}
         <meta property="twitter:card" content="summary_large_image" />
         <meta property="twitter:url" content={siteUrl} />
         <meta property="twitter:title" content={defaultTitle} />
@@ -118,8 +116,15 @@ export default function App() {
       <ScrollToTop />
 
       {!isAdminPage && (
-        // ✅ เพิ่ม ClassLogic: ถ้าเป็นหน้า Events ให้ซ่อนในมือถือ (hidden) แต่โชว์ในจอ md ขึ้นไป (md:block)
-        <nav className={`bg-white border-b sticky top-0 z-50 ${isEventsPage ? 'hidden md:block' : ''}`}>
+        <nav 
+          // ✅ 3. แก้ ClassName: เพิ่ม transition-transform และเงื่อนไข translate-y
+          className={`
+            bg-white border-b sticky top-0 z-50 
+            transition-transform duration-300 ease-in-out
+            ${isEventsPage ? 'hidden md:block' : ''} 
+            ${showNavbar ? 'translate-y-0' : '-translate-y-full'}
+          `}
+        >
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16 md:h-20">
               <div
@@ -249,7 +254,6 @@ export default function App() {
 
       <Toast message={toast.message} show={toast.show} onClose={closeToast} />
 
-      {/* ✅ Footer จัดการตัวเองแล้ว (ซ่อนเมื่ออยู่หน้า events) */}
       {!isAdminPage && <Footer onLogoClick={handleLogoClick} />}
     </div>
   );
