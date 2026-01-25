@@ -363,7 +363,8 @@ const MobileEventsView = ({
         <div className="w-full h-full relative bg-white overflow-hidden flex flex-col">
             {/* List View */}
             <div className={`flex flex-col h-full transition-all duration-300 ${mobileViewMode === 'map' ? 'hidden' : 'flex'}`}>
-                <div className="flex-1 overflow-y-auto pb-24">
+                {/* 👇 แก้ไขตรงนี้ครับ จาก pb-24 เป็น pb-0 */}
+                <div className="flex-1 overflow-y-auto pb-0">
                      <div className="flex justify-between items-center mb-1 pt-6 px-4 bg-white z-30 relative">
                         <div className="flex items-center gap-3">
                             <button onClick={() => navigate("/#events-section")} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition"><IconChevronLeft size={24} className="text-gray-700" /></button>

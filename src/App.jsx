@@ -82,7 +82,10 @@ export default function App() {
 
   const isAdminPage = location.pathname.startsWith("/admin");
 
-  // ✅ 2. กำหนดค่า Default SEO (เอาไว้ใช้กรณีหน้าที่ไม่ได้ตั้งค่าเฉพาะเจาะจง)
+  // ✅ เช็คว่าเป็นหน้า Events หรือไม่ (เพื่อซ่อน Navbar ในมือถือ)
+  const isEventsPage = location.pathname === '/events';
+
+  // ✅ 2. กำหนดค่า Default SEO
   const defaultTitle = "The Popup Plan | Minimalist K-Pop Hub";
   const defaultDesc = "รวมทุกอีเวนต์ K-Pop ครบ จบ ในที่เดียว ค้นหาคาเฟ่ โปรเจกต์วันเกิด และคอนเสิร์ตศิลปินคนโปรดได้ง่ายๆ";
   const defaultImage = "https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=1200&auto=format&fit=crop";
@@ -91,7 +94,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
       
-      {/* ✅ 3. ฝัง Helmet ไว้ตรงนี้เพื่อให้ทำงานทั่วทั้งเว็บ */}
+      {/* ✅ 3. Helmet SEO */}
       <Helmet>
         <title>{defaultTitle}</title>
         <meta name="description" content={defaultDesc} />
@@ -115,7 +118,8 @@ export default function App() {
       <ScrollToTop />
 
       {!isAdminPage && (
-        <nav className="bg-white border-b sticky top-0 z-50">
+        // ✅ เพิ่ม ClassLogic: ถ้าเป็นหน้า Events ให้ซ่อนในมือถือ (hidden) แต่โชว์ในจอ md ขึ้นไป (md:block)
+        <nav className={`bg-white border-b sticky top-0 z-50 ${isEventsPage ? 'hidden md:block' : ''}`}>
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16 md:h-20">
               <div
@@ -245,7 +249,7 @@ export default function App() {
 
       <Toast message={toast.message} show={toast.show} onClose={closeToast} />
 
-      {/* ✅ เรียกใช้ Footer Component (ส่ง function ไปให้เวลากดโลโก้ใน Footer) */}
+      {/* ✅ Footer จัดการตัวเองแล้ว (ซ่อนเมื่ออยู่หน้า events) */}
       {!isAdminPage && <Footer onLogoClick={handleLogoClick} />}
     </div>
   );

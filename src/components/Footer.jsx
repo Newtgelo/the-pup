@@ -1,6 +1,14 @@
 import React from "react";
+import { useLocation } from "react-router-dom"; // ✅ 1. นำเข้าเครื่องมือเช็ค URL
 
 export const Footer = ({ onLogoClick }) => {
+  const location = useLocation(); // ✅ 2. ดึงค่า URL ปัจจุบันมาเก็บไว้
+
+  // ✅ 3. ด่านตรวจ: ถ้าอยู่หน้า "/events" ให้ซ่อน Footer (return null)
+  if (location.pathname === '/events') {
+    return null;
+  }
+
   return (
     // ✅ 1. แก้ pb-28 เป็น pb-8 (ลดพื้นที่ว่างด้านล่างสุดให้สั้นลง)
     <footer className="bg-[#0F172A] text-white pt-10 pb-8 md:py-12">

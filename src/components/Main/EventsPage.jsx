@@ -175,7 +175,10 @@ export const EventsPage = () => {
   };
 
   return (
-    <div className="w-full h-[calc(100dvh-80px)] overflow-hidden">
+    // ✅ แก้ไข: มือถือให้สูงเต็มจอ (h-[100dvh]) / จอใหญ่ให้ลบ Navbar (h-[calc(100vh-80px)])
+    <div className="w-full lg:h-[calc(100vh-80px)] h-[100dvh] overflow-hidden">
+        
+        {/* Mobile View */}
         <div className="lg:hidden h-full">
             <MobileEventsView 
                 {...sharedProps} 
@@ -183,6 +186,8 @@ export const EventsPage = () => {
                 setMobileViewMode={setMobileViewMode} 
             />
         </div>
+
+        {/* Desktop View */}
         <div className="hidden lg:block h-full">
             <DesktopEventsView 
                 {...sharedProps} 
@@ -192,5 +197,5 @@ export const EventsPage = () => {
             />
         </div>
     </div>
-  );
+);
 };
