@@ -16,7 +16,7 @@ const isValidCoordinate = (lat, lng) => {
 export const EventsPage = () => {
   const navigate = useNavigate();
   
-  // ✅ 1. เพิ่ม State เช็คขนาดหน้าจอ (เพื่อเลือก Render แค่ตัวเดียว)
+  // State เช็คขนาดหน้าจอ
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
 
   const [events, setEvents] = useState([]);
@@ -39,7 +39,7 @@ export const EventsPage = () => {
 
   const mapRef = useRef();
 
-  // ✅ 2. เพิ่ม useEffect ดักจับการเปลี่ยนขนาดหน้าจอ
+  // useEffect ดักจับการเปลี่ยนขนาดหน้าจอ
   useEffect(() => {
     const handleResize = () => {
       setIsDesktop(window.innerWidth >= 1024);
@@ -70,14 +70,18 @@ export const EventsPage = () => {
     fetchEvents();
   }, []);
 
-  // Filter Logic
-  const filteredEvents = useMemo(() => {
+  // ------------------------------------------------------------------
+  // ✅ STEP 1: กรองเนื้อหา (Category, Time, Sort) -> ได้งานทั้งหมดทั่วประเทศ
+  // ------------------------------------------------------------------
+  const baseFilteredEvents = useMemo(() => {
     let result = [...events];
 
+    // 1. Filter Category
     if (categoryFilter !== "ทั้งหมด") {
       result = result.filter((event) => event.category === categoryFilter);
     }
 
+    // 2. Filter Time
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
@@ -116,6 +120,20 @@ export const EventsPage = () => {
       });
     }
 
+    // 3. Sort (ย้ายมาทำตรงนี้ เพื่อให้ allEventsWithLocation เรียงถูกต้องด้วย)
+    if (sortOrder === "newest") result.sort((a, b) => b.id - a.id);
+    else result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+    return result;
+  }, [categoryFilter, timeframeFilter, sortOrder, events]);
+
+  // ------------------------------------------------------------------
+  // ✅ STEP 2: กรองตามขอบจอ (Map Bounds) -> เอาไว้แสดงผล
+  // ------------------------------------------------------------------
+  const filteredEvents = useMemo(() => {
+    let result = [...baseFilteredEvents];
+
+    // Filter by Map Bounds (เฉพาะตอนเปิด SearchOnMove)
     if (
       searchOnMove &&
       mapBounds &&
@@ -129,26 +147,25 @@ export const EventsPage = () => {
       });
     }
 
-    if (sortOrder === "newest") result.sort((a, b) => b.id - a.id);
-    else result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-
     return result;
-  }, [
-    categoryFilter,
-    timeframeFilter,
-    sortOrder,
-    events,
-    searchOnMove,
-    mapBounds,
-    showMapDesktop,
-    mobileViewMode,
-  ]);
+  }, [baseFilteredEvents, searchOnMove, mapBounds, showMapDesktop, mobileViewMode]);
 
+
+  // ------------------------------------------------------------------
+  // ✅ STEP 3: เตรียมข้อมูลส่งให้ลูก (2 ชุด)
+  // ------------------------------------------------------------------
+
+  // ชุดที่ 1: เฉพาะในจอ (Visible) -> เอาไว้ปักหมุดและโชว์การ์ด
   const eventsWithLocation = useMemo(() => {
     return filteredEvents.filter((e) =>
       isValidCoordinate(parseFloat(e.lat), parseFloat(e.lng)),
     );
   }, [filteredEvents]);
+
+  // ชุดที่ 2: ทั้งหมดทั่วประเทศ (All) -> เอาไว้ให้ปุ่มจรวดคำนวณหางานนอกจอ
+  const allEventsWithLocation = useMemo(() => {
+      return baseFilteredEvents.filter(e => isValidCoordinate(parseFloat(e.lat), parseFloat(e.lng)));
+  }, [baseFilteredEvents]);
 
   // Actions
   const handleNearMe = () => {
@@ -215,12 +232,13 @@ export const EventsPage = () => {
     navigate,
     onMarkerClick,
     eventsWithLocation,
+    // ✅ ส่งตัวนี้เพิ่มไปด้วยครับ
+    allEventsWithLocation 
   };
 
-  // ✅ 3. ปรับ Logic การ Return: เลือก Render แค่ตัวเดียว (ไม่ใช้ hidden class แล้ว)
   return (
     <>
-        {/* 📱 Mobile View: แสดงเฉพาะตอน !isDesktop */}
+        {/* 📱 Mobile View */}
         {!isDesktop && (
             <div className="lg:hidden fixed inset-0 w-full h-full z-0 bg-white overflow-hidden">
                 <MobileEventsView 
@@ -231,7 +249,7 @@ export const EventsPage = () => {
             </div>
         )}
 
-        {/* 💻 Desktop View: แสดงเฉพาะตอน isDesktop */}
+        {/* 💻 Desktop View */}
         {isDesktop && (
             <div className="hidden lg:block w-full h-[calc(100vh-80px)] overflow-hidden">
                 <DesktopEventsView 

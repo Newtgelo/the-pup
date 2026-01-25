@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from "react";
-// ✅ Import IconX เพิ่มเข้ามาสำหรับปุ่มปิด Sheet
 import { IconChevronLeft, IconMapPin, IconTarget, IconList, IconX } from "../icons/Icons"; 
 import { SkeletonEvent } from "../ui/UIComponents";
 import { EventCard } from "../ui/CardComponents";
@@ -18,13 +17,12 @@ const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
     return R * c;
 };
 
-// --- 📱 Component ใหม่: Bottom Sheet (แผ่นเด้ง) ---
+// --- 📱 Component: Bottom Sheet ---
 const BottomSheet = ({ isOpen, onClose, title, children }) => {
     return (
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* 1. ฉากหลังสีดำจางๆ (Backdrop) - กดแล้วปิดได้ */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -32,7 +30,6 @@ const BottomSheet = ({ isOpen, onClose, title, children }) => {
                         onClick={onClose}
                         className="fixed inset-0 bg-black/60 z-[6000] backdrop-blur-sm"
                     />
-                    {/* 2. ตัวแผ่นกระดาษ (Sheet) - เด้งจากล่าง */}
                     <motion.div
                         initial={{ y: "100%" }}
                         animate={{ y: 0 }}
@@ -40,15 +37,12 @@ const BottomSheet = ({ isOpen, onClose, title, children }) => {
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
                         className="fixed bottom-0 left-0 right-0 bg-white z-[6001] rounded-t-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[80vh]"
                     >
-                        {/* หัวข้อแผ่น + ปุ่มปิด */}
                         <div className="pt-4 pb-2 px-6 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-10">
                             <h3 className="text-lg font-bold text-gray-900">{title}</h3>
                             <button onClick={onClose} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition">
                                 <IconX size={20} className="text-gray-600" />
                             </button>
                         </div>
-                        
-                        {/* เนื้อหาข้างใน (รายการตัวเลือก) */}
                         <div className="p-4 overflow-y-auto pb-10 safe-area-bottom">
                             {children}
                         </div>
@@ -70,7 +64,8 @@ const MobileEventsView = ({
     mapBounds, setMapBounds,
     mapRef, handleNearMe: originalHandleNearMe, isLocating,
     handleClearFilters, navigate, onMarkerClick,
-    eventsWithLocation
+    eventsWithLocation,
+    allEventsWithLocation 
 }) => {
     
     const carouselRef = useRef(null);
@@ -85,10 +80,9 @@ const MobileEventsView = ({
     const isProgrammaticMoveRef = useRef(false);
     const isProgrammaticScrollRef = useRef(false);
 
-    // ✅ State ใหม่: ควบคุมการเปิด/ปิด Sheet ('time' หรือ 'sort' หรือ null)
     const [activeSheet, setActiveSheet] = useState(null);
 
-    // ✅ ข้อมูลตัวเลือก (Options) เตรียมไว้ map ลงปุ่ม
+    // --- Options Data ---
     const timeframeOptions = [
         { value: "all", label: "📅 ทุกช่วงเวลา" },
         { value: "today", label: "🔥 วันนี้" },
@@ -101,10 +95,11 @@ const MobileEventsView = ({
         { value: "newest", label: "🆕 ล่าสุด" }
     ];
 
-    // Helper: เอาไว้โชว์ข้อความบนปุ่ม (เช่น เปลี่ยน 'today' -> '🔥 วันนี้')
+    const categoryOptions = ["ทั้งหมด", "Concert", "Fan Meeting", "Fansign", "Workshop", "Exhibition", "Fan Event", "Pop-up Store", "Others"];
+
     const getCurrentLabel = (options, value) => options.find(o => o.value === value)?.label || value;
 
-    // --- Function เดิม (ไม่แตะต้อง Logic) ---
+    // --- Functions ---
     const handleFullReset = () => {
         setLoadingMessage("กำลังรีเซ็ตค่าเริ่มต้น... 🔄");
         setToastInfo(null);
@@ -122,8 +117,11 @@ const MobileEventsView = ({
 
     const handleWarpToNextEvent = () => {
         if (!mapRef.current || !mapBounds) return;
+
+        const sourceEvents = allEventsWithLocation || eventsWithLocation;
         const center = mapRef.current.getCenter();
-        const offScreenEvents = eventsWithLocation.filter(evt => {
+
+        const offScreenEvents = sourceEvents.filter(evt => {
             const lat = parseFloat(evt.lat);
             const lng = parseFloat(evt.lng);
             if (isNaN(lat) || isNaN(lng)) return false;
@@ -131,7 +129,22 @@ const MobileEventsView = ({
         });
 
         if (offScreenEvents.length === 0) {
-            handleFullReset(); 
+            if (sourceEvents.length > 0) {
+                 setToastInfo({
+                    type: 'info',
+                    message: "คุณเห็นกิจกรรมครบหมดแล้ว \nในตัวกรองนี้ 👍",
+                    actionLabel: "ตกลง",
+                    onAction: () => setToastInfo(null)
+                });
+                return;
+            }
+
+            setToastInfo({
+                type: 'dead_end',
+                message: "ไม่พบกิจกรรมตามตัวกรองนี้ 😢\nดูงานช่วงเวลาอื่นแทนไหม?",
+                actionLabel: "🔄 ดูงานทั้งหมด",
+                onAction: handleFullReset
+            });
             return;
         }
 
@@ -142,7 +155,7 @@ const MobileEventsView = ({
 
         const target = sortedByDist[0];
 
-        setLoadingMessage("กำลังวาร์ปไป... \nEvent ถัดไป 🚀");
+        setLoadingMessage(`กำลังวาร์ปไป... \n${target.title.substring(0, 15)}... 🚀`);
         setTimeout(() => {
             if (mapRef.current) {
                 mapRef.current.flyTo([parseFloat(target.lat), parseFloat(target.lng)], 13, { duration: 1.5 });
@@ -244,7 +257,7 @@ const MobileEventsView = ({
         }, 800); 
     };
 
-    // --- Effects (Logic เดิม) ---
+    // --- Effects: Logic ที่แก้แล้วอยู่ตรงนี้ครับ! ---
     useEffect(() => {
         if (mobileViewMode === 'map') {
             if (loading || loadingMessage) { 
@@ -293,9 +306,16 @@ const MobileEventsView = ({
 
             if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
             
+            // ✅ [FIXED]: Logic ตรวจสอบก่อนแจ้งเตือน Reset
             if (sortedEvents.length === 0) {
                 toastTimerRef.current = setTimeout(() => {
-                    if (filteredEvents.length === 0) {
+                    
+                    // 1. เช็คก่อนว่า "ทั่วประเทศ" (allEventsWithLocation) ยังมีของไหม?
+                    const hasEventsAnywhere = allEventsWithLocation && allEventsWithLocation.length > 0;
+
+                    if (!hasEventsAnywhere) {
+                        // === CASE A: ไม่มีงานเลยสักที่ (หมดเกลี้ยง) ===
+                        // ถึงจะยอมขึ้นเตือนให้ Reset
                         if (timeframeFilter !== 'all') {
                              setToastInfo({
                                 type: 'filter_time',
@@ -329,43 +349,52 @@ const MobileEventsView = ({
                            });
                            return;
                        }
-                    }
-                    
-                    setToastInfo({
-                        type: 'lost_map',
-                        message: "ไม่พบกิจกรรมในบริเวณนี้ 🍃",
-                        actionLabel: filteredEvents.length > 0 ? "🚀 ไปหางานที่ใกล้ที่สุด" : "กลับไปโซนจัดงาน",
-                        onAction: () => {
-                            setToastInfo(null); 
-                            let targetLat = 13.7462; 
-                            let targetLng = 100.5347;
-                            let msg = "กำลังเดินทาง... \nกลับไปโซนจัดงาน 🏙️";
+                    } else {
+                        // === CASE B: มีงานที่อื่น (Lost Map) ===
+                        // ห้าม Reset! ให้พาไปหาแทน
+                        setToastInfo({
+                            type: 'lost_map',
+                            message: "ไม่พบกิจกรรมในบริเวณนี้ 🍃",
+                            actionLabel: "🚀 ไปหางานที่ใกล้ที่สุด", // เปลี่ยนปุ่มให้ชัดเจน
+                            onAction: () => {
+                                setToastInfo(null); 
+                                
+                                // Logic: หางานที่ใกล้ที่สุดจาก "จุดกลางจอ" (โดยใช้ข้อมูล All Events)
+                                let targetLat = 13.7462; 
+                                let targetLng = 100.5347;
+                                let msg = "กำลังเดินทาง... \nกลับไปโซนจัดงาน 🏙️";
 
-                            if (filteredEvents.length > 0) {
-                                const target = filteredEvents[0]; 
-                                if (target.lat && target.lng) {
+                                if (allEventsWithLocation.length > 0) {
+                                    // เรียงลำดับงานทั้งหมดตามระยะทางจากจุดที่เราอยู่
+                                    const center = mapRef.current.getCenter();
+                                    const sorted = [...allEventsWithLocation].map(evt => ({
+                                        ...evt,
+                                        dist: getDistanceFromLatLonInKm(center.lat, center.lng, parseFloat(evt.lat), parseFloat(evt.lng))
+                                    })).sort((a,b) => a.dist - b.dist);
+                                    
+                                    const target = sorted[0];
                                     targetLat = parseFloat(target.lat);
                                     targetLng = parseFloat(target.lng);
-                                    msg = "กำลังวาร์ป... \nไปหางานที่จัดอยู่ 🚀";
+                                    msg = `กำลังวาร์ปไป... \n${target.title.substring(0, 15)}... 🚀`;
                                 }
-                            }
 
-                            setLoadingMessage(msg);
-                            setTimeout(() => {
-                                if (mapRef.current) {
-                                    mapRef.current.flyTo([targetLat, targetLng], 14, { duration: 1.5 });
-                                }
-                                setLoadingMessage(null);
-                            }, 800);
-                        }
-                    });
+                                setLoadingMessage(msg);
+                                setTimeout(() => {
+                                    if (mapRef.current) {
+                                        mapRef.current.flyTo([targetLat, targetLng], 13, { duration: 1.5 });
+                                    }
+                                    setLoadingMessage(null);
+                                }, 800);
+                            }
+                        });
+                    }
 
                 }, 800);
             } else {
                 setToastInfo(prev => (prev?.type === 'smart_near_me' ? prev : null));
             }
         }
-    }, [mapBounds, mobileViewMode, filteredEvents, eventsWithLocation, loading, mapRef, timeframeFilter, categoryFilter, loadingMessage]);
+    }, [mapBounds, mobileViewMode, filteredEvents, eventsWithLocation, loading, mapRef, timeframeFilter, categoryFilter, loadingMessage, allEventsWithLocation]);
 
     useEffect(() => {
         if (mobileViewMode === 'map' && hoveredEventId && mapRef.current) {
@@ -405,12 +434,9 @@ const MobileEventsView = ({
                         {isFilterActive && (<button onClick={handleClearFilters} className="text-xs font-bold text-[#FF6B00] hover:text-[#e65000] bg-orange-50 px-3 py-1.5 rounded-full transition">ล้างตัวกรอง</button>)}
                     </div>
 
-                    {/* ✅ แก้จุดที่ 1 (List View): เปลี่ยน Select เป็น Button */}
                      <div className="sticky top-0 bg-white z-30 py-2 mb-1 border-b border-gray-100 px-4">
                         <div className="flex flex-col gap-2">
                             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                
-                                {/* 🕒 ปุ่มเลือกช่วงเวลา (กดแล้วเปิด Sheet) */}
                                 <button 
                                     onClick={() => setActiveSheet('time')}
                                     className={`px-4 py-2 rounded-lg border text-sm font-bold flex items-center gap-2 transition active:scale-95 whitespace-nowrap ${timeframeFilter !== 'all' ? 'bg-[#FF6B00] text-white border-[#FF6B00]' : 'bg-white border-gray-200 text-gray-700'}`}
@@ -419,7 +445,6 @@ const MobileEventsView = ({
                                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 1L5 5L9 1"/></svg>
                                 </button>
 
-                                {/* ⚡ ปุ่มเลือกการเรียงลำดับ (กดแล้วเปิด Sheet) */}
                                 <button 
                                     onClick={() => setActiveSheet('sort')}
                                     className={`px-4 py-2 rounded-lg border text-sm font-bold flex items-center gap-2 transition active:scale-95 whitespace-nowrap bg-white border-gray-200 text-gray-700`}
@@ -428,10 +453,8 @@ const MobileEventsView = ({
                                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 1L5 5L9 1"/></svg>
                                 </button>
                             </div>
-                            
-                            {/* หมวดหมู่ (เก็บแนวนอนไว้เหมือนเดิมเพราะใช้งานง่ายอยู่แล้ว) */}
                             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                {["ทั้งหมด", "Concert", "Fan Meeting", "Fansign", "Workshop", "Exhibition", "Fan Event", "Pop-up Store", "Others"].map((filter) => (
+                                {categoryOptions.map((filter) => (
                                     <button key={filter} onClick={() => setCategoryFilter(filter)} className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-bold transition border ${categoryFilter === filter ? "bg-[#FF6B00] text-white border-[#FF6B00]" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}>{filter}</button>
                                 ))}
                             </div>
@@ -494,7 +517,6 @@ const MobileEventsView = ({
                         </div>
                         <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto scrollbar-hide bg-white/95 backdrop-blur-sm">
                             
-                            {/* ✅ แก้จุดที่ 2 (Map View): เปลี่ยน Select เป็น Button */}
                             <motion.div className="relative shrink-0">
                                 <button 
                                     onClick={() => setActiveSheet('time')}
@@ -509,13 +531,20 @@ const MobileEventsView = ({
                                 </button>
                             </motion.div>
 
-                            <div className="relative shrink-0">
-                                <select className="appearance-none bg-gray-100 border border-transparent hover:border-gray-300 text-gray-700 text-xs font-bold py-1.5 pl-3 pr-8 rounded-full focus:outline-none focus:ring-2 focus:ring-[#FF6B00]/20" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                                    {["ทั้งหมด", "Concert", "Fan Meeting", "Fansign", "Workshop", "Exhibition", "Fan Event", "Pop-up Store", "Others"].map((filter) => (
-                                        <option key={filter} value={filter}>{filter === "ทั้งหมด" ? "🏷️ หมวดหมู่ทั้งหมด" : filter}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            <motion.div className="relative shrink-0">
+                                <button 
+                                    onClick={() => setActiveSheet('category')}
+                                    className={`px-4 py-1.5 rounded-full border text-xs font-bold flex items-center gap-2 transition active:scale-95 whitespace-nowrap ${
+                                        categoryFilter !== 'ทั้งหมด'
+                                        ? "bg-[#FF6B00] border-[#FF6B00] text-white shadow-md"
+                                        : "bg-gray-100 border-transparent text-gray-700"
+                                    }`}
+                                >
+                                    {categoryFilter === 'ทั้งหมด' ? '🏷️ หมวดหมู่' : categoryFilter}
+                                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 1L5 5L9 1"/></svg>
+                                </button>
+                            </motion.div>
+
                         </div>
                     </div>
 
@@ -582,9 +611,6 @@ const MobileEventsView = ({
                 </div>
             )}
 
-            {/* ✅ Render Bottom Sheets (วางไว้ล่างสุดนอกสุด) */}
-            
-            {/* 1. Sheet เลือกช่วงเวลา */}
             <BottomSheet 
                 isOpen={activeSheet === 'time'} 
                 onClose={() => setActiveSheet(null)} 
@@ -611,7 +637,6 @@ const MobileEventsView = ({
                 </div>
             </BottomSheet>
 
-            {/* 2. Sheet เลือกการเรียงลำดับ */}
             <BottomSheet 
                 isOpen={activeSheet === 'sort'} 
                 onClose={() => setActiveSheet(null)} 
@@ -633,6 +658,32 @@ const MobileEventsView = ({
                         >
                             <span>{opt.label}</span>
                             {sortOrder === opt.value && <IconTarget size={18} />}
+                        </button>
+                    ))}
+                </div>
+            </BottomSheet>
+
+            <BottomSheet 
+                isOpen={activeSheet === 'category'} 
+                onClose={() => setActiveSheet(null)} 
+                title="เลือกหมวดหมู่ 🏷️"
+            >
+                <div className="flex flex-col gap-2">
+                    {categoryOptions.map((cat) => (
+                        <button
+                            key={cat}
+                            onClick={() => {
+                                setCategoryFilter(cat);
+                                setActiveSheet(null);
+                            }}
+                            className={`p-4 rounded-xl text-left font-bold transition flex justify-between items-center ${
+                                categoryFilter === cat 
+                                ? "bg-orange-50 text-[#FF6B00] ring-1 ring-[#FF6B00]" 
+                                : "bg-gray-50 text-gray-700 hover:bg-gray-100"
+                            }`}
+                        >
+                            <span>{cat}</span>
+                            {categoryFilter === cat && <IconTarget size={18} />}
                         </button>
                     ))}
                 </div>
