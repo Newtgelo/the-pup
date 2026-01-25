@@ -15,6 +15,10 @@ const isValidCoordinate = (lat, lng) => {
 
 export const EventsPage = () => {
   const navigate = useNavigate();
+  
+  // ✅ 1. เพิ่ม State เช็คขนาดหน้าจอ (เพื่อเลือก Render แค่ตัวเดียว)
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -35,21 +39,28 @@ export const EventsPage = () => {
 
   const mapRef = useRef();
 
-  // ✅ Fetch Data: แก้ Logic ดึงข้อมูลให้รองรับงานที่เริ่มไปแล้วแต่ยังไม่จบ
+  // ✅ 2. เพิ่ม useEffect ดักจับการเปลี่ยนขนาดหน้าจอ
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Fetch Data
   useEffect(() => {
     const fetchEvents = async () => {
       setLoading(true);
 
-      // สร้างวันที่ปัจจุบัน (YYYY-MM-DD)
       const d = new Date();
-      // ปรับเวลาเล็กน้อยเผื่อเรื่อง Timezone หรือกรณีเลยเที่ยงคืนมานิดหน่อย (optional)
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
       const { data } = await supabase
         .from("events")
         .select("*")
         .eq("status", "published")
-        // 👇 แก้ตรงนี้: เช็คว่า (จบหลังวันนี้) หรือ (ไม่มีวันจบ แต่เริ่มหลังวันนี้)
         .or(`end_date.gte.${today},and(end_date.is.null,date.gte.${today})`)
         .order("date", { ascending: true });
 
@@ -63,14 +74,11 @@ export const EventsPage = () => {
   const filteredEvents = useMemo(() => {
     let result = [...events];
 
-    // 1. Filter Category
     if (categoryFilter !== "ทั้งหมด") {
       result = result.filter((event) => event.category === categoryFilter);
     }
 
-    // 2. Filter Time (ปรับปรุงให้รองรับ Multi-day Event)
     const now = new Date();
-    // set เวลาเป็น 00:00:00 เพื่อเทียบแค่วันที่
     now.setHours(0, 0, 0, 0);
 
     if (timeframeFilter !== "all") {
@@ -79,24 +87,19 @@ export const EventsPage = () => {
 
         const startDate = new Date(e.date);
         startDate.setHours(0, 0, 0, 0);
-
-        // ถ้ามี end_date ให้ใช้, ถ้าไม่มีให้ถือว่าเป็นวันเดียวกับ start_date
         const endDate = e.end_date ? new Date(e.end_date) : new Date(startDate);
         endDate.setHours(0, 0, 0, 0);
 
-        // กรอง "วันนี้" : งานต้องครอบคลุมวันนี้ (เริ่ม <= วันนี้ <= จบ)
         if (timeframeFilter === "today") {
           return startDate <= now && endDate >= now;
         }
 
-        // กรอง "เดือนนี้" : งานต้องมีส่วนใดส่วนหนึ่งอยู่ในเดือนนี้
         if (timeframeFilter === "this_month") {
           const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
           const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
           return startDate <= endOfMonth && endDate >= startOfMonth;
         }
 
-        // กรอง "เดือนหน้า"
         else if (timeframeFilter === "next_month") {
           let nextMonth = now.getMonth() + 1;
           let nextYear = now.getFullYear();
@@ -113,7 +116,6 @@ export const EventsPage = () => {
       });
     }
 
-    // 3. Filter by Map Bounds
     if (
       searchOnMove &&
       mapBounds &&
@@ -127,7 +129,6 @@ export const EventsPage = () => {
       });
     }
 
-    // 4. Sort
     if (sortOrder === "newest") result.sort((a, b) => b.id - a.id);
     else result.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
@@ -191,7 +192,6 @@ export const EventsPage = () => {
 
   const onMarkerClick = (id) => navigate(`/event/${id}`);
 
-  // Props Pack
   const sharedProps = {
     events,
     loading,
@@ -217,27 +217,31 @@ export const EventsPage = () => {
     eventsWithLocation,
   };
 
+  // ✅ 3. ปรับ Logic การ Return: เลือก Render แค่ตัวเดียว (ไม่ใช้ hidden class แล้ว)
   return (
     <>
-        {/* 📱 Mobile View: (เหมือนเดิม) */}
-        <div className="lg:hidden fixed inset-0 w-full h-full z-0 bg-white overflow-hidden">
-            <MobileEventsView 
-                {...sharedProps} 
-                mobileViewMode={mobileViewMode} 
-                setMobileViewMode={setMobileViewMode} 
-            />
-        </div>
+        {/* 📱 Mobile View: แสดงเฉพาะตอน !isDesktop */}
+        {!isDesktop && (
+            <div className="lg:hidden fixed inset-0 w-full h-full z-0 bg-white overflow-hidden">
+                <MobileEventsView 
+                    {...sharedProps} 
+                    mobileViewMode={mobileViewMode} 
+                    setMobileViewMode={setMobileViewMode} 
+                />
+            </div>
+        )}
 
-        {/* 💻 Desktop View: ✅ แก้บรรทัดนี้ครับ */}
-        {/* ใส่ w-full เพื่อให้กว้างเต็มจอ และ h-[calc...] เพื่อให้พอดีกับ Navbar */}
-        <div className="hidden lg:block w-full h-[calc(100vh-80px)] overflow-hidden">
-            <DesktopEventsView 
-                {...sharedProps} 
-                showMapDesktop={showMapDesktop} 
-                setShowMapDesktop={setShowMapDesktop} 
-                mobileViewMode={mobileViewMode}
-            />
-        </div>
+        {/* 💻 Desktop View: แสดงเฉพาะตอน isDesktop */}
+        {isDesktop && (
+            <div className="hidden lg:block w-full h-[calc(100vh-80px)] overflow-hidden">
+                <DesktopEventsView 
+                    {...sharedProps} 
+                    showMapDesktop={showMapDesktop} 
+                    setShowMapDesktop={setShowMapDesktop} 
+                    mobileViewMode={mobileViewMode}
+                />
+            </div>
+        )}
     </>
   );
 };
