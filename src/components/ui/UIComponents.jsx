@@ -72,32 +72,54 @@ export const Toast = ({ message, show, onClose }) => {
   );
 };
 
-// ==========================================
-// 4. SAFE IMAGE (โหลดรูปไม่ติด มี Logo แทน)
-// ==========================================
-export const SafeImage = ({ src, alt, className }) => {
-  const [error, setError] = useState(false);
 
+// ==========================================
+// 4. SAFE IMAGE (โหลดรูปไม่ติด -> รูปสำรอง -> ถ้าพังอีก -> Logo)
+// ==========================================
+export const SafeImage = ({ src, alt, className, ...props }) => {
+  // 1. 🖼️ ใส่ลิงก์รูปสำรองที่นี่ (เช่น รูป Placeholder สวยๆ)
+  const FALLBACK_IMAGE = "https://res.cloudinary.com/diq1nr4jb/image/upload/v1769807400/cover_web_news_tpp_2_ciuet7.png"; 
+  // หรือใช้รูปในโปรเจกต์: "/images/placeholder.jpg"
+
+  const [currentSrc, setCurrentSrc] = useState(src);
+  const [hasError, setHasError] = useState(false);
+
+  // Reset state เมื่อ src เปลี่ยน (เช่น เปลี่ยนหน้า)
   useEffect(() => {
-    setError(false);
+    setCurrentSrc(src);
+    setHasError(false);
   }, [src]);
 
-  if (error || !src) {
+  // Handle Error 2 ระดับ:
+  // 1. ถ้ารูปหลักเสีย -> ลองใช้รูปสำรอง (Fallback)
+  // 2. ถ้ารูปสำรองเสียอีก -> แสดง Logo (State Error = true)
+  const handleError = () => {
+    if (currentSrc !== FALLBACK_IMAGE) {
+      setCurrentSrc(FALLBACK_IMAGE);
+    } else {
+      setHasError(true); // ยอมแพ้ แล้วไปโชว์ Logo แทน
+    }
+  };
+
+  // กรณีไม่มี src เลย หรือพังจนกู้ไม่ได้ -> โชว์ Logo
+  if (hasError || !src) {
     return (
       <div className={`flex items-center justify-center bg-gray-100 text-gray-300 ${className}`}>
-        <div className="text-center flex flex-col items-center">
+        <div className="text-center flex flex-col items-center animate-pulse">
            <IconLogo size={40} color="#D1D5DB" />
         </div>
       </div>
     );
   }
 
+  // กรณีปกติ (รูปหลัก หรือ รูปสำรอง)
   return (
     <img
-      src={src}
-      alt={alt}
-      className={className}
-      onError={() => setError(true)}
+      {...props}
+      src={currentSrc}
+      alt={alt || "Image"}
+      className={`object-cover ${className}`} // บังคับ object-cover เสมอเพื่อความสวย
+      onError={handleError}
     />
   );
 };
