@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../supabase";
 import { IconChevronRight } from "../icons/Icons";
 import {
-  ScrollableRow,
+  ScrollableRow, // ยังใช้อยู่ในส่วน Filter
   EmptyState,
   SkeletonNews,
   SkeletonEvent,
@@ -28,8 +28,10 @@ export const HomePage = () => {
   
   const [filteredHomeEvents, setFilteredHomeEvents] = useState([]);
 
-  // ✅ 1. สร้าง Reference เพื่อจับตัวกล่อง Scroll ของข่าว
+  // ✅ 1. Refs สำหรับควบคุม Scroll
   const newsScrollRef = useRef(null);
+  const eventScrollRef = useRef(null); // จับกล่อง Events
+  const isEventHovered = useRef(false); // เช็คว่าเมาส์ชี้อยู่ไหม (ใช้ Ref เพื่อไม่ให้ Re-render)
 
   // -----------------------------------------------------------------
   // 🟢 Fetch Data
@@ -94,7 +96,7 @@ export const HomePage = () => {
     })
     .slice(0, 10);
 
-  // ✅ 2. สั่งให้ Scroll ดีดกลับไปซ้ายสุด เมื่อมีการเปลี่ยน Filter
+  // สั่งให้ Scroll ข่าวดีดกลับไปซ้ายสุด เมื่อมีการเปลี่ยน Filter
   useEffect(() => {
     if (newsScrollRef.current) {
       newsScrollRef.current.scrollTo({ left: 0, behavior: 'smooth' });
@@ -115,6 +117,44 @@ export const HomePage = () => {
 
     setFilteredHomeEvents(result);
   }, [eventFilter, eventList]);
+
+  // -----------------------------------------------------------------
+  // 🌊 ✅ Logic Auto Scroll (แบบ Ping-Pong: ไหลไป-กลับ)
+  // -----------------------------------------------------------------
+  useEffect(() => {
+    const scrollContainer = eventScrollRef.current;
+    let animationFrameId;
+    let direction = 1; // 1 = ไปขวา, -1 = ไปซ้าย
+    const speed = 0.3; // ความเร็ว (ปรับได้)
+
+    const autoScroll = () => {
+      // ทำงานเฉพาะตอนที่: มีกล่องอยู่ AND เมาส์ไม่ได้ชี้อยู่
+      if (scrollContainer && !isEventHovered.current) {
+        
+        // ขยับตามทิศทาง
+        scrollContainer.scrollLeft += (speed * direction);
+
+        // 1. ชนขอบขวา? -> เปลี่ยนทิศเป็น "ซ้าย"
+        if (
+          scrollContainer.scrollLeft + scrollContainer.clientWidth >=
+          scrollContainer.scrollWidth - 1
+        ) {
+          direction = -1; 
+        } 
+        // 2. ชนขอบซ้าย? -> เปลี่ยนทิศเป็น "ขวา"
+        else if (scrollContainer.scrollLeft <= 0) {
+          direction = 1;
+        }
+      }
+      
+      animationFrameId = requestAnimationFrame(autoScroll);
+    };
+
+    // เริ่มสตาร์ทเครื่องยนต์
+    animationFrameId = requestAnimationFrame(autoScroll);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, []);
 
   // Scroll to Anchor Logic
   useEffect(() => {
@@ -168,7 +208,6 @@ export const HomePage = () => {
           ))}
         </div>
 
-        {/* ✅ 3. ใส่ ref={newsScrollRef} ที่นี่ เพื่อให้จับตัวถูก */}
         <div 
           ref={newsScrollRef}
           className="flex overflow-x-auto pb-4 gap-4 snap-x -mx-4 px-4 scroll-pl-4 md:mx-0 md:px-0 scrollbar-hide"
@@ -194,7 +233,7 @@ export const HomePage = () => {
         </div>
       </section>
 
-      {/* -------------------- 2. EVENTS SECTION -------------------- */}
+      {/* -------------------- 2. EVENTS SECTION (AUTO SCROLL) -------------------- */}
       <section id="events-section" className="scroll-mt-28">
         
         <div className="flex flex-col mb-6">
@@ -237,7 +276,13 @@ export const HomePage = () => {
           </ScrollableRow>
         </div>
 
-        <ScrollableRow className="gap-4 pb-4 -mx-4 px-4 scroll-pl-4">
+        {/* ✅ เปลี่ยน ScrollableRow เป็น div ธรรมดา เพื่อใส่ Ref และ Event Listeners */}
+        <div 
+          ref={eventScrollRef} // 👈 จุดเชื่อมต่อกับ Logic
+          onMouseEnter={() => (isEventHovered.current = true)} // 👈 เมาส์เข้า -> หยุด
+          onMouseLeave={() => (isEventHovered.current = false)} // 👈 เมาส์ออก -> ไหลต่อ
+          className="flex overflow-x-auto pb-4 gap-4 -mx-4 px-4 scroll-pl-4 scrollbar-hide"
+        >
           {isLoading ? (
             [...Array(5)].map((_, i) => (
               <div key={i} className="flex-shrink-0 w-[38vw] min-w-[140px] md:w-[220px] lg:w-[22%] snap-start h-full">
@@ -256,7 +301,7 @@ export const HomePage = () => {
           ) : (
             <EmptyState title="ไม่พบกิจกรรม" subtitle="ลองเลือกหมวดอื่นดูนะ" />
           )}
-        </ScrollableRow>
+        </div>
       </section>
 
       {/* -------------------- 3. CAFES SECTION -------------------- */}
