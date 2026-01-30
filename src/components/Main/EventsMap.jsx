@@ -30,12 +30,19 @@ const getPillIcon = (event) => {
     return icon;
 };
 
-// --- Sub-Components (เหมือนเดิม) ---
-const MapResizer = ({ showMapDesktop, mobileViewMode }) => {
+// --- Sub-Components (✅ แก้ไขตรง MapResizer) ---
+const MapResizer = ({ showMapDesktop, mobileViewMode, isMapFullScreen }) => {
     const map = useMap();
-    useEffect(() => { setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 300); }, [showMapDesktop, mobileViewMode, map]);
+    useEffect(() => { 
+        // รอ 300ms ให้ Animation ขยายจอจบก่อน แล้วค่อยสั่งวาดแมพใหม่
+        const timer = setTimeout(() => { 
+            try { map.invalidateSize(); } catch (e) {} 
+        }, 300); 
+        return () => clearTimeout(timer);
+    }, [showMapDesktop, mobileViewMode, isMapFullScreen, map]); // ✅ เพิ่ม isMapFullScreen ใน dependency
     return null;
 };
+
 const MapBoundsReporter = ({ setMapBounds }) => {
     const map = useMapEvents({ moveend: () => { if (map) setMapBounds(map.getBounds()); }, });
     return null;
@@ -64,42 +71,35 @@ const MapAutoFit = ({ markers, searchOnMove }) => {
 const EventsMap = ({ 
     events, hoveredEventId, setHoveredEventId, 
     onMarkerClick, 
-    mapRef, setMapBounds, searchOnMove, showMapDesktop, mobileViewMode 
+    mapRef, setMapBounds, searchOnMove, showMapDesktop, mobileViewMode,
+    isMapFullScreen // ✅ รับ Props นี้เข้ามา
 }) => {
     
     const activeHoverRef = useRef(null);
     useEffect(() => { activeHoverRef.current = hoveredEventId; }, [hoveredEventId]);
 
-    // Effect: Highlight Marker (เปลี่ยนสี + ขยาย)
-    // Effect: Highlight Marker (เปลี่ยนสีพื้นหลัง + สีตัวอักษร + ขยาย)
+    // Effect: Highlight Marker
     useEffect(() => {
-        // 1. Reset: คืนค่าเดิมทั้งหมด
         document.querySelectorAll('.pill-marker').forEach(el => {
             el.style.transform = '';
             el.style.backgroundColor = '';
             el.style.borderColor = '';
             el.style.zIndex = '';
             el.classList.remove('active-marker');
-
-            // ✅ แก้ตรงนี้: ล้างค่าสีที่ตัวหนังสือข้างในด้วย
             const textSpan = el.querySelector('.pill-text');
             if (textSpan) textSpan.style.color = ''; 
         });
 
-        // 2. Active: ใส่สีส้ม และบังคับตัวหนังสือขาว
         if (hoveredEventId) {
             const container = document.getElementById(`marker-${hoveredEventId}`);
             if (container) {
                 const pill = container.querySelector('.pill-marker');
                 if (pill) {
-                    // ปรับกล่อง
                     pill.style.transform = 'scale(1.15)';
-                    pill.style.backgroundColor = '#000000'; // พื้น
-                    pill.style.borderColor = '#000000'; // ขอบ
+                    pill.style.backgroundColor = '#000000';
+                    pill.style.borderColor = '#000000';
                     pill.style.zIndex = '9999';
                     pill.classList.add('active-marker');
-
-                    // ✅ แก้ตรงนี้: เจาะจงเปลี่ยนสีตัวหนังสือข้างในเป็น "สีขาว"
                     const textSpan = pill.querySelector('.pill-text');
                     if (textSpan) textSpan.style.color = '#ffffff';
                 }
@@ -117,17 +117,13 @@ const EventsMap = ({
                 eventHandlers={{ 
                     click: () => onMarkerClick(event.id),
                     mouseover: () => {
-                        // ✅ FIX: ถ้าเป็น Mobile (มี mobileViewMode) ให้ปิด Hover ทิ้งไปเลย!
-                        // ป้องกัน Touch แล้วแมพขยับก่อนกด Click
                         if (mobileViewMode) return; 
-
                         if (activeHoverRef.current === event.id) return;
                         activeHoverRef.current = event.id;
                         if (setHoveredEventId) setHoveredEventId(event.id);
                     },
                     mouseout: () => {
-                        if (mobileViewMode) return; // ✅ FIX: ปิด MouseOut ด้วย
-                        
+                        if (mobileViewMode) return; 
                         if (activeHoverRef.current === event.id) {
                             activeHoverRef.current = null;
                             if (setHoveredEventId) setHoveredEventId(null);
@@ -141,11 +137,18 @@ const EventsMap = ({
     return (
         <MapContainer 
             center={[13.7563, 100.5018]} zoom={11} scrollWheelZoom={true} 
-            className="w-full h-full z-0" ref={mapRef} zoomControl={false}
+            className="w-full h-full z-0 relative" ref={mapRef} 
+            zoomControl={false} 
         >
             <TileLayer attribution='© CARTO' url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+            
             <ZoomControl position="topright" />
-            <MapResizer showMapDesktop={showMapDesktop} mobileViewMode={mobileViewMode} />
+
+            <MapResizer 
+                showMapDesktop={showMapDesktop} 
+                mobileViewMode={mobileViewMode} 
+                isMapFullScreen={isMapFullScreen} // ✅ ส่งค่าไปให้ตัว Resizer
+            />
             <MapBoundsReporter setMapBounds={setMapBounds} />
             <MapAutoFit markers={events} searchOnMove={searchOnMove} />
             {markers}

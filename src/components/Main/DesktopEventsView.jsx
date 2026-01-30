@@ -4,6 +4,7 @@ import {
   IconChevronRight,
   IconMapPin,
   IconX,
+  IconMaximize, // ✅ 1. เพิ่ม Import ไอคอนขยาย
 } from "../icons/Icons";
 import { SkeletonEvent } from "../ui/UIComponents";
 import { EventCard } from "../ui/CardComponents";
@@ -11,7 +12,7 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import EventsMap from "./EventsMap";
 import L from "leaflet";
 
-// --- 📐 Helper: คำนวณระยะทาง ---
+// --- 📐 Helper: คำนวณระยะทาง (เหมือนเดิม) ---
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
   const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -26,7 +27,7 @@ const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-// --- 🎨 Helper: สีหมวดหมู่ ---
+// --- 🎨 Helper: สีหมวดหมู่ (เหมือนเดิม) ---
 const categoryColors = {
   Concert: "#FF6B00",
   "Fan Meeting": "#E91E63",
@@ -38,7 +39,7 @@ const categoryColors = {
   Others: "#607D8B",
 };
 
-// --- 📇 Sub-Component: การ์ดเดี่ยวๆ ---
+// --- 📇 Sub-Component: การ์ดเดี่ยวๆ (เหมือนเดิม) ---
 const SingleFloatingCard = ({ event, isCenter, onClick, onClose }) => {
   const cardVariants = {
     center: { scale: 1, opacity: 1, zIndex: 50, y: 0, x: 0 },
@@ -144,7 +145,7 @@ const SingleFloatingCard = ({ event, isCenter, onClick, onClose }) => {
   );
 };
 
-// --- 🎠 Component: Carousel Container ---
+// --- 🎠 Component: Carousel Container (เหมือนเดิม) ---
 const FloatingCarouselCard = ({
   currentEvent,
   prevEvent,
@@ -264,6 +265,9 @@ const DesktopEventsView = ({
   const [nearbyQueue, setNearbyQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(0);
 
+  // ✅ State: ควบคุมการแสดงผล Map เต็มจอ (มีอยู่แล้ว)
+  const [isMapFullScreen, setIsMapFullScreen] = useState(false);
+
   const handleMarkerClick = (clickedId) => {
     const clickedEvent = eventsWithLocation.find((e) => e.id === clickedId);
     if (!clickedEvent) return;
@@ -335,18 +339,19 @@ const DesktopEventsView = ({
   const nextEvent =
     queueIndex < nearbyQueue.length - 1 ? nearbyQueue[queueIndex + 1] : null;
 
-  // ✅ FIX Grid Logic: เพิ่ม 2xl:grid-cols-6
-  // ถ้าปิดแผนที่ (Full Width): 2 -> 3 -> 4 -> 5 -> 6
-  // ถ้าเปิดแผนที่ (Half Width): 2 -> 3
   const gridClass = showMapDesktop
     ? "gap-4 grid-cols-2 xl:grid-cols-3"
     : "gap-4 md:gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-6";
 
   return (
     <div className="w-full h-full flex flex-row bg-white overflow-hidden">
+      
       {/* --- LEFT: List Section --- */}
+      {/* Logic การซ่อน List: ถ้า Map เต็มจอ -> ซ่อน (hidden) */}
       <div
-        className={`flex flex-col h-full transition-all duration-300 ease-in-out ${showMapDesktop ? "lg:w-1/2" : "w-full"} `}
+        className={`flex flex-col h-full transition-all duration-300 ease-in-out ${
+            isMapFullScreen ? "hidden" : showMapDesktop ? "lg:w-1/2" : "w-full"
+        }`}
       >
         <div className="flex-1 overflow-y-auto pb-6 scroll-smooth">
           <div
@@ -464,21 +469,16 @@ const DesktopEventsView = ({
                 filteredEvents.map((item) => (
                   <div 
         key={item.id} 
-        // ✅ 1. Wrapper ยังคงรับ Mouse Enter/Leave เพื่อทำ Effect ขอบส้ม
         className={`cursor-pointer rounded-xl transition-all duration-200 ease-in-out border-2 ${hoveredEventId === item.id ? 'border-[#FF6B00] scale-[1.02] shadow-xl ring-2 ring-[#FF6B00]/20' : 'border-transparent hover:border-transparent'}`}
         onMouseEnter={() => setHoveredEventId(item.id)} 
         onMouseLeave={() => setHoveredEventId(null)}
         ref={el => cardRefs.current[item.id] = el}
-        
-        // ✅ 2. สั่งเปิด Tab ใหม่ที่นี่ (และสั่ง stopPropagation กันเหนียว)
         onClick={(e) => {
              e.preventDefault();
              e.stopPropagation();
              window.open(`/event/${item.id}`, '_blank');
         }}
     >
-        {/* ✅ 3. ไม้ตาย: ครอบ div อีกชั้น ใส่ pointer-events-none */}
-        {/* คำสั่งนี้จะทำให้ EventCard ข้างใน "กดไม่ติด" (ทะลุผ่าน) ทำให้ Link เดิมไม่ทำงาน */}
         <div className="pointer-events-none">
             <EventCard item={item} />
         </div>
@@ -504,8 +504,13 @@ const DesktopEventsView = ({
       </div>
 
       {/* --- RIGHT: Map Section --- */}
+      {/* Logic การขยาย Map: ถ้า Map เต็มจอ -> w-full, ถ้าไม่ -> lg:w-1/2 */}
       <div
-        className={`lg:w-1/2 h-full bg-white p-6 xl:p-8 relative transition-all duration-300 ease-in-out ${showMapDesktop ? "block" : "hidden"}`}
+        className={`${
+          isMapFullScreen ? "w-full" : "lg:w-1/2"
+        } h-full bg-white p-6 xl:p-8 relative transition-all duration-300 ease-in-out ${
+          showMapDesktop ? "block" : "hidden"
+        }`}
       >
         <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-lg border border-gray-200">
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[10]">
@@ -533,6 +538,20 @@ const DesktopEventsView = ({
                 )}
               </div>
               ค้นหาเมื่อเลื่อนแผนที่
+            </button>
+          </div>
+
+          {/* ✅ 2. ปุ่มขยาย Map: ใส่ตรงนี้ (ตำแหน่ง Absolute ใต้ปุ่ม Zoom) */}
+          <div 
+            className="absolute z-[1000]" 
+            style={{ top: '80px', right: '11px' }}
+          >
+            <button
+                onClick={() => setIsMapFullScreen(!isMapFullScreen)}
+                className="bg-white w-[30px] h-[30px] rounded shadow-md border border-[#ccc] flex items-center justify-center hover:bg-gray-50 text-black transition-all active:scale-95"
+                title={isMapFullScreen ? "ย่อแผนที่" : "ขยายเต็มจอ"}
+            >
+                {isMapFullScreen ? <IconX size={18} /> : <IconMaximize size={16} />}
             </button>
           </div>
 
@@ -580,6 +599,8 @@ const DesktopEventsView = ({
             searchOnMove={searchOnMove}
             showMapDesktop={showMapDesktop}
             mobileViewMode={mobileViewMode}
+            isMapFullScreen={isMapFullScreen}
+            toggleMapFullScreen={() => setIsMapFullScreen(!isMapFullScreen)}
           />
 
           <FloatingCarouselCard
