@@ -70,19 +70,39 @@ const EventsMap = ({
     const activeHoverRef = useRef(null);
     useEffect(() => { activeHoverRef.current = hoveredEventId; }, [hoveredEventId]);
 
-    // Effect: Highlight Marker
+    // Effect: Highlight Marker (เปลี่ยนสี + ขยาย)
     useEffect(() => {
+        // 1. Reset: คืนค่าหมุดทุกตัวให้เป็นปกติก่อน
         document.querySelectorAll('.pill-marker').forEach(el => {
-            el.style.transform = 'scale(1)';
+            el.style.transform = '';        // ล้างค่าขยาย
+            el.style.backgroundColor = '';  // ล้างสีพื้นหลัง (กลับไปขาวตาม CSS)
+            el.style.color = '';            // ล้างสีตัวอักษร (กลับไปดำตาม CSS)
+            el.style.borderColor = '';      // ล้างสีขอบ (กลับไปตามเดิม)
+            el.style.zIndex = '';           // ล้างลำดับชั้น
             el.classList.remove('active-marker');
+
+            // ✅ แก้ตรงนี้: ล้างค่าสีที่ตัวหนังสือข้างในด้วย
+            const textSpan = el.querySelector('.pill-text');
+            if (textSpan) textSpan.style.color = '';
         });
+
+
+        // 2. Active: ถ้ามีตัวที่ถูกเลือก ให้เปลี่ยนสีให้เด่น
         if (hoveredEventId) {
             const container = document.getElementById(`marker-${hoveredEventId}`);
             if (container) {
                 const pill = container.querySelector('.pill-marker');
                 if (pill) {
-                    pill.style.transform = 'scale(1.2)';
+                    pill.style.transform = 'scale(1.15)'; // 🔍 ขยายใหญ่
+                    pill.style.backgroundColor = '#000000'; // 🟠 พื้นหลัง
+                    pill.style.color = 'white';             // ⚪️ ตัวหนังสือขาว
+                    pill.style.borderColor = '#000000';     // 🟠 ขอบ
+                    pill.style.zIndex = '9999';             // 🔝 อยู่บนสุดเสมอ
                     pill.classList.add('active-marker');
+
+                    // ✅ แก้ตรงนี้: เจาะจงเปลี่ยนสีตัวหนังสือข้างในเป็น "สีขาว"
+                    const textSpan = pill.querySelector('.pill-text');
+                    if (textSpan) textSpan.style.color = '#ffffff';
                 }
             }
         }

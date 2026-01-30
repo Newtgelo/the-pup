@@ -415,7 +415,7 @@ const DesktopEventsView = ({
                 >
                   {showMapDesktop ? (
                     <>
-                      <IconX size={18} /> แสดงรายการแบบเต็ม
+                      <IconX size={18} /> ปิดแผนที่  
                     </>
                   ) : (
                     <>
