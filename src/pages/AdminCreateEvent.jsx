@@ -9,6 +9,9 @@ import "react-quill-new/dist/quill.snow.css";
 // ✅ Import SweetAlert2
 import Swal from "sweetalert2";
 
+// ✅ Import Icons (ใช้สำหรับ Radio Button)
+import { IconTicket, IconMapPin, IconLock, IconClock } from "../components/icons/Icons"
+
 // ✅ 1. ตั้งค่า Tag มาตรฐานสำหรับ Event
 const COMMON_TAGS = [
   "Concert", "Fan Meeting", "Exhibition",
@@ -43,27 +46,50 @@ export const AdminCreateEvent = () => {
   // ✅ เพิ่ม map_link, lat, lng ใน State
   const [formData, setFormData] = useState({
     title: '', date: '', end_date: '', date_display: '', time: '', location: '', 
-    category: 'Concert', image_url: '', link: '', description: '', ticket_price: '', tags: '',
-    map_link: '', lat: null, lng: null 
+    category: 'Concert', image_url: '', description: '', ticket_price: '', tags: '',
+    map_link: '', lat: null, lng: null,
+    
+    // 🆕 แยก ticket_link (ค่าจริง) กับ ticket_type (ตัวเลือก)
+    ticket_link: '', 
+    ticket_type: 'link' // 'link', 'walk_in', 'closed', 'tba'
   });
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   const handleDescriptionChange = (value) => setFormData({ ...formData, description: value });
 
-  // ✅ 2. ฟังก์ชันดูดพิกัดจากลิงก์ Google Maps (เมื่อมีการพิมพ์หรือวางลิงก์)
+  // ✅ Logic เปลี่ยนประเภทบัตร (Auto-Fill)
+  const handleTicketTypeChange = (type) => {
+    let newLink = formData.ticket_link;
+
+    if (type === 'walk_in') newLink = 'walk_in';
+    else if (type === 'closed') newLink = 'closed';
+    else if (type === 'tba') newLink = ''; // เคลียร์เป็นค่าว่าง
+    else if (type === 'link' && (newLink === 'walk_in' || newLink === 'closed')) newLink = ''; // ถ้ากลับมาเลือก Link ให้เคลียร์ค่าเก่าทิ้ง
+
+    setFormData({ 
+        ...formData, 
+        ticket_type: type, 
+        ticket_link: newLink 
+    });
+  };
+
+  // ✅ Logic เปลี่ยน Link (เฉพาะกรณีเลือกแบบ Link)
+  const handleLinkChange = (e) => {
+    setFormData({ ...formData, ticket_link: e.target.value });
+  };
+
+  // ✅ 2. ฟังก์ชันดูดพิกัดจากลิงก์ Google Maps
   const handleMapLinkChange = (e) => {
     const url = e.target.value;
     let newLat = formData.lat;
     let newLng = formData.lng;
 
-    // พยายามหาแพทเทิร์น @lat,lng (เช่น @13.9115,100.5532)
     const regex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
     const match = url.match(regex);
 
     if (match) {
         newLat = parseFloat(match[1]);
         newLng = parseFloat(match[2]);
-        // แจ้งเตือนเล็กๆ (Console) ว่าเจอพิกัดแล้ว
         console.log("📍 เจอพิกัด:", newLat, newLng);
     }
 
@@ -98,9 +124,13 @@ export const AdminCreateEvent = () => {
     setLoading(true);
 
     const now = new Date().toISOString(); 
+    
+    // ตัด ticket_type ออกก่อนบันทึก (เพราะใน DB ไม่มี field นี้)
+    // ใช้ ticket_link เป็นตัวเก็บค่าจริง
+    const { ticket_type, ...dataToSave } = formData;
 
     const finalData = {
-        ...formData,
+        ...dataToSave,
         end_date: formData.end_date || formData.date, 
         status: statusType,           
         created_at: now,              
@@ -170,11 +200,9 @@ export const AdminCreateEvent = () => {
                 <div><label className="block text-sm font-bold text-gray-700 mb-1">สถานที่ *</label><input required name="location" onChange={handleChange} className="w-full border rounded-lg p-3" placeholder="เช่น IMPACT Arena" /></div>
             </div>
 
-            {/* ✅ 4. เพิ่มช่อง Google Maps Link (แทรกตรงนี้) */}
             <div>
                 <div className="flex justify-between items-center mb-1">
                     <label className="block text-sm font-bold text-gray-700">ลิงก์ Google Maps (เพื่อดึงพิกัด)</label>
-                    {/* แสดงสถานะพิกัดเล็กๆ ถ้าเจอแล้ว */}
                     {formData.lat && (
                         <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
                             📍 พิกัดพร้อม: {formData.lat.toFixed(4)}, {formData.lng.toFixed(4)}
@@ -188,9 +216,6 @@ export const AdminCreateEvent = () => {
                     className="w-full border rounded-lg p-3 bg-blue-50/50 focus:bg-white transition" 
                     placeholder="วางลิงก์ Google Maps ที่ก๊อปจาก Address Bar ที่นี่..." 
                 />
-                <p className="text-[10px] text-gray-400 mt-1 ml-1">
-                   *ระบบจะดึงพิกัดจากลิงก์ให้อัตโนมัติ (ต้องมี @lat,long ในลิงก์)
-                </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -211,7 +236,48 @@ export const AdminCreateEvent = () => {
             </div>
 
             <div><label className="block text-sm font-bold text-gray-700 mb-1">ลิงก์รูปโปสเตอร์ (URL) *</label><input required name="image_url" onChange={handleChange} className="w-full border rounded-lg p-3" /></div>
-            <div><label className="block text-sm font-bold text-gray-700 mb-1">ลิงก์จองบัตร</label><input name="link" onChange={handleChange} className="w-full border rounded-lg p-3" /></div>
+            
+            {/* ✅ ส่วน Ticket Link (แบบ Smart) */}
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <label className="block text-sm font-bold text-gray-700 mb-3">การจองบัตร / เข้าร่วมงาน</label>
+                
+                {/* ตัวเลือก Radio */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                    <label className={`cursor-pointer p-3 rounded-lg border-2 flex items-center gap-2 transition ${formData.ticket_type === 'link' ? 'border-[#FF6B00] bg-orange-50 text-[#FF6B00]' : 'border-gray-200 bg-white text-gray-500'}`}>
+                        <input type="radio" name="ticket_type" value="link" checked={formData.ticket_type === 'link'} onChange={() => handleTicketTypeChange('link')} className="hidden" />
+                        <IconTicket size={18} /> <span className="text-sm font-bold">มีลิงก์จอง</span>
+                    </label>
+
+                    <label className={`cursor-pointer p-3 rounded-lg border-2 flex items-center gap-2 transition ${formData.ticket_type === 'walk_in' ? 'border-green-500 bg-green-50 text-green-600' : 'border-gray-200 bg-white text-gray-500'}`}>
+                        <input type="radio" name="ticket_type" value="walk_in" checked={formData.ticket_type === 'walk_in'} onChange={() => handleTicketTypeChange('walk_in')} className="hidden" />
+                        <IconMapPin size={18} /> <span className="text-sm font-bold">Walk-in ฟรี</span>
+                    </label>
+
+                    <label className={`cursor-pointer p-3 rounded-lg border-2 flex items-center gap-2 transition ${formData.ticket_type === 'closed' ? 'border-gray-600 bg-gray-100 text-gray-700' : 'border-gray-200 bg-white text-gray-500'}`}>
+                        <input type="radio" name="ticket_type" value="closed" checked={formData.ticket_type === 'closed'} onChange={() => handleTicketTypeChange('closed')} className="hidden" />
+                        <IconLock size={18} /> <span className="text-sm font-bold">งานปิด</span>
+                    </label>
+
+                    <label className={`cursor-pointer p-3 rounded-lg border-2 flex items-center gap-2 transition ${formData.ticket_type === 'tba' ? 'border-yellow-400 bg-yellow-50 text-yellow-600' : 'border-gray-200 bg-white text-gray-500'}`}>
+                        <input type="radio" name="ticket_type" value="tba" checked={formData.ticket_type === 'tba'} onChange={() => handleTicketTypeChange('tba')} className="hidden" />
+                        <IconClock size={18} /> <span className="text-sm font-bold">รอติดตาม</span>
+                    </label>
+                </div>
+
+                {/* ช่องกรอกลิงก์ (โชว์เฉพาะเมื่อเลือกแบบ 'link') */}
+                {formData.ticket_type === 'link' && (
+                    <div className="animate-fade-in">
+                        <input 
+                            name="ticket_link" 
+                            value={formData.ticket_link} 
+                            onChange={handleLinkChange} 
+                            className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[#FF6B00] outline-none" 
+                            placeholder="วางลิงก์เว็บจองบัตร / เพจรายละเอียด ที่นี่..." 
+                            autoFocus
+                        />
+                    </div>
+                )}
+            </div>
 
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">รายละเอียดงาน (Rich Text)</label>

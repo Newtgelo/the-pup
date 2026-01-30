@@ -1,10 +1,10 @@
 import React from "react";
 
 // ==========================================
-// รวมไอคอน SVG ทั้งหมดของโปรเจกต์ (Mixed Version: คงของเดิม + เพิ่มของใหม่)
+// รวมไอคอน SVG ทั้งหมดของโปรเจกต์
 // ==========================================
 
-// ✅ 1. IconLogo (เอาของเดิมกลับมา สวยกว่า)
+// ✅ 1. IconLogo
 export const IconLogo = ({ size = 40, color = "#FF6B00", className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 40 40" fill="none" className={className}>
     <rect width="40" height="40" rx="12" fill={color}/>
@@ -38,7 +38,7 @@ export const IconCalendar = ({ size = 20, className = "" }) => (
   </svg>
 );
 
-// ✅ 5. IconClock
+// ✅ 5. IconClock (เหลือตัวเดียวแล้ว)
 export const IconClock = ({ size = 20, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <circle cx="12" cy="12" r="10"></circle>
@@ -94,14 +94,14 @@ export const IconTicket = ({ size = 20, className = "" }) => (
   </svg>
 );
 
-// ✅ 12. IconNewspaper (แถมให้ เผื่อใช้กับข่าว)
+// ✅ 12. IconNewspaper
 export const IconNewspaper = ({ size = 20, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M19 20H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v1m2 13a2 2 0 0 1-2-2V7m2 13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
   </svg>
 );
 
-// ✅ 13. IconSort (ใช้ของเดิมที่คุณชอบ)
+// ✅ 13. IconSort
 export const IconSort = ({ size = 20, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 18V4"></path>
@@ -173,7 +173,6 @@ export const IconBriefcase = ({ size = 20, className = "" }) => (
   </svg>
 );
 
-
 // ✅ 22. IconWifi
 export const IconWifi = ({ size = 24, className = "" }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -184,8 +183,7 @@ export const IconWifi = ({ size = 24, className = "" }) => (
   </svg>
 );
 
-// ... (ไอคอนเดิมที่มีอยู่แล้ว)
-
+// ✅ 23. IconTarget
 export const IconTarget = ({ size = 24, className = "" }) => (
     <svg 
         xmlns="http://www.w3.org/2000/svg" 
@@ -207,6 +205,7 @@ export const IconTarget = ({ size = 24, className = "" }) => (
     </svg>
 );
 
+// ✅ 24. IconList
 export const IconList = ({ size = 24, className = "" }) => (
     <svg 
         xmlns="http://www.w3.org/2000/svg" 
@@ -227,4 +226,23 @@ export const IconList = ({ size = 24, className = "" }) => (
         <line x1="3" y1="12" x2="3.01" y2="12"></line>
         <line x1="3" y1="18" x2="3.01" y2="18"></line>
     </svg>
+);
+
+// ✅ 25. IconLock (เพิ่มใหม่)
+export const IconLock = ({ size = 24, className = "" }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+  </svg>
 );

@@ -7,6 +7,9 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import Swal from "sweetalert2";
 
+// ✅ Import Icons (สำหรับ Radio Button)
+import { IconTicket, IconMapPin, IconLock, IconClock } from "../components/icons/Icons"; // แก้ path ให้ตรงกับที่แก้ไปตะกี้
+
 // ✅ 1. เพิ่มรายการ Tag แนะนำ
 const COMMON_TAGS = [
   "Concert", "Fan Meeting", "Exhibition",
@@ -35,13 +38,17 @@ export const AdminEditEvent = () => {
     ],
   };
 
-  // ✅ เพิ่ม map_link, lat, lng ใน State
+  // ✅ เพิ่ม map_link, lat, lng และ ticket_type ใน State
   const [formData, setFormData] = useState({ 
     title: '', date: '', end_date: '', date_display: '', time: '', location: '', 
     category: 'Concert', 
-    image_url: '', link: '', 
+    image_url: '', 
     description: '', ticket_price: '', tags: '',
-    map_link: '', lat: null, lng: null 
+    map_link: '', lat: null, lng: null,
+    
+    // 🆕 Smart Ticket Logic
+    ticket_link: '', 
+    ticket_type: 'link' // default
   });
 
   useEffect(() => {
@@ -60,6 +67,15 @@ export const AdminEditEvent = () => {
           setStatus(data.status || 'published');
           setUpdatedAt(data.updated_at || data.created_at);
 
+          // คำนวณ ticket_type จากข้อมูลเก่า
+          let detectedType = 'link';
+          const linkVal = data.ticket_link || data.link || ''; // รองรับ field เก่า 'link' ถ้ามี
+          
+          if (linkVal === 'walk_in') detectedType = 'walk_in';
+          else if (linkVal === 'closed') detectedType = 'closed';
+          else if (!linkVal) detectedType = 'tba';
+          else detectedType = 'link';
+
           setFormData({
               title: data.title || '',
               date: data.date ? data.date.split('T')[0] : '', 
@@ -69,14 +85,16 @@ export const AdminEditEvent = () => {
               location: data.location || '',
               category: data.category || 'Concert',
               image_url: data.image_url || '',
-              link: data.link || '',
               description: data.description || '', 
               ticket_price: data.ticket_price || '',
               tags: data.tags || '',
-              // ✅ ดึงข้อมูล Map เดิมมาใส่ (ถ้ามี)
+              // ✅ Map Data
               map_link: data.map_link || '',
               lat: data.lat || null,
-              lng: data.lng || null
+              lng: data.lng || null,
+              // ✅ Ticket Data
+              ticket_link: linkVal,
+              ticket_type: detectedType
           });
       }
   };
@@ -90,7 +108,28 @@ export const AdminEditEvent = () => {
     setFormData((prev) => ({ ...prev, description: value }));
   };
 
-  // ✅ ฟังก์ชันดูดพิกัดจากลิงก์ Google Maps (เมื่อมีการแก้ไขลิงก์)
+  // ✅ Logic เปลี่ยนประเภทบัตร (Smart Ticket)
+  const handleTicketTypeChange = (type) => {
+    let newLink = formData.ticket_link;
+
+    if (type === 'walk_in') newLink = 'walk_in';
+    else if (type === 'closed') newLink = 'closed';
+    else if (type === 'tba') newLink = '';
+    else if (type === 'link' && (newLink === 'walk_in' || newLink === 'closed')) newLink = '';
+
+    setFormData({ 
+        ...formData, 
+        ticket_type: type, 
+        ticket_link: newLink 
+    });
+  };
+
+  // ✅ Logic เปลี่ยน Link (Smart Ticket)
+  const handleLinkChange = (e) => {
+    setFormData({ ...formData, ticket_link: e.target.value });
+  };
+
+  // ✅ ฟังก์ชันดูดพิกัดจากลิงก์ Google Maps
   const handleMapLinkChange = (e) => {
     const url = e.target.value;
     let newLat = formData.lat;
@@ -112,7 +151,7 @@ export const AdminEditEvent = () => {
     });
   };
 
-  // ✅ 2. ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ
+  // ✅ ฟังก์ชันกดปุ่มแล้วเติม Tag อัตโนมัติ
   const handleAddTag = (tagToAdd) => {
     const currentTags = formData.tags || "";
     if (!currentTags) {
@@ -135,12 +174,17 @@ export const AdminEditEvent = () => {
     setLoading(true);
 
     const now = new Date().toISOString(); 
+    
+    // ตัด ticket_type ออกก่อนบันทึก
+    const { ticket_type, ...dataToSave } = formData;
 
     const finalData = { 
-        ...formData, 
+        ...dataToSave, 
         end_date: formData.end_date || formData.date,
         status: statusType,  
-        updated_at: now      
+        updated_at: now,
+        // สำคัญ: อัปเดตทั้ง field เก่า (link) และใหม่ (ticket_link) เพื่อความชัวร์
+        link: formData.ticket_link 
     };
 
     const { error } = await supabase.from('events').update(finalData).eq('id', id);
@@ -225,7 +269,7 @@ export const AdminEditEvent = () => {
                 <div><label className="block text-sm font-bold mb-1">สถานที่</label><input required name="location" value={formData.location} onChange={handleChange} className="w-full border rounded-lg p-3"/></div>
             </div>
 
-            {/* ✅ เพิ่มช่อง Google Maps Link (เหมือนหน้า Create) */}
+            {/* ✅ Google Maps Link */}
             <div>
                 <div className="flex justify-between items-center mb-1">
                     <label className="block text-sm font-bold mb-1">ลิงก์ Google Maps (เพื่อดึงพิกัด)</label>
@@ -262,7 +306,47 @@ export const AdminEditEvent = () => {
             </div>
 
             <div><label className="block text-sm font-bold mb-1">ลิงก์รูปโปสเตอร์</label><input name="image_url" value={formData.image_url} onChange={handleChange} className="w-full border rounded-lg p-3"/></div>
-            <div><label className="block text-sm font-bold mb-1">ลิงก์จองบัตร</label><input name="link" value={formData.link} onChange={handleChange} className="w-full border rounded-lg p-3"/></div>
+            
+            {/* ✅ ส่วน Ticket Link (แบบ Smart Edit) */}
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <label className="block text-sm font-bold text-gray-700 mb-3">การจองบัตร / เข้าร่วมงาน</label>
+                
+                {/* ตัวเลือก Radio */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                    <label className={`cursor-pointer p-3 rounded-lg border-2 flex items-center gap-2 transition ${formData.ticket_type === 'link' ? 'border-[#FF6B00] bg-orange-50 text-[#FF6B00]' : 'border-gray-200 bg-white text-gray-500'}`}>
+                        <input type="radio" name="ticket_type" value="link" checked={formData.ticket_type === 'link'} onChange={() => handleTicketTypeChange('link')} className="hidden" />
+                        <IconTicket size={18} /> <span className="text-sm font-bold">มีลิงก์จอง</span>
+                    </label>
+
+                    <label className={`cursor-pointer p-3 rounded-lg border-2 flex items-center gap-2 transition ${formData.ticket_type === 'walk_in' ? 'border-green-500 bg-green-50 text-green-600' : 'border-gray-200 bg-white text-gray-500'}`}>
+                        <input type="radio" name="ticket_type" value="walk_in" checked={formData.ticket_type === 'walk_in'} onChange={() => handleTicketTypeChange('walk_in')} className="hidden" />
+                        <IconMapPin size={18} /> <span className="text-sm font-bold">Walk-in ฟรี</span>
+                    </label>
+
+                    <label className={`cursor-pointer p-3 rounded-lg border-2 flex items-center gap-2 transition ${formData.ticket_type === 'closed' ? 'border-gray-600 bg-gray-100 text-gray-700' : 'border-gray-200 bg-white text-gray-500'}`}>
+                        <input type="radio" name="ticket_type" value="closed" checked={formData.ticket_type === 'closed'} onChange={() => handleTicketTypeChange('closed')} className="hidden" />
+                        <IconLock size={18} /> <span className="text-sm font-bold">งานปิด</span>
+                    </label>
+
+                    <label className={`cursor-pointer p-3 rounded-lg border-2 flex items-center gap-2 transition ${formData.ticket_type === 'tba' ? 'border-yellow-400 bg-yellow-50 text-yellow-600' : 'border-gray-200 bg-white text-gray-500'}`}>
+                        <input type="radio" name="ticket_type" value="tba" checked={formData.ticket_type === 'tba'} onChange={() => handleTicketTypeChange('tba')} className="hidden" />
+                        <IconClock size={18} /> <span className="text-sm font-bold">รอติดตาม</span>
+                    </label>
+                </div>
+
+                {/* ช่องกรอกลิงก์ */}
+                {formData.ticket_type === 'link' && (
+                    <div className="animate-fade-in">
+                        <input 
+                            name="ticket_link" 
+                            value={formData.ticket_link} 
+                            onChange={handleLinkChange} 
+                            className="w-full border rounded-lg p-3 focus:ring-2 focus:ring-[#FF6B00] outline-none" 
+                            placeholder="วางลิงก์เว็บจองบัตร / เพจรายละเอียด ที่นี่..." 
+                        />
+                    </div>
+                )}
+            </div>
             
             <div>
                 <label className="block text-sm font-bold mb-1">รายละเอียดงาน (Rich Text)</label>
@@ -277,7 +361,7 @@ export const AdminEditEvent = () => {
                 </div>
             </div>
 
-            {/* ✅ 3. ส่วน Tags และ ปุ่มกดอัตโนมัติ */}
+            {/* ✅ ส่วน Tags */}
             <div>
                 <label className="block text-sm font-bold mb-1">Tags (คำค้นหา)</label>
                 <input 
@@ -288,7 +372,6 @@ export const AdminEditEvent = () => {
                     placeholder="เช่น Concert, IMPACT Arena"
                 />
 
-                {/* Area ปุ่มกด */}
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
                     <p className="text-xs text-gray-500 mb-2 font-bold">เลือก Tag ที่ใช้บ่อย (กดเพื่อเพิ่ม):</p>
                     <div className="flex flex-wrap gap-2">

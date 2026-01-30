@@ -82,12 +82,12 @@ export const EventDetail = ({ onTriggerToast }) => {
     if (event.map_link) window.open(event.map_link, "_blank");
     else if (event.lat && event.lng)
       window.open(
-        `https://www.google.com/maps/search/?api=1&query=${event.lat},${event.lng}`,
+        `http://googleusercontent.com/maps.google.com/?q=${event.lat},${event.lng}`,
         "_blank",
       );
     else if (event.location)
       window.open(
-        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location)}`,
+        `http://googleusercontent.com/maps.google.com/?q=${encodeURIComponent(event.location)}`,
         "_blank",
       );
     else onTriggerToast("ไม่พบข้อมูลแผนที่");
@@ -116,6 +116,57 @@ export const EventDetail = ({ onTriggerToast }) => {
       console.log("Error:", err);
     }
   };
+
+  // ✅ LOGIC ปุ่มใหม่: คำนวณสถานะปุ่ม (Smart Button)
+  const getActionBtnState = () => {
+    // รองรับทั้ง field ticket_link (อนาคต) และ link (ปัจจุบัน)
+    const link = event.ticket_link || event.link || "";
+    const lowerLink = link.trim().toLowerCase();
+
+    if (lowerLink === "walk_in") {
+      // กรณี 1: งานฟรี Walk-in -> ปุ่มเขียว เปิด Map
+      return {
+        text: "งานฟรี Walk-in",
+        style: "bg-[#10B981] hover:bg-[#059669] text-white shadow-lg hover:shadow-xl",
+        icon: <IconMapPin size={20} />,
+        action: handleMapClick,
+        isLink: false,
+        disabled: false
+      };
+    } else if (lowerLink === "closed") {
+      // กรณี 2: งานปิด -> ปุ่มดำ Disabled
+      return {
+        text: "งานปิด (Private)",
+        style: "bg-gray-800 text-gray-400 cursor-not-allowed border border-gray-700",
+        icon: <IconX size={20} />,
+        action: (e) => e.preventDefault(),
+        isLink: false,
+        disabled: true
+      };
+    } else if (link.startsWith("http")) {
+      // กรณี 3: มีลิงก์ -> ปุ่มส้ม เปิดลิงก์
+       return {
+        text: "ดูรายละเอียด / จอง",
+        style: "bg-[#FF6B00] hover:bg-[#E65000] text-white shadow-lg hover:shadow-xl",
+        icon: <IconTicket size={20} />,
+        href: link,
+        isLink: true,
+        disabled: false
+       };
+    } else {
+      // กรณี 4: ว่างเปล่า -> ปุ่มเทา รอติดตาม
+       return {
+        text: "รอติดตาม",
+        style: "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200",
+        icon: <IconTicket size={20} />, 
+        action: (e) => e.preventDefault(),
+        isLink: false,
+        disabled: true
+       };
+    }
+  };
+
+  const btnState = getActionBtnState();
 
   const formattedDate = event.date
     ? new Date(event.date).toLocaleDateString("th-TH", {
@@ -161,7 +212,6 @@ export const EventDetail = ({ onTriggerToast }) => {
       {/* Navbar Buttons Back and Share */}
       <div className="absolute top-24 left-0 right-0 z-20 p-4 max-w-7xl mx-auto flex justify-between items-start pointer-events-none">
         
-        {/* ✅ Logic: เช็ค state ถ้ามาจาก Home ให้โชว์ Back ถ้าไม่ ให้ใส่ div ว่างๆ ไว้ */}
         {location.state?.fromHome ? (
           <button
             onClick={goBack}
@@ -217,7 +267,7 @@ export const EventDetail = ({ onTriggerToast }) => {
               <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-lg border border-gray-100">
                 {/* Tags */}
                 <div className="mb-4">
-                  <span className="inline-block px-3 py-1 bg-orange-50 text-[#FF6B00] text-xs font-bold uppercase tracking-wider rounded-md border border-orange-100">
+                  <span className="inline-block px-3 py-1 bg-[#FF6B00] text-[#ffffff] text-xs font-bold uppercase tracking-wider rounded-full border border-orange-100">
                     {event.category}
                   </span>
                 </div>
@@ -230,7 +280,7 @@ export const EventDetail = ({ onTriggerToast }) => {
                 {/* Info List */}
                 <div className="space-y-5">
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-[#FF6B00] shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-500 shrink-0">
                       <IconCalendar size={20} />
                     </div>
                     <div>
@@ -264,14 +314,14 @@ export const EventDetail = ({ onTriggerToast }) => {
                     </div>
                     <div>
                       <p className="font-bold text-gray-900 text-lg">
-                        {event.ticket_price || "TBA"}
+                        {event.ticket_price || "จะยืนยันให้ทราบภายหลัง หรือ สามารถดูได้จากลิงก์รายละเอียด"}
                       </p>
                       <p className="text-sm text-gray-500">ราคาบัตร</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Desktop Buttons (Swapped) */}
+                {/* ✅ Desktop Buttons (อัปเดตใหม่) */}
                 <div className="hidden lg:flex gap-4 mt-8 pt-6 border-t border-gray-100">
                   <button
                     onClick={addToCalendar}
@@ -280,18 +330,25 @@ export const EventDetail = ({ onTriggerToast }) => {
                     <IconCalendar size={20} /> เพิ่มในปฏิทิน
                   </button>
 
-                  <a
-                    href={event.link || "#"}
-                    target={event.link ? "_blank" : "_self"}
-                    onClick={(e) =>
-                      !event.link &&
-                      (e.preventDefault(),
-                      onTriggerToast("ยังไม่มีลิงก์จองบัตร"))
-                    }
-                    className="flex-1 bg-[#FF6B00] hover:bg-[#E65000] text-white py-3 px-6 rounded-xl font-bold shadow-lg hover:shadow-xl flex justify-center items-center gap-2 active:scale-95 transition"
-                  >
-                    <IconTicket size={20} /> จองบัตรเลย
-                  </a>
+                  {/* Smart Button */}
+                  {btnState.isLink ? (
+                    <a
+                      href={btnState.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex-1 py-3 px-6 rounded-xl font-bold flex justify-center items-center gap-2 active:scale-95 transition ${btnState.style}`}
+                    >
+                      {btnState.icon} {btnState.text}
+                    </a>
+                  ) : (
+                    <button
+                      onClick={btnState.action}
+                      disabled={btnState.disabled}
+                      className={`flex-1 py-3 px-6 rounded-xl font-bold flex justify-center items-center gap-2 transition ${btnState.disabled ? '' : 'active:scale-95'} ${btnState.style}`}
+                    >
+                      {btnState.icon} {btnState.text}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -303,17 +360,7 @@ export const EventDetail = ({ onTriggerToast }) => {
               <h2 className="text-xl font-bold text-gray-900">รายละเอียดงาน</h2>
             </div>
 
-            <div
-              className="prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line break-words w-full
-                        bg-white p-0 md:p-0 font-body
-                        [&>p]:mb-6
-                        [&>h1]:font-sans [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4
-                        [&>h2]:font-sans [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mt-8 [&>h2]:mb-4
-                        [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-6
-                        [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-6
-                        [&_a]:text-[#FF6B00] [&_a]:font-bold [&_a]:no-underline hover:[&_a]:underline
-                        [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-4 [&_img]:max-w-full"
-            >
+            <div className="prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line break-words w-full bg-white p-0 md:p-0 font-body [&>p]:mb-6 [&>h1]:font-sans [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4 [&>h2]:font-sans [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mt-8 [&>h2]:mb-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-6 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-6 [&_a]:text-[#FF6B00] [&_a]:font-bold [&_a]:no-underline hover:[&_a]:underline [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-4 [&_img]:max-w-full">
               {parse(event.description || "", {
                 replace: (domNode) => {
                   if (domNode.name === "iframe" && domNode.attribs) {
@@ -392,7 +439,7 @@ export const EventDetail = ({ onTriggerToast }) => {
         </div>
       </div>
 
-      {/* Mobile Sticky Bar */}
+      {/* ✅ Mobile Sticky Bar (อัปเดตใหม่) */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 z-50 flex items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] safe-area-bottom">
         <button
           onClick={addToCalendar}
@@ -402,19 +449,25 @@ export const EventDetail = ({ onTriggerToast }) => {
           <span className="text-sm font-bold">เพิ่มในปฏิทิน</span>
         </button>
 
-        <a
-          href={event.link || "#"}
-          target={event.link ? "_blank" : "_self"}
-          onClick={(e) => {
-            if (!event.link) {
-              e.preventDefault();
-              onTriggerToast("ยังไม่มีลิงก์จองบัตร");
-            }
-          }}
-          className="flex-1 bg-[#FF6B00] text-white h-12 rounded-xl font-bold text-base flex items-center justify-center shadow-lg active:scale-95 transition"
-        >
-          จองบัตรเลย
-        </a>
+        {/* Smart Button Mobile */}
+        {btnState.isLink ? (
+          <a
+            href={btnState.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex-1 h-12 rounded-xl font-bold text-base flex items-center justify-center active:scale-95 transition ${btnState.style}`}
+          >
+            {btnState.text}
+          </a>
+        ) : (
+          <button
+            onClick={btnState.action}
+            disabled={btnState.disabled}
+            className={`flex-1 h-12 rounded-xl font-bold text-base flex items-center justify-center transition ${btnState.disabled ? '' : 'active:scale-95'} ${btnState.style}`}
+          >
+            {btnState.text}
+          </button>
+        )}
       </div>
     </>
   );
