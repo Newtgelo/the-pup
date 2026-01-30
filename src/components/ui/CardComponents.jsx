@@ -55,9 +55,10 @@ export const NewsCard = ({ item, className = "" }) => {
   );
 };
 
+
 // ==========================================
 // 2. การ์ดอีเวนต์ (Event Card)
-// ❌ ลบ Hover Effect (นิ่งๆ) + Full Cover
+// ✅ Dark Glass Category (Top-Left)
 // ==========================================
 export const EventCard = ({
   item,
@@ -88,6 +89,14 @@ export const EventCard = ({
           className="w-full h-full object-cover object-top"
         />
 
+        {/* ✅ Type A: Dark Glass Badge (มุมซ้ายบน) */}
+        <div className="absolute top-2 left-2 z-10 px-2.5 py-1 rounded-lg bg-black/40 backdrop-blur-md border border-white/20 shadow-sm flex items-center justify-center">
+          <span className="text-[10px] font-bold text-white uppercase tracking-wide leading-none">
+            {item.category || item.type || "EVENT"}
+          </span>
+        </div>
+
+        {/* New Badge (มุมขวาบน - ถ้ามี) */}
         {showNewBadge && (
           <div className="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm z-20">
             NEW
@@ -121,13 +130,7 @@ export const EventCard = ({
           </p>
         </div>
 
-        <div className="mt-3 pt-2 border-t">
-          <span
-            className={`text-[10px] px-2 py-1 rounded-full font-medium bg-gray-100 text-gray-600`}
-          >
-            {item.category || item.type || "Event"}
-          </span>
-        </div>
+        {/* ❌ ลบ Category ด้านล่างออกแล้ว (ย้ายไปข้างบน) */}
       </div>
     </Link>
   );
