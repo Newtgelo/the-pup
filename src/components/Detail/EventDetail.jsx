@@ -43,9 +43,26 @@ export const EventDetail = ({ onTriggerToast }) => {
   const [loading, setLoading] = useState(true);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
+  // ✅ 1. State สำหรับ Sticky Header
+  const [showStickyHeader, setShowStickyHeader] = useState(false);
+
   // Scroll to top on load
   useEffect(() => {
     window.scrollTo(0, 0);
+  }, []);
+
+  // ✅ 2. Scroll Listener: โชว์ Sticky Bar เมื่อเลื่อนลงมาเกิน 400px
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 400) {
+        setShowStickyHeader(true);
+      } else {
+        setShowStickyHeader(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const goBack = () => {
@@ -82,7 +99,6 @@ export const EventDetail = ({ onTriggerToast }) => {
     if (event.map_link) {
       window.open(event.map_link, "_blank");
     } else if (event.lat && event.lng) {
-      // ✅ ใช้ลิงก์มาตรฐาน https://www.google.com/maps
       window.open(
         `https://www.google.com/maps?q=${event.lat},${event.lng}`,
         "_blank",
@@ -123,12 +139,10 @@ export const EventDetail = ({ onTriggerToast }) => {
 
   // ✅ LOGIC ปุ่มใหม่: คำนวณสถานะปุ่ม (Smart Button)
   const getActionBtnState = () => {
-    // รองรับทั้ง field ticket_link (อนาคต) และ link (ปัจจุบัน)
     const link = event.ticket_link || event.link || "";
     const lowerLink = link.trim().toLowerCase();
 
     if (lowerLink === "walk_in") {
-      // กรณี 1: งานฟรี Walk-in -> ปุ่มเขียว เปิด Map
       return {
         text: "งานฟรี Walk-in",
         style:
@@ -139,7 +153,6 @@ export const EventDetail = ({ onTriggerToast }) => {
         disabled: false,
       };
     } else if (lowerLink === "closed") {
-      // กรณี 2: งานปิด -> ปุ่มดำ Disabled
       return {
         text: "งานปิด (Private)",
         style:
@@ -150,7 +163,6 @@ export const EventDetail = ({ onTriggerToast }) => {
         disabled: true,
       };
     } else if (link.startsWith("http")) {
-      // กรณี 3: มีลิงก์ -> ปุ่มส้ม เปิดลิงก์
       return {
         text: "ดูรายละเอียด / จอง",
         style:
@@ -161,7 +173,6 @@ export const EventDetail = ({ onTriggerToast }) => {
         disabled: false,
       };
     } else {
-      // กรณี 4: ว่างเปล่า -> ปุ่มเทา รอติดตาม
       return {
         text: "รอติดตาม",
         style:
@@ -217,8 +228,66 @@ export const EventDetail = ({ onTriggerToast }) => {
         </div>
       )}
 
-      {/* Navbar Buttons Back and Share */}
-      <div className="absolute top-24 left-0 right-0 z-20 p-4 max-w-7xl mx-auto flex justify-between items-start pointer-events-none">
+      {/* ✅ Sticky Header (Top) */}
+      <div
+        className={`fixed top-0 left-0 right-0 z-[60] bg-white/90 backdrop-blur-md shadow-md px-4 py-3 flex items-center justify-between gap-4 transition-transform duration-300 ${
+          showStickyHeader ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
+        {/* Left: Back & Title */}
+        <div className="flex items-center gap-3 overflow-hidden flex-1">
+          <button
+            onClick={goBack}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition shrink-0"
+          >
+            <IconChevronLeft size={20} />
+          </button>
+          <h3 className="font-bold text-gray-900 text-sm md:text-lg truncate">
+            {event.title}
+          </h3>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Desktop Only: Show Small Booking Button */}
+          <div className="hidden lg:block">
+            {btnState.isLink ? (
+              <a
+                href={btnState.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 ${btnState.style}`}
+              >
+                {btnState.text}
+              </a>
+            ) : (
+              !btnState.disabled && (
+                <button
+                  onClick={btnState.action}
+                  className={`px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 ${btnState.style}`}
+                >
+                  {btnState.text}
+                </button>
+              )
+            )}
+          </div>
+
+          <button
+            onClick={handleShare}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+          >
+            <IconShare size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Navbar Buttons Back and Share (Original - Absolute) */}
+      {/* ซ่อนตัวนี้เมื่อ Sticky มา เพื่อลดความซ้ำซ้อน (หรือไม่ซ่อนก็ได้ แต่นี่ซ่อนให้ดูคลีน) */}
+      <div
+        className={`absolute top-24 left-0 right-0 z-20 p-4 max-w-7xl mx-auto flex justify-between items-start pointer-events-none transition-opacity duration-300 ${
+          showStickyHeader ? "opacity-0" : "opacity-100"
+        }`}
+      >
         {location.state?.fromHome ? (
           <button
             onClick={goBack}
@@ -445,7 +514,7 @@ export const EventDetail = ({ onTriggerToast }) => {
         </div>
       </div>
 
-      {/* ✅ Mobile Sticky Bar (อัปเดตใหม่) */}
+      {/* ✅ Mobile Sticky Bar (Bottom) */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 px-4 z-50 flex items-center gap-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] safe-area-bottom">
         <button
           onClick={addToCalendar}
