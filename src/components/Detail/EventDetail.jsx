@@ -19,13 +19,13 @@ const EventDetailSkeleton = () => (
   <div className="min-h-screen bg-white animate-pulse font-sans">
     {/* Background Placeholder */}
     <div className="absolute inset-x-0 top-0 h-[550px] bg-gray-900 w-full"></div>
-    
+
     {/* Content Placeholder */}
     <div className="relative z-10 max-w-5xl mx-auto px-4 pt-8 lg:pt-8">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
         {/* Left: Poster */}
         <div className="lg:col-span-5 flex justify-center lg:justify-end">
-           <div className="w-full max-w-sm h-[500px] bg-gray-300 rounded-2xl"></div>
+          <div className="w-full max-w-sm h-[500px] bg-gray-300 rounded-2xl"></div>
         </div>
         {/* Right: Info Card */}
         <div className="lg:col-span-7 bg-white rounded-3xl p-8 h-[400px] shadow-xl border border-gray-100"></div>
@@ -79,18 +79,22 @@ export const EventDetail = ({ onTriggerToast }) => {
     );
 
   const handleMapClick = () => {
-    if (event.map_link) window.open(event.map_link, "_blank");
-    else if (event.lat && event.lng)
+    if (event.map_link) {
+      window.open(event.map_link, "_blank");
+    } else if (event.lat && event.lng) {
+      // ✅ ใช้ลิงก์มาตรฐาน https://www.google.com/maps
       window.open(
-        `http://googleusercontent.com/maps.google.com/?q=${event.lat},${event.lng}`,
+        `https://www.google.com/maps?q=${event.lat},${event.lng}`,
         "_blank",
       );
-    else if (event.location)
+    } else if (event.location) {
       window.open(
-        `http://googleusercontent.com/maps.google.com/?q=${encodeURIComponent(event.location)}`,
+        `https://www.google.com/maps?q=${encodeURIComponent(event.location)}`,
         "_blank",
       );
-    else onTriggerToast("ไม่พบข้อมูลแผนที่");
+    } else {
+      onTriggerToast("ไม่พบข้อมูลแผนที่");
+    }
   };
 
   const addToCalendar = () => {
@@ -127,42 +131,46 @@ export const EventDetail = ({ onTriggerToast }) => {
       // กรณี 1: งานฟรี Walk-in -> ปุ่มเขียว เปิด Map
       return {
         text: "งานฟรี Walk-in",
-        style: "bg-[#10B981] hover:bg-[#059669] text-white shadow-lg hover:shadow-xl",
+        style:
+          "bg-[#10B981] hover:bg-[#059669] text-white shadow-lg hover:shadow-xl",
         icon: <IconMapPin size={20} />,
         action: handleMapClick,
         isLink: false,
-        disabled: false
+        disabled: false,
       };
     } else if (lowerLink === "closed") {
       // กรณี 2: งานปิด -> ปุ่มดำ Disabled
       return {
         text: "งานปิด (Private)",
-        style: "bg-gray-800 text-gray-400 cursor-not-allowed border border-gray-700",
+        style:
+          "bg-gray-800 text-gray-400 cursor-not-allowed border border-gray-700",
         icon: <IconX size={20} />,
         action: (e) => e.preventDefault(),
         isLink: false,
-        disabled: true
+        disabled: true,
       };
     } else if (link.startsWith("http")) {
       // กรณี 3: มีลิงก์ -> ปุ่มส้ม เปิดลิงก์
-       return {
+      return {
         text: "ดูรายละเอียด / จอง",
-        style: "bg-[#FF6B00] hover:bg-[#E65000] text-white shadow-lg hover:shadow-xl",
+        style:
+          "bg-[#FF6B00] hover:bg-[#E65000] text-white shadow-lg hover:shadow-xl",
         icon: <IconTicket size={20} />,
         href: link,
         isLink: true,
-        disabled: false
-       };
+        disabled: false,
+      };
     } else {
       // กรณี 4: ว่างเปล่า -> ปุ่มเทา รอติดตาม
-       return {
+      return {
         text: "รอติดตาม",
-        style: "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200",
-        icon: <IconTicket size={20} />, 
+        style:
+          "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200",
+        icon: <IconTicket size={20} />,
         action: (e) => e.preventDefault(),
         isLink: false,
-        disabled: true
-       };
+        disabled: true,
+      };
     }
   };
 
@@ -211,7 +219,6 @@ export const EventDetail = ({ onTriggerToast }) => {
 
       {/* Navbar Buttons Back and Share */}
       <div className="absolute top-24 left-0 right-0 z-20 p-4 max-w-7xl mx-auto flex justify-between items-start pointer-events-none">
-        
         {location.state?.fromHome ? (
           <button
             onClick={goBack}
@@ -220,7 +227,7 @@ export const EventDetail = ({ onTriggerToast }) => {
             <IconChevronLeft size={24} />
           </button>
         ) : (
-          <div></div> 
+          <div></div>
         )}
 
         <button
@@ -232,7 +239,6 @@ export const EventDetail = ({ onTriggerToast }) => {
       </div>
 
       <div className="min-h-screen bg-white pb-24 lg:pb-12 font-sans">
-
         {/* Background (Static) */}
         <div className="absolute inset-x-0 top-0 h-[550px] overflow-hidden bg-gray-900">
           <div
@@ -245,7 +251,6 @@ export const EventDetail = ({ onTriggerToast }) => {
         {/* Main Content */}
         <div className="relative z-10 max-w-5xl mx-auto px-4 pt-8 lg:pt-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-            
             {/* LEFT: POSTER */}
             <div className="lg:col-span-5 flex justify-center lg:justify-end">
               <div
@@ -267,13 +272,13 @@ export const EventDetail = ({ onTriggerToast }) => {
               <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-lg border border-gray-100">
                 {/* Tags */}
                 <div className="mb-4">
-                  <span className="inline-block px-3 py-1 bg-[#FF6B00] text-[#ffffff] text-xs font-bold uppercase tracking-wider rounded-full border border-orange-100">
+                  <span className="inline-block px-3 py-1 bg-[#FF6B00] text-white text-xs font-bold uppercase tracking-wider rounded-full shadow-sm">
                     {event.category}
                   </span>
                 </div>
 
                 {/* Title */}
-                <h1 className="text-2xl lg:text-2xl font-extrabold text-gray-900 leading-tight mb-6">
+                <h1 className="text-2xl lg:text-2xl font-extrabold text-gray-900 leading-tight mb-6 break-words text-balance">
                   {event.title}
                 </h1>
 
@@ -314,7 +319,8 @@ export const EventDetail = ({ onTriggerToast }) => {
                     </div>
                     <div>
                       <p className="font-bold text-gray-900 text-lg">
-                        {event.ticket_price || "จะยืนยันให้ทราบภายหลัง หรือ สามารถดูได้จากลิงก์รายละเอียด"}
+                        {event.ticket_price ||
+                          "จะยืนยันให้ทราบภายหลัง หรือ สามารถดูได้จากลิงก์รายละเอียด"}
                       </p>
                       <p className="text-sm text-gray-500">ราคาบัตร</p>
                     </div>
@@ -344,7 +350,7 @@ export const EventDetail = ({ onTriggerToast }) => {
                     <button
                       onClick={btnState.action}
                       disabled={btnState.disabled}
-                      className={`flex-1 py-3 px-6 rounded-xl font-bold flex justify-center items-center gap-2 transition ${btnState.disabled ? '' : 'active:scale-95'} ${btnState.style}`}
+                      className={`flex-1 py-3 px-6 rounded-xl font-bold flex justify-center items-center gap-2 transition ${btnState.disabled ? "" : "active:scale-95"} ${btnState.style}`}
                     >
                       {btnState.icon} {btnState.text}
                     </button>
@@ -360,7 +366,7 @@ export const EventDetail = ({ onTriggerToast }) => {
               <h2 className="text-xl font-bold text-gray-900">รายละเอียดงาน</h2>
             </div>
 
-            <div className="prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line break-words w-full bg-white p-0 md:p-0 font-body [&>p]:mb-6 [&>h1]:font-sans [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4 [&>h2]:font-sans [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mt-8 [&>h2]:mb-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-6 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-6 [&_a]:text-[#FF6B00] [&_a]:font-bold [&_a]:no-underline hover:[&_a]:underline [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-4 [&_img]:max-w-full">
+            <div className="prose prose-sm md:prose-lg text-gray-600 leading-relaxed whitespace-pre-line break-words text-pretty w-full bg-white p-0 md:p-0 font-body [&>p]:mb-6 [&>h1]:font-sans [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-4 [&>h2]:font-sans [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mt-8 [&>h2]:mb-4 [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:mb-6 [&>ol]:list-decimal [&>ol]:pl-5 [&>ol]:mb-6 [&_a]:text-[#FF6B00] [&_a]:font-bold [&_a]:no-underline hover:[&_a]:underline [&_img]:rounded-xl [&_img]:shadow-md [&_img]:my-4 [&_img]:max-w-full">
               {parse(event.description || "", {
                 replace: (domNode) => {
                   if (domNode.name === "iframe" && domNode.attribs) {
@@ -463,7 +469,7 @@ export const EventDetail = ({ onTriggerToast }) => {
           <button
             onClick={btnState.action}
             disabled={btnState.disabled}
-            className={`flex-1 h-12 rounded-xl font-bold text-base flex items-center justify-center transition ${btnState.disabled ? '' : 'active:scale-95'} ${btnState.style}`}
+            className={`flex-1 h-12 rounded-xl font-bold text-base flex items-center justify-center transition ${btnState.disabled ? "" : "active:scale-95"} ${btnState.style}`}
           >
             {btnState.text}
           </button>

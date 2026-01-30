@@ -180,7 +180,7 @@ export const NewsDetail = ({ onTriggerToast }) => {
     {news.date ? news.date.split('-').reverse().join('-') : ''}
                         </span>
                     </div>
-                    <h1 className="text-3xl lg:text-4xl font-extrabold text-white leading-[1.6] lg:leading-[1.5] drop-shadow-lg max-w-3xl">
+                    <h1 className="text-3xl lg:text-4xl font-extrabold text-white leading-[1.6] lg:leading-[1.5] drop-shadow-lg max-w-3xl break-words text-balance">
                         {news.title}
                     </h1>
                 </div>
@@ -222,7 +222,7 @@ export const NewsDetail = ({ onTriggerToast }) => {
     {news.date ? news.date.split('-').reverse().join('-') : ''}
                 </span>
              </div>
-             <h1 className="text-2xl font-extrabold text-[#111111] leading-tight"> 
+             <h1 className="text-2xl font-extrabold text-[#111111] leading-tight break-words text-balance"> 
                 {news.title}
              </h1>
              <hr className="border-gray-100 mt-6" />
