@@ -4,7 +4,7 @@ import {
   IconChevronRight,
   IconMapPin,
   IconX,
-  IconMaximize, // ✅ 1. เพิ่ม Import ไอคอนขยาย
+  IconMaximize,
 } from "../icons/Icons";
 import { SkeletonEvent } from "../ui/UIComponents";
 import { EventCard } from "../ui/CardComponents";
@@ -12,7 +12,83 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import EventsMap from "./EventsMap";
 import L from "leaflet";
 
-// --- 📐 Helper: คำนวณระยะทาง (เหมือนเดิม) ---
+// --- 🔽 New Component: Dropdown สวยๆ (Custom) ---
+const FilterDropdown = ({ value, options, onChange, prefixIcon }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef(null);
+
+  // ปิด Dropdown เมื่อคลิกข้างนอก
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // หา label ของค่าที่เลือกอยู่
+  const selectedLabel = options.find((o) => o.value === value)?.label || value;
+
+  return (
+    <div className="relative" ref={ref}>
+      {/* ปุ่มกดเปิด/ปิด */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center justify-between gap-2 pl-4 pr-3 py-2 rounded-full shadow-md border transition-all active:scale-95 ${
+          isOpen ? "border-[#FF6B00] ring-2 ring-[#FF6B00]/20" : "border-gray-200 hover:border-gray-300"
+        } bg-white text-sm font-bold text-gray-700 min-w-[140px]`}
+      >
+        <span className="truncate max-w-[150px] flex items-center gap-1">
+          {prefixIcon && <span>{prefixIcon}</span>}
+          {selectedLabel}
+        </span>
+        <IconChevronRight
+          className={`transition-transform duration-200 text-gray-400 ${
+            isOpen ? "-rotate-90 text-[#FF6B00]" : "rotate-90"
+          }`}
+          size={16}
+        />
+      </button>
+
+      {/* เมนูที่เด้งออกมา */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="absolute top-full mt-2 left-0 min-w-[200px] bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-[2000] py-1"
+          >
+            <div className="py-1">
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-3 text-sm font-medium transition-colors flex items-center justify-between ${
+                    value === option.value
+                      ? "bg-orange-50 text-[#FF6B00]"
+                      : "text-gray-700 hover:bg-gray-50 hover:text-[#FF6B00]"
+                  }`}
+                >
+                  {option.label}
+                  {value === option.value && <div className="w-1.5 h-1.5 rounded-full bg-[#FF6B00]" />}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// --- 📐 Helper: คำนวณระยะทาง ---
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
   const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -27,7 +103,7 @@ const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-// --- 🎨 Helper: สีหมวดหมู่ (เหมือนเดิม) ---
+// --- 🎨 Helper: สีหมวดหมู่ ---
 const categoryColors = {
   Concert: "#FF6B00",
   "Fan Meeting": "#E91E63",
@@ -39,7 +115,7 @@ const categoryColors = {
   Others: "#607D8B",
 };
 
-// --- 📇 Sub-Component: การ์ดเดี่ยวๆ (เหมือนเดิม) ---
+// --- 📇 Sub-Component: การ์ดเดี่ยวๆ ---
 const SingleFloatingCard = ({ event, isCenter, onClick, onClose }) => {
   const cardVariants = {
     center: { scale: 1, opacity: 1, zIndex: 50, y: 0, x: 0 },
@@ -145,7 +221,7 @@ const SingleFloatingCard = ({ event, isCenter, onClick, onClose }) => {
   );
 };
 
-// --- 🎠 Component: Carousel Container (เหมือนเดิม) ---
+// --- 🎠 Component: Carousel Container ---
 const FloatingCarouselCard = ({
   currentEvent,
   prevEvent,
@@ -249,13 +325,22 @@ const DesktopEventsView = ({
   mapRef,
   handleNearMe,
   isLocating,
-  handleClearFilters,
+  // handleClearFilters, // ❌ ลบอันนี้ออก เราจะเขียนใหม่ข้างล่าง
   navigate,
   eventsWithLocation,
   mobileViewMode,
 }) => {
-  const hasActiveFilter =
-    categoryFilter !== "ทั้งหมด" || timeframeFilter !== "all" || searchOnMove;
+  // ของใหม่ (แนะนำ)
+const hasActiveFilter = categoryFilter !== "ทั้งหมด" || timeframeFilter !== "all";
+
+  // ✅ เขียน handleClearFilters ใหม่ตรงนี้
+  const handleClearFilters = () => {
+    setCategoryFilter("ทั้งหมด");
+    setTimeframeFilter("all");
+    setSortOrder("upcoming");
+    // บังคับให้เป็น true เสมอ (Reset to Default)
+    setSearchOnMove(true);
+  };
 
   const containerPaddingClass = showMapDesktop
     ? "px-4 md:px-6 lg:px-8"
@@ -265,8 +350,34 @@ const DesktopEventsView = ({
   const [nearbyQueue, setNearbyQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(0);
 
-  // ✅ State: ควบคุมการแสดงผล Map เต็มจอ (มีอยู่แล้ว)
   const [isMapFullScreen, setIsMapFullScreen] = useState(false);
+
+  // --- Options สำหรับ Dropdown ใหม่ ---
+  const timeframeOptions = [
+    { value: "all", label: "📅 ทุกช่วงเวลา" },
+    { value: "today", label: "🔥 วันนี้" },
+    { value: "this_month", label: "เดือนนี้" },
+    { value: "next_month", label: "เดือนหน้า" },
+  ];
+
+  const sortOptions = [
+    { value: "upcoming", label: "⚡ ใกล้วันงาน" },
+    { value: "newest", label: "🆕 ล่าสุด" },
+  ];
+
+  const categoryOptions = [
+    { value: "ทั้งหมด", label: "📂 หมวดหมู่ทั้งหมด" },
+    ...[
+      "Concert",
+      "Fan Meeting",
+      "Fansign",
+      "Workshop",
+      "Exhibition",
+      "Fan Event",
+      "Pop-up Store",
+      "Others",
+    ].map((cat) => ({ value: cat, label: cat })),
+  ];
 
   const handleMarkerClick = (clickedId) => {
     const clickedEvent = eventsWithLocation.find((e) => e.id === clickedId);
@@ -347,7 +458,6 @@ const DesktopEventsView = ({
     <div className="w-full h-full flex flex-row bg-white overflow-hidden">
       
       {/* --- LEFT: List Section --- */}
-      {/* Logic การซ่อน List: ถ้า Map เต็มจอ -> ซ่อน (hidden) */}
       <div
         className={`flex flex-col h-full transition-all duration-300 ease-in-out ${
             isMapFullScreen ? "hidden" : showMapDesktop ? "lg:w-1/2" : "w-full"
@@ -504,7 +614,6 @@ const DesktopEventsView = ({
       </div>
 
       {/* --- RIGHT: Map Section --- */}
-      {/* Logic การขยาย Map: ถ้า Map เต็มจอ -> w-full, ถ้าไม่ -> lg:w-1/2 */}
       <div
         className={`${
           isMapFullScreen ? "w-full" : "lg:w-1/2"
@@ -513,10 +622,54 @@ const DesktopEventsView = ({
         }`}
       >
         <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+          
+          {/* ✅ Floating Filters (Custom Dropdown) */}
+          {isMapFullScreen && (
+            <div className="absolute top-4 left-4 z-[1000] flex flex-wrap gap-2 items-center max-w-[calc(100%-250px)]">
+              {/* 1. Timeframe */}
+              <FilterDropdown 
+                value={timeframeFilter}
+                options={timeframeOptions}
+                onChange={setTimeframeFilter}
+              />
+
+              {/* 2. Sort Order */}
+              <FilterDropdown 
+                value={sortOrder}
+                options={sortOptions}
+                onChange={setSortOrder}
+              />
+
+              {/* 3. Category */}
+              <FilterDropdown 
+                value={categoryFilter}
+                options={categoryOptions}
+                onChange={setCategoryFilter}
+              />
+
+              {/* 4. Clear Button */}
+              <AnimatePresence>
+                {hasActiveFilter && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    onClick={handleClearFilters}
+                    className="flex items-center justify-center w-9 h-9 rounded-full bg-white border border-gray-200 shadow-md text-gray-500 hover:text-[#FF6B00] hover:bg-red-50 transition"
+                    title="ล้างค่าตัวกรอง"
+                  >
+                    <IconX size={18} />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* ปุ่ม: ค้นหาเมื่อเลื่อนแผนที่ */}
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[10]">
             <button
               onClick={() => setSearchOnMove(!searchOnMove)}
-              className="bg-white px-4 py-2 rounded-full shadow-md border border-gray-200 text-sm font-bold text-gray-700 flex items-center gap-2 hover:bg-gray-50 transition active:scale-95"
+              className="bg-white px-4 py-2 rounded-full shadow-md border border-gray-200 text-sm font-bold text-gray-700 flex items-center gap-2 hover:bg-gray-50 transition active:scale-95 whitespace-nowrap"
             >
               <div
                 className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${searchOnMove ? "bg-[#FF6B00] border-[#FF6B00]" : "border-gray-400 bg-white"}`}
@@ -541,7 +694,7 @@ const DesktopEventsView = ({
             </button>
           </div>
 
-          {/* ✅ 2. ปุ่มขยาย Map: ใส่ตรงนี้ (ตำแหน่ง Absolute ใต้ปุ่ม Zoom) */}
+          {/* ปุ่มขยาย Map */}
           <div 
             className="absolute z-[1000]" 
             style={{ top: '80px', right: '11px' }}
