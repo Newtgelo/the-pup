@@ -325,20 +325,19 @@ const DesktopEventsView = ({
   mapRef,
   handleNearMe,
   isLocating,
-  // handleClearFilters, // ❌ ลบอันนี้ออก เราจะเขียนใหม่ข้างล่าง
   navigate,
   eventsWithLocation,
   mobileViewMode,
 }) => {
-  // ของใหม่ (แนะนำ)
-const hasActiveFilter = categoryFilter !== "ทั้งหมด" || timeframeFilter !== "all";
+  // ✅ Logic: ไม่นับ searchOnMove เป็น Filter (ปุ่มล้างค่าจะได้ไม่โผล่ค้าง)
+  const hasActiveFilter =
+    categoryFilter !== "ทั้งหมด" || timeframeFilter !== "all";
 
-  // ✅ เขียน handleClearFilters ใหม่ตรงนี้
+  // ✅ Logic: ปุ่มล้างค่า -> ล้างหมวดหมู่+เวลา และบังคับเปิด searchOnMove
   const handleClearFilters = () => {
     setCategoryFilter("ทั้งหมด");
     setTimeframeFilter("all");
     setSortOrder("upcoming");
-    // บังคับให้เป็น true เสมอ (Reset to Default)
     setSearchOnMove(true);
   };
 
@@ -433,7 +432,11 @@ const hasActiveFilter = categoryFilter !== "ทั้งหมด" || timeframeF
 
     if (mapRef.current && !isNaN(lat) && !isNaN(lng)) {
       const map = mapRef.current;
-      const targetZoom = 15;
+      
+      // ✅ แก้ Logic: เลือกค่าที่มากกว่า ระหว่าง 15 กับ Zoom ปัจจุบัน
+      // (ถ้าซูมลึกกว่า 15 อยู่แล้ว ก็ใช้ค่าเดิม ไม่ต้องซูมออก)
+      const targetZoom = Math.max(map.getZoom(), 15);
+      
       const targetPoint = map.project([lat, lng], targetZoom);
       targetPoint.y += 150;
       const targetLatLng = map.unproject(targetPoint, targetZoom);
