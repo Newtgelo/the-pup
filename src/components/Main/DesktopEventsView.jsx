@@ -17,7 +17,6 @@ const FilterDropdown = ({ value, options, onChange, prefixIcon }) => {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef(null);
 
-  // ปิด Dropdown เมื่อคลิกข้างนอก
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (ref.current && !ref.current.contains(event.target)) {
@@ -28,12 +27,10 @@ const FilterDropdown = ({ value, options, onChange, prefixIcon }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // หา label ของค่าที่เลือกอยู่
   const selectedLabel = options.find((o) => o.value === value)?.label || value;
 
   return (
     <div className="relative" ref={ref}>
-      {/* ปุ่มกดเปิด/ปิด */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center justify-between gap-2 pl-4 pr-3 py-2 rounded-full shadow-md border transition-all active:scale-95 ${
@@ -52,7 +49,6 @@ const FilterDropdown = ({ value, options, onChange, prefixIcon }) => {
         />
       </button>
 
-      {/* เมนูที่เด้งออกมา */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -139,7 +135,6 @@ const SingleFloatingCard = ({ event, isCenter, onClick, onClose }) => {
       onClick={!isCenter ? onClick : undefined}
       className={`bg-white rounded-2xl shadow-2xl p-2 flex items-center gap-3 border border-gray-100 relative flex-shrink-0 transition-shadow duration-300 ${isCenter ? "w-[360px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] ring-1 ring-gray-900/5" : "w-[320px] grayscale-[30%]"}`}
     >
-      {/* รูปภาพ */}
       <div className="w-[72px] h-[72px] rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 border border-gray-100 relative">
         <img
           src={event.image_url}
@@ -149,7 +144,6 @@ const SingleFloatingCard = ({ event, isCenter, onClick, onClose }) => {
         {!isCenter && <div className="absolute inset-0 bg-white/20" />}
       </div>
 
-      {/* ข้อมูลตรงกลาง */}
       <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
         <div className="flex items-center gap-2 mb-0.5">
           <span
@@ -187,7 +181,6 @@ const SingleFloatingCard = ({ event, isCenter, onClick, onClose }) => {
         </p>
       </div>
 
-      {/* ปุ่ม Action ด้านขวา */}
       <div
         className={`flex flex-col gap-2 items-end pr-1 transition-opacity duration-200 ${isCenter ? "opacity-100" : "opacity-0 pointer-events-none"}`}
       >
@@ -329,11 +322,9 @@ const DesktopEventsView = ({
   eventsWithLocation,
   mobileViewMode,
 }) => {
-  // ✅ Logic: ไม่นับ searchOnMove เป็น Filter (ปุ่มล้างค่าจะได้ไม่โผล่ค้าง)
   const hasActiveFilter =
     categoryFilter !== "ทั้งหมด" || timeframeFilter !== "all";
 
-  // ✅ Logic: ปุ่มล้างค่า -> ล้างหมวดหมู่+เวลา และบังคับเปิด searchOnMove
   const handleClearFilters = () => {
     setCategoryFilter("ทั้งหมด");
     setTimeframeFilter("all");
@@ -351,7 +342,6 @@ const DesktopEventsView = ({
 
   const [isMapFullScreen, setIsMapFullScreen] = useState(false);
 
-  // --- Options สำหรับ Dropdown ใหม่ ---
   const timeframeOptions = [
     { value: "all", label: "📅 ทุกช่วงเวลา" },
     { value: "today", label: "🔥 วันนี้" },
@@ -426,6 +416,7 @@ const DesktopEventsView = ({
     setHoveredEventId(null);
   };
 
+  // ✅ [NEW] Smart Pan Logic: ขยับเฉพาะตอนจำเป็น
   const flyToEvent = (event) => {
     const lat = parseFloat(event?.lat);
     const lng = parseFloat(event?.lng);
@@ -433,16 +424,48 @@ const DesktopEventsView = ({
     if (mapRef.current && !isNaN(lat) && !isNaN(lng)) {
       const map = mapRef.current;
       
-      // ✅ แก้ Logic: เลือกค่าที่มากกว่า ระหว่าง 15 กับ Zoom ปัจจุบัน
-      // (ถ้าซูมลึกกว่า 15 อยู่แล้ว ก็ใช้ค่าเดิม ไม่ต้องซูมออก)
-      const targetZoom = Math.max(map.getZoom(), 15);
+      const currentZoom = map.getZoom();
+      const targetZoom = Math.max(currentZoom, 15);
       
+      // 1. ถ้า Zoom เปลี่ยน -> ต้องขยับแน่นอน
+      if (currentZoom !== targetZoom) {
+          const targetPoint = map.project([lat, lng], targetZoom);
+          targetPoint.y += 150; // Offset เดิม
+          const targetLatLng = map.unproject(targetPoint, targetZoom);
+          map.flyTo(targetLatLng, targetZoom, { duration: 1.2, easeLinearity: 0.25 });
+          return;
+      }
+
+      // 2. ถ้า Zoom เท่าเดิม -> เช็คว่าอยู่ใน Safe Zone ไหม?
+      const markerPoint = map.latLngToContainerPoint([lat, lng]);
+      const mapSize = map.getSize();
+      
+      // กำหนดพื้นที่ปลอดภัย (ไม่โดน UI บัง)
+      const safePadding = { 
+          top: 120,    // เผื่อ Filter ด้านบน
+          bottom: 240, // เผื่อ Carousel ด้านล่าง
+          left: 50, 
+          right: 50 
+      };
+
+      const isSafe = 
+          markerPoint.x > safePadding.left &&
+          markerPoint.x < mapSize.x - safePadding.right &&
+          markerPoint.y > safePadding.top &&
+          markerPoint.y < mapSize.y - safePadding.bottom;
+
+      if (isSafe) {
+          // ✅ อยู่ในที่ปลอดภัย เห็นชัดแล้ว -> ไม่ต้องขยับ!
+          return;
+      }
+
+      // 3. ถ้าโดนบัง -> ขยับไปหา
       const targetPoint = map.project([lat, lng], targetZoom);
-      targetPoint.y += 150;
+      targetPoint.y += 150; 
       const targetLatLng = map.unproject(targetPoint, targetZoom);
 
       map.flyTo(targetLatLng, targetZoom, {
-        duration: 1.2,
+        duration: 0.8, // ลดเวลาลงนิดนึงเพราะขยับแค่นิดเดียว
         easeLinearity: 0.25,
       });
     }
